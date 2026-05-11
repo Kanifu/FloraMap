@@ -9,9 +9,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Camera, useCameraDevice } from 'react-native-vision-camera';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useGardenStore } from '@/store/gardenStore';
-import { arService } from '@/services/ARService';
 import { SmartScan } from '@/modules/scan/SmartScan';
 import { Garden, DiffProposal } from '@/models';
 import { ScanStackParamList } from '@/navigation/AppNavigator';
@@ -24,9 +23,9 @@ const smartScan = new SmartScan();
 
 const ScanScreen = (): React.JSX.Element => {
   const navigation = useNavigation<ScanNavProp>();
-  const device = useCameraDevice('back');
-  const cameraRef = useRef<Camera>(null);
-  void cameraRef;
+  const cameraRef = useRef<CameraView>(null);
+  const [facing] = useState<CameraType>('back');
+  const [permission, requestPermission] = useCameraPermissions();
 
   const [step, setStep] = useState<ScanStep>('preview');
   const [scannedGarden, setScannedGarden] = useState<Garden | null>(null);
@@ -84,6 +83,23 @@ const ScanScreen = (): React.JSX.Element => {
       setCurrentProposalIndex((i) => i + 1);
     }
   };
+
+  if (!permission) {
+    return <View style={styles.centeredContainer} />;
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={styles.centeredContainer}>
+        <Text style={styles.permissionText}>
+          FloraMap heeft cameratoegang nodig om je tuin te scannen.
+        </Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
+          <Text style={styles.primaryButtonText}>Toestemming geven</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   if (step === 'processing') {
     return (
@@ -154,19 +170,11 @@ const ScanScreen = (): React.JSX.Element => {
 
   return (
     <View style={styles.cameraContainer}>
-      {device ? (
-        <Camera
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={true}
-          photo={true}
-        />
-      ) : (
-        <View style={styles.noCameraPlaceholder}>
-          <Text style={styles.noCameraText}>Camera niet beschikbaar</Text>
-        </View>
-      )}
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing={facing}
+      />
       <View style={styles.overlay}>
         <SafeAreaView style={styles.overlayInner}>
           <Text style={styles.overlayInstruction}>
@@ -193,20 +201,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
+    padding: 32,
   },
   cameraContainer: {
     flex: 1,
     backgroundColor: '#000',
-  },
-  noCameraPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#111',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noCameraText: {
-    color: '#aaa',
-    fontSize: 16,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -253,6 +252,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#2d6a4f',
     fontWeight: '600',
+  },
+  permissionText: {
+    fontSize: 15,
+    color: '#495057',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
   },
   header: {
     paddingHorizontal: 16,

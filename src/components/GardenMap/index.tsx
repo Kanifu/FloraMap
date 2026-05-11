@@ -1,14 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
-import {
-  Canvas,
-  Path,
-  Skia,
-  Group,
-  Circle,
-  Text as SkiaText,
-  useFont,
-} from '@shopify/react-native-skia';
+import Svg, { Polygon, Circle, G } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
 
 interface GardenMapProps {
@@ -25,74 +17,44 @@ const POLYGON_COLORS: Record<GardenPolygonType, string> = {
   bed: '#8b5e3c',
 };
 
-const buildPath = (polygon: GardenPolygon, scale: number): ReturnType<typeof Skia.Path.Make> => {
-  const path = Skia.Path.Make();
-  if (polygon.points.length === 0) return path;
-  path.moveTo(polygon.points[0].x * scale, polygon.points[0].y * scale);
-  for (let i = 1; i < polygon.points.length; i++) {
-    path.lineTo(polygon.points[i].x * scale, polygon.points[i].y * scale);
-  }
-  path.close();
-  return path;
-};
-
 const SCALE = 50;
 
+const toSvgPoints = (polygon: GardenPolygon): string =>
+  polygon.points.map((p) => `${p.x * SCALE},${p.y * SCALE}`).join(' ');
+
 export const GardenMap = ({ garden, onPlantPress, viewMode }: GardenMapProps): React.JSX.Element => {
-  const [canvasSize, setCanvasSize] = React.useState({ width: 300, height: 300 });
+  const [size, setSize] = React.useState({ width: 300, height: 300 });
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    setCanvasSize({ width, height });
+    setSize({ width, height });
   };
 
-  const isometricTransform = viewMode === 'isometric'
-    ? [{ skewX: 0.3 }, { scaleY: 0.6 }]
-    : [];
+  const groupTransform = viewMode === 'isometric' ? 'skewX(17) scale(1, 0.6)' : undefined;
 
   return (
     <View style={styles.container} onLayout={onLayout}>
-      <Canvas style={{ width: canvasSize.width, height: canvasSize.height }}>
-        <Group transform={isometricTransform}>
-          {garden.polygons.map((polygon) => {
-            const path = buildPath(polygon, SCALE);
-            return (
-              <Path
-                key={polygon.id}
-                path={path}
-                color={POLYGON_COLORS[polygon.type]}
-                style="fill"
-              />
-            );
-          })}
-          {garden.plants.map((plant) => (
-            <React.Fragment key={plant.id}>
-              <Circle
-                cx={plant.x * SCALE}
-                cy={plant.y * SCALE}
-                r={10}
-                color="#2d6a4f"
-              />
-            </React.Fragment>
+      <Svg width={size.width} height={size.height}>
+        <G transform={groupTransform}>
+          {garden.polygons.map((polygon) => (
+            <Polygon
+              key={polygon.id}
+              points={toSvgPoints(polygon)}
+              fill={POLYGON_COLORS[polygon.type]}
+            />
           ))}
-        </Group>
-      </Canvas>
-      {garden.plants.map((plant) => {
-        const pressHandler = () => onPlantPress(plant);
-        return (
-          <View
-            key={`touch-${plant.id}`}
-            style={[
-              styles.plantTouchable,
-              {
-                left: plant.x * SCALE - 14,
-                top: plant.y * SCALE - 14,
-              },
-            ]}
-            onTouchEnd={pressHandler}
-          />
-        );
-      })}
+          {garden.plants.map((plant) => (
+            <Circle
+              key={plant.id}
+              cx={plant.x * SCALE}
+              cy={plant.y * SCALE}
+              r={10}
+              fill="#2d6a4f"
+              onPress={() => onPlantPress(plant)}
+            />
+          ))}
+        </G>
+      </Svg>
     </View>
   );
 };
@@ -101,11 +63,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f1f8f3',
-  },
-  plantTouchable: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
   },
 });

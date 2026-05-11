@@ -1,21 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { MMKV } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Garden, Plant, DiffProposal } from '@/models';
-
-const storage = new MMKV({ id: 'floramap-store' });
-
-const mmkvStorage = {
-  getItem: (name: string): string | null => {
-    return storage.getString(name) ?? null;
-  },
-  setItem: (name: string, value: string): void => {
-    storage.set(name, value);
-  },
-  removeItem: (name: string): void => {
-    storage.delete(name);
-  },
-};
 
 interface GardenState {
   garden: Garden | null;
@@ -109,7 +95,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
     }),
     {
       name: 'garden-storage',
-      storage: createJSONStorage(() => mmkvStorage),
+      storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ garden: state.garden }),
     },
   ),

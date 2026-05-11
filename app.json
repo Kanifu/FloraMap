@@ -1,4 +1,32 @@
 {
-  "name": "FloraMap",
-  "displayName": "FloraMap"
+  "expo": {
+    "name": "FloraMap",
+    "slug": "floramap",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "FloraMap uses your camera to scan your garden and identify plants."
+        }
+      ],
+      "react-native-reanimated"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.floramap.app"
+    },
+    "android": {
+      "package": "com.floramap.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1b4332"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
 }

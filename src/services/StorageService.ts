@@ -1,27 +1,25 @@
-import { MMKV } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Garden } from '@/models';
-
-const storage = new MMKV({ id: 'floramap-data' });
 
 const GARDEN_KEY = 'active_garden';
 
 export class StorageService {
-  saveGarden(garden: Garden): void {
-    storage.set(GARDEN_KEY, JSON.stringify(garden));
+  async saveGarden(garden: Garden): Promise<void> {
+    await AsyncStorage.setItem(GARDEN_KEY, JSON.stringify(garden));
   }
 
-  loadGarden(): Garden | null {
-    const raw = storage.getString(GARDEN_KEY);
-    if (!raw) return null;
+  async loadGarden(): Promise<Garden | null> {
     try {
+      const raw = await AsyncStorage.getItem(GARDEN_KEY);
+      if (!raw) return null;
       return JSON.parse(raw) as Garden;
     } catch {
       return null;
     }
   }
 
-  clearGarden(): void {
-    storage.delete(GARDEN_KEY);
+  async clearGarden(): Promise<void> {
+    await AsyncStorage.removeItem(GARDEN_KEY);
   }
 }
 
