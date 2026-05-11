@@ -11,8 +11,7 @@
         {
           "cameraPermission": "FloraMap uses your camera to scan your garden and identify plants."
         }
-      ],
-      "react-native-reanimated"
+      ]
     ],
     "ios": {
       "supportsTablet": false,

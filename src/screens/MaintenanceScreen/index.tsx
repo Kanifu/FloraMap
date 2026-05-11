@@ -5,15 +5,8 @@ import {
   StyleSheet,
   SafeAreaView,
   SectionList,
+  TouchableOpacity,
 } from 'react-native';
-import Animated, {
-  useAnimatedGestureHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
@@ -29,8 +22,6 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   repot: 'Repot',
   treat: 'Treatment',
 };
-
-const SWIPE_THRESHOLD = 80;
 
 interface FlatTask {
   task: MaintenanceTask;
@@ -81,25 +72,6 @@ interface TaskItemProps {
 
 const TaskItem = ({ flatTask, onComplete, onNavigate }: TaskItemProps): React.JSX.Element => {
   const { task, plant, isOverdue } = flatTask;
-  const translateX = useSharedValue(0);
-
-  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-    onActive: (event) => {
-      if (event.translationX > 0) {
-        translateX.value = event.translationX;
-      }
-    },
-    onEnd: (event) => {
-      if (event.translationX > SWIPE_THRESHOLD) {
-        runOnJS(onComplete)(plant.id, task.id);
-      }
-      translateX.value = withSpring(0);
-    },
-  });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
 
   const dueDate = new Date(task.dueDate).toLocaleDateString('nl-NL', {
     day: 'numeric',
@@ -107,28 +79,24 @@ const TaskItem = ({ flatTask, onComplete, onNavigate }: TaskItemProps): React.JS
   });
 
   return (
-    <View style={styles.taskWrapper}>
-      <View style={styles.swipeHint}>
-        <Text style={styles.swipeHintText}>✓ Klaar</Text>
+    <TouchableOpacity
+      style={[styles.taskRow, isOverdue && styles.taskRowOverdue]}
+      onPress={() => onNavigate(plant.id)}
+      activeOpacity={0.7}>
+      <View style={styles.taskBody}>
+        <Text style={[styles.taskPlantName, isOverdue && styles.textOverdue]}>
+          {plant.commonName}
+        </Text>
+        <Text style={styles.taskType}>{TASK_LABELS[task.type]}</Text>
+        <Text style={[styles.taskDue, isOverdue && styles.textOverdue]}>{dueDate}</Text>
       </View>
-      <PanGestureHandler onGestureEvent={gestureHandler}>
-        <Animated.View
-          style={[styles.taskRow, isOverdue && styles.taskRowOverdue, animatedStyle]}>
-          <Animated.View style={styles.taskRowInner}>
-            <View style={styles.taskBody} onTouchEnd={() => onNavigate(plant.id)}>
-              <Text style={[styles.taskPlantName, isOverdue && styles.textOverdue]}>
-                {plant.commonName}
-              </Text>
-              <Text style={styles.taskType}>{TASK_LABELS[task.type]}</Text>
-            </View>
-            <View style={styles.taskRight}>
-              <Text style={[styles.taskDue, isOverdue && styles.textOverdue]}>{dueDate}</Text>
-              {isOverdue && <Text style={styles.overduePill}>Verlopen</Text>}
-            </View>
-          </Animated.View>
-        </Animated.View>
-      </PanGestureHandler>
-    </View>
+      <TouchableOpacity
+        style={styles.klaarButton}
+        onPress={() => onComplete(plant.id, task.id)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Text style={styles.klaarButtonText}>✓ Klaar</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
   );
 };
 
@@ -147,11 +115,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
         if (task.completedDate) continue;
-        flatTasks.push({
-          task,
-          plant,
-          isOverdue: task.dueDate < nowStr,
-        });
+        flatTasks.push({ task, plant, isOverdue: task.dueDate < nowStr });
       }
     }
 
@@ -223,29 +187,16 @@ const MaintenanceScreen = (): React.JSX.Element => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
   header: {
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1b4332',
-  },
-  listContent: {
-    padding: 12,
-    gap: 4,
-  },
-  sectionHeader: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  listContent: { padding: 12, gap: 4 },
+  sectionHeader: { paddingVertical: 8, paddingHorizontal: 4 },
   sectionHeaderText: {
     fontSize: 13,
     fontWeight: '700',
@@ -253,87 +204,33 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  taskWrapper: {
-    marginBottom: 8,
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  swipeHint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#2d6a4f',
-    justifyContent: 'center',
-    paddingLeft: 20,
-  },
-  swipeHintText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
   taskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e9ecef',
-  },
-  taskRowOverdue: {
-    borderColor: '#e63946',
-    backgroundColor: '#fff5f5',
-  },
-  taskRowInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 14,
+    marginBottom: 8,
   },
-  taskBody: {
-    flex: 1,
+  taskRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
+  taskBody: { flex: 1, gap: 2 },
+  taskPlantName: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  taskType: { fontSize: 13, color: '#6b705c' },
+  taskDue: { fontSize: 13, fontWeight: '500', color: '#6b705c' },
+  textOverdue: { color: '#e63946' },
+  klaarButton: {
+    backgroundColor: '#2d6a4f',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 8,
   },
-  taskPlantName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b4332',
-    marginBottom: 2,
-  },
-  taskType: {
-    fontSize: 13,
-    color: '#6b705c',
-  },
-  taskRight: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  taskDue: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6b705c',
-  },
-  textOverdue: {
-    color: '#e63946',
-  },
-  overduePill: {
-    fontSize: 11,
-    color: '#e63946',
-    fontWeight: '600',
-    backgroundColor: '#fde8e8',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  emptyIcon: {
-    fontSize: 48,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#aaa',
-    fontStyle: 'italic',
-  },
+  klaarButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyIcon: { fontSize: 48 },
+  emptyText: { fontSize: 16, color: '#aaa', fontStyle: 'italic' },
 });
 
 export default MaintenanceScreen;

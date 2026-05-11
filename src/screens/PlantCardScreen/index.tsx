@@ -9,14 +9,6 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import Animated, {
-  useAnimatedGestureHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import { useGardenStore } from '@/store/gardenStore';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { MaintenanceTask, MaintenanceTaskType, Plant } from '@/models';
@@ -32,8 +24,6 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   treat: 'Treatment',
 };
 
-const SWIPE_THRESHOLD = 80;
-
 interface TaskRowProps {
   task: MaintenanceTask;
   isOverdue: boolean;
@@ -41,61 +31,30 @@ interface TaskRowProps {
 }
 
 const TaskRow = ({ task, isOverdue, onComplete }: TaskRowProps): React.JSX.Element => {
-  const translateX = useSharedValue(0);
-
-  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-    onActive: (event) => {
-      if (event.translationX > 0) {
-        translateX.value = event.translationX;
-      }
-    },
-    onEnd: (event) => {
-      if (event.translationX > SWIPE_THRESHOLD) {
-        runOnJS(onComplete)(task.id);
-      }
-      translateX.value = withSpring(0);
-    },
-  });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
   const dueDate = new Date(task.dueDate).toLocaleDateString('nl-NL', {
     day: 'numeric',
     month: 'short',
   });
 
   return (
-    <View style={styles.taskRowWrapper}>
-      <View style={styles.completeHint}>
-        <Text style={styles.completeHintText}>✓ Klaar</Text>
+    <View style={[styles.taskRow, isOverdue && styles.taskRowOverdue, task.completedDate ? styles.taskRowCompleted : null]}>
+      <View style={styles.taskInfo}>
+        <Text style={[styles.taskType, isOverdue && styles.taskTypeOverdue]}>
+          {TASK_LABELS[task.type]}
+        </Text>
+        {task.notes ? <Text style={styles.taskNotes}>{task.notes}</Text> : null}
+        <Text style={[styles.taskDueDate, isOverdue && styles.taskDueDateOverdue]}>
+          {dueDate}
+          {isOverdue && !task.completedDate ? '  · Verlopen' : ''}
+        </Text>
       </View>
-      <PanGestureHandler onGestureEvent={gestureHandler}>
-        <Animated.View
-          style={[
-            styles.taskRow,
-            isOverdue && styles.taskRowOverdue,
-            task.completedDate && styles.taskRowCompleted,
-            animatedStyle,
-          ]}>
-          <View style={styles.taskInfo}>
-            <Text style={[styles.taskType, isOverdue && styles.taskTypeOverdue]}>
-              {TASK_LABELS[task.type]}
-            </Text>
-            {task.notes ? <Text style={styles.taskNotes}>{task.notes}</Text> : null}
-          </View>
-          <View style={styles.taskMeta}>
-            <Text style={[styles.taskDueDate, isOverdue && styles.taskDueDateOverdue]}>
-              {dueDate}
-            </Text>
-            {task.completedDate && <Text style={styles.completedBadge}>✓</Text>}
-            {isOverdue && !task.completedDate && (
-              <Text style={styles.overdueBadge}>Verlopen</Text>
-            )}
-          </View>
-        </Animated.View>
-      </PanGestureHandler>
+      {task.completedDate ? (
+        <Text style={styles.completedBadge}>✓</Text>
+      ) : (
+        <TouchableOpacity style={styles.klaarButton} onPress={() => onComplete(task.id)}>
+          <Text style={styles.klaarButtonText}>Klaar</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -115,7 +74,6 @@ const PlantCardScreen = (): React.JSX.Element => {
   const updatePlant = useGardenStore((s) => s.updatePlant);
 
   const plant = garden?.plants.find((p) => p.id === plantId);
-
   const now = new Date().toISOString();
 
   const sortedTasks = React.useMemo(() => {
@@ -220,10 +178,7 @@ const PlantCardScreen = (): React.JSX.Element => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -233,91 +188,20 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e9ecef',
     gap: 12,
   },
-  backButton: {
-    paddingRight: 8,
-  },
-  backButtonText: {
-    color: '#2d6a4f',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1b4332',
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 20,
-  },
-  card: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    padding: 20,
-  },
-  commonName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1b4332',
-    marginBottom: 4,
-  },
-  species: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    color: '#6b705c',
-    marginBottom: 20,
-  },
-  metaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  metaItem: {
-    minWidth: '45%',
-  },
-  metaLabel: {
-    fontSize: 12,
-    color: '#aaa',
-    marginBottom: 2,
-    textTransform: 'uppercase',
-  },
-  metaValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b4332',
-  },
-  section: {
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1b4332',
-    marginBottom: 4,
-  },
-  emptyTasks: {
-    fontSize: 14,
-    color: '#aaa',
-    fontStyle: 'italic',
-  },
-  taskRowWrapper: {
-    marginBottom: 8,
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  completeHint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#2d6a4f',
-    justifyContent: 'center',
-    paddingLeft: 20,
-  },
-  completeHintText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
+  backButton: { paddingRight: 8 },
+  backButtonText: { color: '#2d6a4f', fontSize: 16, fontWeight: '600' },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#1b4332' },
+  scrollContent: { padding: 16, gap: 20 },
+  card: { backgroundColor: '#f8f9fa', borderRadius: 16, padding: 20 },
+  commonName: { fontSize: 26, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+  species: { fontSize: 16, fontStyle: 'italic', color: '#6b705c', marginBottom: 20 },
+  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  metaItem: { minWidth: '45%' },
+  metaLabel: { fontSize: 12, color: '#aaa', marginBottom: 2, textTransform: 'uppercase' },
+  metaValue: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  section: { gap: 8 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+  emptyTasks: { fontSize: 14, color: '#aaa', fontStyle: 'italic' },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -327,66 +211,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    marginBottom: 8,
   },
-  taskRowOverdue: {
-    borderColor: '#e63946',
-    backgroundColor: '#fff5f5',
+  taskRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
+  taskRowCompleted: { opacity: 0.5 },
+  taskInfo: { flex: 1, gap: 2 },
+  taskType: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  taskTypeOverdue: { color: '#e63946' },
+  taskNotes: { fontSize: 12, color: '#6b705c' },
+  taskDueDate: { fontSize: 13, color: '#6b705c', fontWeight: '500' },
+  taskDueDateOverdue: { color: '#e63946' },
+  completedBadge: { color: '#2d6a4f', fontWeight: '700', fontSize: 20 },
+  klaarButton: {
+    backgroundColor: '#2d6a4f',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 8,
   },
-  taskRowCompleted: {
-    opacity: 0.5,
-  },
-  taskInfo: {
-    flex: 1,
-  },
-  taskType: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b4332',
-  },
-  taskTypeOverdue: {
-    color: '#e63946',
-  },
-  taskNotes: {
-    fontSize: 12,
-    color: '#6b705c',
-    marginTop: 2,
-  },
-  taskMeta: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  taskDueDate: {
-    fontSize: 13,
-    color: '#6b705c',
-    fontWeight: '500',
-  },
-  taskDueDateOverdue: {
-    color: '#e63946',
-  },
-  completedBadge: {
-    color: '#2d6a4f',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  overdueBadge: {
-    fontSize: 11,
-    color: '#e63946',
-    fontWeight: '600',
-    backgroundColor: '#fde8e8',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  notFound: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notFoundText: {
-    fontSize: 16,
-    color: '#aaa',
-  },
+  klaarButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  notFound: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  notFoundText: { fontSize: 16, color: '#aaa' },
 });
 
 export default PlantCardScreen;
