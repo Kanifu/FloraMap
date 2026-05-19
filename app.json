@@ -18,11 +18,7 @@
       "bundleIdentifier": "com.floramap.app"
     },
     "android": {
-      "package": "com.floramap.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1b4332"
-      }
+      "package": "com.floramap.app"
     },
     "web": {
       "bundler": "metro"
