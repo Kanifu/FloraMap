@@ -6,20 +6,49 @@ import {
   StyleSheet,
   ActivityIndicator,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useGardenStore } from '@/store/gardenStore';
-import { SmartScan } from '@/modules/scan/SmartScan';
-import { Garden, DiffProposal } from '@/models';
+import { plantIdentificationService, IdentificationResult } from '@/services/PlantIdentificationService';
+import { Plant, Garden } from '@/models';
 import { ScanStackParamList } from '@/navigation/AppNavigator';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 type ScanNavProp = StackNavigationProp<ScanStackParamList, 'Scan'>;
+type ScanStep = 'camera' | 'processing' | 'results' | 'error';
 
-type ScanStep = 'preview' | 'processing' | 'confirm' | 'diff';
+const DEFAULT_GARDEN_ID = 'main-garden';
 
-const smartScan = new SmartScan();
+const makeDefaultGarden = (): Garden => ({
+  id: DEFAULT_GARDEN_ID,
+  userId: 'local',
+  name: 'Mijn tuin',
+  polygons: [],
+  plants: [],
+  lastScannedAt: new Date().toISOString(),
+});
+
+const makePlant = (result: IdentificationResult, gardenId: string, position: number): Plant => ({
+  id: `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  gardenId,
+  species: result.species,
+  commonName: result.commonName,
+  x: 1 + (position % 5),
+  y: 1 + Math.floor(position / 5),
+  z: 0,
+  plantedDate: new Date().toISOString(),
+  maintenanceTasks: [
+    {
+      id: `task-${Date.now()}`,
+      plantId: '',
+      type: 'water',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ],
+  identificationConfidence: result.confidence,
+});
 
 const ScanScreen = (): React.JSX.Element => {
   const navigation = useNavigation<ScanNavProp>();
@@ -27,72 +56,54 @@ const ScanScreen = (): React.JSX.Element => {
   const [facing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
 
-  const [step, setStep] = useState<ScanStep>('preview');
-  const [scannedGarden, setScannedGarden] = useState<Garden | null>(null);
-  const [proposals, setProposals] = useState<DiffProposal[]>([]);
-  const [currentProposalIndex, setCurrentProposalIndex] = useState(0);
+  const [step, setStep] = useState<ScanStep>('camera');
+  const [results, setResults] = useState<IdentificationResult[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const existingGarden = useGardenStore((s) => s.garden);
+  const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
-  const acceptDiffProposal = useGardenStore((s) => s.acceptDiffProposal);
-  const rejectDiffProposal = useGardenStore((s) => s.rejectDiffProposal);
+  const addPlant = useGardenStore((s) => s.addPlant);
 
   const handleCapture = async () => {
+    if (!cameraRef.current) return;
     setStep('processing');
     try {
-      if (existingGarden) {
-        const diffProposals = await smartScan.runUpdateScan(existingGarden);
-        setProposals(diffProposals);
-        setCurrentProposalIndex(0);
-        setStep(diffProposals.length > 0 ? 'diff' : 'preview');
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      if (!photo) throw new Error('Foto mislukt');
+      const identified = await plantIdentificationService.identifyFromImageUri(photo.uri);
+      if (identified.length === 0) {
+        setErrorMessage('Geen plant herkend. Probeer dichter bij de plant te fotograferen.');
+        setStep('error');
       } else {
-        const garden = await smartScan.runFullScan();
-        setScannedGarden(garden);
-        setStep('confirm');
+        setResults(identified);
+        setStep('results');
       }
-    } catch {
-      setStep('preview');
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : 'Er ging iets mis.');
+      setStep('error');
     }
   };
 
-  const handleConfirm = () => {
-    if (scannedGarden) {
-      setGarden(scannedGarden);
+  const handleSelectPlant = (result: IdentificationResult) => {
+    const activeGarden = garden ?? makeDefaultGarden();
+    if (!garden) {
+      setGarden(activeGarden);
     }
+    const plant = makePlant(result, activeGarden.id, activeGarden.plants.length);
+    plant.maintenanceTasks[0].plantId = plant.id;
+    addPlant(plant);
     navigation.getParent()?.navigate('MapTab');
   };
 
-  const handleAcceptProposal = () => {
-    const proposal = proposals[currentProposalIndex];
-    if (!proposal) return;
-    acceptDiffProposal(proposal.id);
-    advanceProposal();
-  };
-
-  const handleRejectProposal = () => {
-    const proposal = proposals[currentProposalIndex];
-    if (!proposal) return;
-    rejectDiffProposal(proposal.id);
-    advanceProposal();
-  };
-
-  const advanceProposal = () => {
-    if (currentProposalIndex + 1 >= proposals.length) {
-      navigation.getParent()?.navigate('MapTab');
-    } else {
-      setCurrentProposalIndex((i) => i + 1);
-    }
-  };
-
   if (!permission) {
-    return <View style={styles.centeredContainer} />;
+    return <View style={styles.centered} />;
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.centeredContainer}>
+      <SafeAreaView style={styles.centered}>
         <Text style={styles.permissionText}>
-          FloraMap heeft cameratoegang nodig om je tuin te scannen.
+          FloraMap heeft cameratoegang nodig om planten te scannen.
         </Text>
         <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
           <Text style={styles.primaryButtonText}>Toestemming geven</Text>
@@ -103,85 +114,67 @@ const ScanScreen = (): React.JSX.Element => {
 
   if (step === 'processing') {
     return (
-      <SafeAreaView style={styles.centeredContainer}>
+      <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color="#2d6a4f" />
-        <Text style={styles.processingText}>Tuin analyseren...</Text>
+        <Text style={styles.processingText}>Plant herkennen...</Text>
       </SafeAreaView>
     );
   }
 
-  if (step === 'confirm' && scannedGarden) {
+  if (step === 'error') {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Scan voltooid</Text>
-        </View>
-        <View style={styles.confirmContent}>
-          <Text style={styles.confirmTitle}>{scannedGarden.name}</Text>
-          <Text style={styles.confirmDetail}>
-            {scannedGarden.plants.length} planten gedetecteerd
-          </Text>
-          <Text style={styles.confirmDetail}>
-            {scannedGarden.polygons.length} zones in kaart gebracht
-          </Text>
-        </View>
-        <View style={styles.confirmActions}>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setStep('preview')}>
-            <Text style={styles.secondaryButtonText}>Opnieuw</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleConfirm}>
-            <Text style={styles.primaryButtonText}>Bevestig</Text>
-          </TouchableOpacity>
-        </View>
+      <SafeAreaView style={styles.centered}>
+        <Text style={styles.errorIcon}>🌿</Text>
+        <Text style={styles.errorText}>{errorMessage}</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => setStep('camera')}>
+          <Text style={styles.primaryButtonText}>Opnieuw proberen</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  if (step === 'diff') {
-    const proposal = proposals[currentProposalIndex];
-    const remaining = proposals.length - currentProposalIndex;
-
+  if (step === 'results') {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Wijzigingen ({remaining} over)</Text>
-        </View>
-        <View style={styles.diffContent}>
-          <Text style={styles.diffBadge}>
-            {proposal.type === 'add' ? '+ Nieuw' : proposal.type === 'remove' ? '− Verwijderd' : '~ Gewijzigd'}
-          </Text>
-          <Text style={styles.diffPlantName}>{proposal.plant.commonName}</Text>
-          <Text style={styles.diffSpecies}>{proposal.plant.species}</Text>
-          <Text style={styles.diffConfidence}>
-            Betrouwbaarheid: {Math.round(proposal.confidence * 100)}%
-          </Text>
-        </View>
-        <View style={styles.diffActions}>
-          <TouchableOpacity style={styles.neeButton} onPress={handleRejectProposal}>
-            <Text style={styles.diffActionText}>Nee</Text>
+          <TouchableOpacity onPress={() => setStep('camera')}>
+            <Text style={styles.backText}>← Opnieuw</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.jaButton} onPress={handleAcceptProposal}>
-            <Text style={styles.diffActionText}>Ja</Text>
-          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Gevonden planten</Text>
         </View>
+        <ScrollView contentContainerStyle={styles.resultsList}>
+          {results.map((result, i) => (
+            <TouchableOpacity
+              key={i}
+              style={styles.resultRow}
+              onPress={() => handleSelectPlant(result)}
+              activeOpacity={0.75}>
+              <View style={styles.resultEmoji}>
+                <Text style={styles.resultEmojiText}>🌿</Text>
+              </View>
+              <View style={styles.resultInfo}>
+                <Text style={styles.resultCommonName}>{result.commonName}</Text>
+                <Text style={styles.resultSpecies}>{result.species}</Text>
+              </View>
+              <View style={styles.confidenceBadge}>
+                <Text style={styles.confidenceText}>
+                  {Math.round(result.confidence * 100)}%
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <Text style={styles.hint}>Tik op een resultaat om het aan je tuin toe te voegen</Text>
       </SafeAreaView>
     );
   }
 
   return (
     <View style={styles.cameraContainer}>
-      <CameraView
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        facing={facing}
-      />
-      <View style={styles.overlay}>
-        <SafeAreaView style={styles.overlayInner}>
-          <Text style={styles.overlayInstruction}>
-            Sweep your camera over the garden
-          </Text>
-        </SafeAreaView>
-      </View>
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} />
+      <SafeAreaView style={styles.cameraOverlay}>
+        <Text style={styles.instruction}>Richt op een plant en maak een foto</Text>
+      </SafeAreaView>
       <View style={styles.captureRow}>
         <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
           <View style={styles.captureButtonInner} />
@@ -192,32 +185,27 @@ const ScanScreen = (): React.JSX.Element => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  centeredContainer: {
+  container: { flex: 1, backgroundColor: '#fff' },
+  centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
     padding: 32,
+    gap: 16,
   },
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-start',
-  },
-  overlayInner: {
+  cameraContainer: { flex: 1, backgroundColor: '#000' },
+  cameraOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
     paddingTop: 24,
   },
-  overlayInstruction: {
+  instruction: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     backgroundColor: 'rgba(0,0,0,0.45)',
     paddingHorizontal: 20,
@@ -248,7 +236,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   processingText: {
-    marginTop: 16,
     fontSize: 16,
     color: '#2d6a4f',
     fontWeight: '600',
@@ -257,122 +244,68 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#495057',
     textAlign: 'center',
-    marginBottom: 24,
+    lineHeight: 22,
+  },
+  primaryButton: {
+    backgroundColor: '#2d6a4f',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  errorIcon: { fontSize: 48 },
+  errorText: {
+    fontSize: 15,
+    color: '#495057',
+    textAlign: 'center',
     lineHeight: 22,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1b4332',
-  },
-  confirmContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  confirmTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1b4332',
-    marginBottom: 16,
-  },
-  confirmDetail: {
-    fontSize: 16,
-    color: '#6b705c',
-    marginBottom: 8,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    padding: 16,
     gap: 12,
   },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: '#2d6a4f',
-    paddingVertical: 14,
-    borderRadius: 12,
+  backText: { color: '#2d6a4f', fontSize: 15, fontWeight: '600' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
+  resultsList: { padding: 16, gap: 12 },
+  resultRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    gap: 12,
   },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: '#e9ecef',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#1b4332',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  diffContent: {
-    flex: 1,
+  resultEmoji: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#d8f3dc',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
   },
-  diffBadge: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
+  resultEmojiText: { fontSize: 22 },
+  resultInfo: { flex: 1 },
+  resultCommonName: { fontSize: 16, fontWeight: '700', color: '#1b4332' },
+  resultSpecies: { fontSize: 13, fontStyle: 'italic', color: '#6b705c', marginTop: 2 },
+  confidenceBadge: {
     backgroundColor: '#2d6a4f',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 20,
   },
-  diffPlantName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1b4332',
-    marginBottom: 8,
-  },
-  diffSpecies: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    color: '#6b705c',
-    marginBottom: 16,
-  },
-  diffConfidence: {
-    fontSize: 14,
+  confidenceText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  hint: {
+    textAlign: 'center',
+    fontSize: 13,
     color: '#aaa',
-  },
-  diffActions: {
-    flexDirection: 'row',
     padding: 16,
-    gap: 12,
-  },
-  neeButton: {
-    flex: 1,
-    backgroundColor: '#e63946',
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  jaButton: {
-    flex: 1,
-    backgroundColor: '#2d6a4f',
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  diffActionText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
   },
 });
 
