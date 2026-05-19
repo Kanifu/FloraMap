@@ -1,14 +1,17 @@
-const PLANTNET_URL = 'https://my-api.plantnet.org/v2/identify/all';
+import * as FileSystem from 'expo-file-system';
 
-interface PlantNetSpecies {
-  scientificNameWithoutAuthor: string;
-  commonNames: string[];
-}
+const GEMINI_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-interface PlantNetApiResult {
-  score: number;
-  species: PlantNetSpecies;
-}
+const IDENTIFY_PROMPT = `Look at this image and identify any plant(s) you can see.
+Return a JSON array of up to 5 results, sorted by confidence (highest first).
+Each result must have exactly these fields:
+- species: scientific name (e.g. "Cucumis sativus")
+- commonName: common name in English (e.g. "Cucumber")
+- confidence: number between 0 and 1
+
+If no plant is visible, return an empty array [].
+Return ONLY the JSON array, no markdown, no explanation.`;
 
 export interface IdentificationResult {
   species: string;
@@ -20,40 +23,50 @@ export class PlantIdentificationService {
   private readonly apiKey: string;
 
   constructor() {
-    this.apiKey = process.env.EXPO_PUBLIC_PLANTNET_API_KEY ?? '';
+    this.apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
   }
 
   async identifyFromImageUri(imageUri: string): Promise<IdentificationResult[]> {
     if (!this.apiKey) {
-      throw new Error('Geen PlantNet API-sleutel gevonden. Maak een .env bestand aan met EXPO_PUBLIC_PLANTNET_API_KEY.');
+      throw new Error(
+        'Geen Gemini API-sleutel gevonden. Voeg EXPO_PUBLIC_GEMINI_API_KEY toe aan je .env bestand.',
+      );
     }
 
-    const formData = new FormData();
-    formData.append('images', {
-      uri: imageUri,
-      type: 'image/jpeg',
-      name: 'plant.jpg',
-    } as unknown as Blob);
-    formData.append('organs', 'auto');
+    const base64 = await FileSystem.readAsStringAsync(imageUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
 
-    const response = await fetch(
-      `${PLANTNET_URL}?api-key=${this.apiKey}&lang=en&nb-results=5`,
-      { method: 'POST', body: formData },
-    );
+    const response = await fetch(`${GEMINI_URL}?key=${this.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: IDENTIFY_PROMPT },
+              { inlineData: { mimeType: 'image/jpeg', data: base64 } },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 512 },
+      }),
+    });
 
-    if (response.status === 404) {
+    if (!response.ok) {
+      throw new Error(`Gemini API fout: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    try {
+      const results = JSON.parse(cleaned);
+      return Array.isArray(results) ? results : [];
+    } catch {
       return [];
     }
-    if (!response.ok) {
-      throw new Error(`PlantNet API fout: ${response.status}`);
-    }
-
-    const data: { results: PlantNetApiResult[] } = await response.json();
-    return data.results.map((r) => ({
-      species: r.species.scientificNameWithoutAuthor,
-      commonName: r.species.commonNames?.[0] ?? r.species.scientificNameWithoutAuthor,
-      confidence: r.score,
-    }));
   }
 }
 
