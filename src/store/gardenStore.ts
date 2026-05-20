@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, PlantZone } from '@/models';
 
 interface GardenState {
   garden: Garden | null;
@@ -16,6 +16,9 @@ interface GardenActions {
   removePlant: (plantId: string) => void;
   addGardenTask: (task: GardenTask) => void;
   completeGardenTask: (taskId: string) => void;
+  addZone: (zone: PlantZone) => void;
+  updateZone: (zone: PlantZone) => void;
+  removeZone: (zoneId: string) => void;
   acceptDiffProposal: (proposalId: string) => void;
   rejectDiffProposal: (proposalId: string) => void;
   setScanning: (isScanning: boolean) => void;
@@ -85,6 +88,29 @@ export const useGardenStore = create<GardenState & GardenActions>()(
             ),
           },
         });
+      },
+
+      addZone: (zone) => {
+        const { garden } = get();
+        if (!garden) return;
+        set({ garden: { ...garden, zones: [...(garden.zones ?? []), zone] } });
+      },
+
+      updateZone: (zone) => {
+        const { garden } = get();
+        if (!garden) return;
+        set({
+          garden: {
+            ...garden,
+            zones: (garden.zones ?? []).map((z) => (z.id === zone.id ? zone : z)),
+          },
+        });
+      },
+
+      removeZone: (zoneId) => {
+        const { garden } = get();
+        if (!garden) return;
+        set({ garden: { ...garden, zones: (garden.zones ?? []).filter((z) => z.id !== zoneId) } });
       },
 
       acceptDiffProposal: (proposalId) => {

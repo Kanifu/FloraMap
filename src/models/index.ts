@@ -64,12 +64,32 @@ export interface GardenTask {
   plantName?: string;
 }
 
+export const ZONE_COLORS = [
+  '#95d5b2', '#52b788', '#ffb703', '#e76f51',
+  '#a8dadc', '#e9c46a', '#c9b1ff', '#ffd6e0',
+];
+
+export interface PlantZone {
+  id: string;
+  gardenId: string;
+  commonName: string;
+  species?: string;
+  x: number;       // top-left grid column (1-indexed)
+  y: number;       // top-left grid row (1-indexed)
+  width: number;   // cells wide  (≥1)
+  height: number;  // cells tall  (≥1)
+  color: string;
+  careTips?: string[];
+  notes?: string;
+}
+
 export interface Garden {
   id: string;
   userId: string;
   name: string;
   polygons: GardenPolygon[];
   plants: Plant[];
+  zones?: PlantZone[];
   tasks?: GardenTask[];
   lastScannedAt?: string;
   northOrientationDeg?: number;

@@ -35,6 +35,7 @@ const makeDefaultGarden = (): Garden => ({
   name: 'Mijn tuin',
   polygons: [],
   plants: [],
+  zones: [],
   tasks: [],
   lastScannedAt: new Date().toISOString(),
 });
