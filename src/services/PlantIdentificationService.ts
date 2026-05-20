@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 const IDENTIFY_PROMPT = `Look at this image and identify any plant(s) you can see.
 Return a JSON array of up to 5 results, sorted by confidence (highest first).
