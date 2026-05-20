@@ -4,13 +4,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Text } from 'react-native';
 import MapScreen from '@/screens/MapScreen';
-import ScanScreen from '@/screens/ScanScreen';
+import AssistantScreen from '@/screens/AssistantScreen';
 import MaintenanceScreen from '@/screens/MaintenanceScreen';
 import PlantCardScreen from '@/screens/PlantCardScreen';
 
 export type RootTabParamList = {
   MapTab: undefined;
-  ScanTab: undefined;
+  AssistantTab: undefined;
   MaintenanceTab: undefined;
 };
 
@@ -19,8 +19,8 @@ export type MapStackParamList = {
   PlantCard: { plantId: string };
 };
 
-export type ScanStackParamList = {
-  Scan: undefined;
+export type AssistantStackParamList = {
+  Assistant: undefined;
 };
 
 export type MaintenanceStackParamList = {
@@ -30,7 +30,7 @@ export type MaintenanceStackParamList = {
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const MapStack = createStackNavigator<MapStackParamList>();
-const ScanStack = createStackNavigator<ScanStackParamList>();
+const AssistantStack = createStackNavigator<AssistantStackParamList>();
 const MaintenanceStack = createStackNavigator<MaintenanceStackParamList>();
 
 const MapStackNavigator = (): React.JSX.Element => (
@@ -40,10 +40,10 @@ const MapStackNavigator = (): React.JSX.Element => (
   </MapStack.Navigator>
 );
 
-const ScanStackNavigator = (): React.JSX.Element => (
-  <ScanStack.Navigator screenOptions={{ headerShown: false }}>
-    <ScanStack.Screen name="Scan" component={ScanScreen} />
-  </ScanStack.Navigator>
+const AssistantStackNavigator = (): React.JSX.Element => (
+  <AssistantStack.Navigator screenOptions={{ headerShown: false }}>
+    <AssistantStack.Screen name="Assistant" component={AssistantScreen} />
+  </AssistantStack.Navigator>
 );
 
 const MaintenanceStackNavigator = (): React.JSX.Element => (
@@ -65,23 +65,23 @@ export const AppNavigator = (): React.JSX.Element => (
         name="MapTab"
         component={MapStackNavigator}
         options={{
-          tabBarLabel: 'Map',
+          tabBarLabel: 'Tuin',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🗺️</Text>,
         }}
       />
       <Tab.Screen
-        name="ScanTab"
-        component={ScanStackNavigator}
+        name="AssistantTab"
+        component={AssistantStackNavigator}
         options={{
-          tabBarLabel: 'Scan',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📷</Text>,
+          tabBarLabel: 'Assistent',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🌿</Text>,
         }}
       />
       <Tab.Screen
         name="MaintenanceTab"
         component={MaintenanceStackNavigator}
         options={{
-          tabBarLabel: 'Maintenance',
+          tabBarLabel: 'Onderhoud',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🔔</Text>,
         }}
       />

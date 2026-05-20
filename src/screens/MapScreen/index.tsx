@@ -2,7 +2,6 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
@@ -34,18 +33,14 @@ const MapScreen = (): React.JSX.Element => {
     navigation.navigate('PlantCard', { plantId: plant.id });
   };
 
-  const handleScanPress = () => {
-    navigation.getParent()?.navigate('ScanTab');
-  };
-
-  if (!garden) {
+  if (!garden || garden.plants.length === 0) {
     return (
       <SafeAreaView style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>Welkom bij FloraMap</Text>
-        <Text style={styles.emptySubtitle}>Je hebt nog geen tuin gescand.</Text>
-        <TouchableOpacity style={styles.startButton} onPress={handleScanPress}>
-          <Text style={styles.startButtonText}>Start je eerste scan</Text>
-        </TouchableOpacity>
+        <Text style={styles.emptyIcon}>🌳</Text>
+        <Text style={styles.emptyTitle}>Je tuin is nog leeg</Text>
+        <Text style={styles.emptySubtitle}>
+          Ga naar de Assistent tab om je eerste plant te scannen en toe te voegen.
+        </Text>
       </SafeAreaView>
     );
   }
@@ -53,10 +48,15 @@ const MapScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.gardenName}>{garden.name}</Text>
-        <TouchableOpacity style={styles.scanButton} onPress={handleScanPress}>
-          <Text style={styles.scanButtonText}>Scan</Text>
-        </TouchableOpacity>
+        <View>
+          <Text style={styles.gardenName}>{garden.name}</Text>
+          <Text style={styles.plantCount}>{garden.plants.length} planten</Text>
+        </View>
+        {pendingTaskCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
+          </View>
+        )}
       </View>
 
       <GardenMap
@@ -64,52 +64,27 @@ const MapScreen = (): React.JSX.Element => {
         onPlantPress={handlePlantPress}
         viewMode="2d"
       />
-
-      {pendingTaskCount > 0 && (
-        <View style={styles.bottomHint}>
-          <Text style={styles.bottomHintText}>
-            {pendingTaskCount} onderhoudstaak{pendingTaskCount > 1 ? 'en' : ''} verlopen
-          </Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
     padding: 32,
+    gap: 12,
   },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1b4332',
-    marginBottom: 8,
-  },
+  emptyIcon: { fontSize: 64 },
+  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#6b705c',
-    marginBottom: 32,
     textAlign: 'center',
-  },
-  startButton: {
-    backgroundColor: '#2d6a4f',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  startButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    lineHeight: 22,
   },
   header: {
     flexDirection: 'row',
@@ -120,32 +95,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
-  gardenName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1b4332',
-  },
-  scanButton: {
-    backgroundColor: '#2d6a4f',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  scanButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  bottomHint: {
+  gardenName: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  plantCount: { fontSize: 13, color: '#6b705c', marginTop: 2 },
+  badge: {
     backgroundColor: '#ffb703',
-    padding: 12,
-    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  bottomHintText: {
-    color: '#1b1b1b',
-    fontWeight: '600',
-    fontSize: 14,
-  },
+  badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
 });
 
 export default MapScreen;
