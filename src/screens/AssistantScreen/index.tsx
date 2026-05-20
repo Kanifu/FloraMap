@@ -305,6 +305,9 @@ const AssistantScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
             <Text style={styles.iconButtonText}>📷</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery}>
+            <Text style={styles.iconButtonText}>🖼️</Text>
+          </TouchableOpacity>
           <TextInput
             style={styles.textInput}
             placeholder="Stel een vraag..."

@@ -1,7 +1,18 @@
 import * as FileSystem from 'expo-file-system';
 
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const fetchWithRetry = async (url: string, init: RequestInit, retries = 3): Promise<Response> => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 503 || attempt === retries) return res;
+    await sleep(1000 * Math.pow(2, attempt)); // 1s, 2s, 4s
+  }
+  throw new Error('Gemini niet beschikbaar na meerdere pogingen.');
+};
 
 export interface IdentifiedPlant {
   species: string;
@@ -85,7 +96,7 @@ Laat deze regel volledig weg als er geen plant te identificeren is.`;
     }
     contents.push({ role: 'user', parts: currentParts });
 
-    const response = await fetch(`${GEMINI_URL}?key=${this.apiKey}`, {
+    const response = await fetchWithRetry(`${GEMINI_URL}?key=${this.apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -93,17 +104,24 @@ Laat deze regel volledig weg als er geen plant te identificeren is.`;
           parts: [{ text: this.buildSystemPrompt(gardenPlants) }],
         },
         contents,
-        generationConfig: { temperature: 0.6, maxOutputTokens: 1500 },
+        generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API fout: ${response.status}`);
+      const status = response.status;
+      if (status === 503) throw new Error('Gemini is momenteel overbelast. Probeer het opnieuw.');
+      if (status === 429) throw new Error('Te veel verzoeken. Even wachten en opnieuw proberen.');
+      throw new Error(`Gemini API fout: ${status}`);
     }
 
     const data = await response.json();
-    const fullText: string =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Geen antwoord ontvangen.';
+    const candidate = data.candidates?.[0];
+    const finishReason: string = candidate?.finishReason ?? '';
+    const rawText: string = candidate?.content?.parts?.[0]?.text ?? 'Geen antwoord ontvangen.';
+    const fullText = finishReason === 'MAX_TOKENS'
+      ? rawText + '\n\n_(Antwoord afgekapt — stel een kortere vraag voor meer detail.)_'
+      : rawText;
 
     const lines = fullText.split('\n');
     const lastLine = lines[lines.length - 1].trim();
