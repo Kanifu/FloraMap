@@ -9,7 +9,7 @@ const fetchWithRetry = async (url: string, init: RequestInit, retries = 3): Prom
   for (let attempt = 0; attempt <= retries; attempt++) {
     const res = await fetch(url, init);
     if (res.status !== 503 || attempt === retries) return res;
-    await sleep(1000 * Math.pow(2, attempt)); // 1s, 2s, 4s
+    await sleep(1000 * Math.pow(2, attempt));
   }
   throw new Error('Gemini niet beschikbaar na meerdere pogingen.');
 };
@@ -18,11 +18,19 @@ export interface IdentifiedPlant {
   species: string;
   commonName: string;
   confidence: number;
+  careTips?: string[];
+}
+
+export interface AssistantTask {
+  description: string;
+  urgency: 'high' | 'medium' | 'low';
+  plantName?: string;
 }
 
 export interface AssistantResponse {
   text: string;
   identifiedPlants?: IdentifiedPlant[];
+  detectedTasks?: AssistantTask[];
 }
 
 export interface ChatTurn {
@@ -40,17 +48,27 @@ export class GardenAssistantService {
 
   private buildSystemPrompt(gardenPlants: string[]): string {
     const plantList =
-      gardenPlants.length > 0 ? gardenPlants.join(', ') : 'nog geen planten';
+      gardenPlants.length > 0 ? gardenPlants.join('; ') : 'nog geen planten';
 
     return `Je bent FloraMap, een beknopte tuinassistent. Antwoord altijd in de taal van de gebruiker.
-Tuin: ${plantList}.
 Geef korte, directe antwoorden — maximaal 3-4 zinnen tenzij meer detail echt nodig is.
-Bij plantenidentificatie vanuit een foto: noem gewone naam, wetenschappelijke naam en 1-2 concrete verzorgingstips.
 
-Als je een of meer planten herkent in een foto, voeg op de LAATSTE REGEL van je antwoord exact dit toe:
-PLANTS:[{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.92}]
-Je mag meerdere objecten in de array plaatsen als er meerdere planten zichtbaar zijn.
-Laat deze regel volledig weg als er geen plant te identificeren is.`;
+Huidige tuin (naam, soort, positie op raster):
+${plantList}
+
+Je kunt advies geven over:
+- Companion planting: welke planten goed of slecht naast elkaar groeien
+- Waar nieuwe planten het beste passen (zon, schaduw, ruimte, buren)
+- Verzorging, ziektes en seizoenstips
+
+Als je een of meer planten herkent in een foto, scan elke plant voor 2-3 concrete verzorgingstips en voeg toe (één regel, geen markdown):
+PLANTS:[{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.92,"careTips":["tip1","tip2"]}]
+
+Als je in een foto ook onderhoudsproblemen ziet (onkruid, zieke bladeren, droogstress, beschadiging, overrijpe vruchten), voeg toe (één regel, geen markdown):
+TASKS:[{"description":"wat er gedaan moet worden","urgency":"high","plantName":"plantnaam of leeg"}]
+urgency: "high" = vandaag, "medium" = binnen 3 dagen, "low" = binnen een week.
+
+Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van toepassing is.`;
   }
 
   async chat(
@@ -92,7 +110,7 @@ Laat deze regel volledig weg als er geen plant te identificeren is.`;
         encoding: FileSystem.EncodingType.Base64,
       });
       currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } });
-      if (!userText) currentParts.unshift({ text: 'Identificeer alle planten in deze foto.' });
+      if (!userText) currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });
     }
     contents.push({ role: 'user', parts: currentParts });
 
@@ -127,22 +145,34 @@ Laat deze regel volledig weg als er geen plant te identificeren is.`;
       ? rawText + '\n\n_(Antwoord afgekapt — stel een kortere vraag voor meer detail.)_'
       : rawText;
 
-    const lines = fullText.split('\n');
-    const lastLine = lines[lines.length - 1].trim();
+    // Scan all lines for structured markers, then strip them from display text
     let identifiedPlants: IdentifiedPlant[] | undefined;
-    let displayText = fullText;
+    let detectedTasks: AssistantTask[] | undefined;
 
-    if (lastLine.startsWith('PLANTS:')) {
-      try {
-        const parsed = JSON.parse(lastLine.slice(7));
-        identifiedPlants = Array.isArray(parsed) ? parsed as IdentifiedPlant[] : [parsed as IdentifiedPlant];
-        displayText = lines.slice(0, -1).join('\n').trim();
-      } catch {
-        // keep fullText as-is
+    const displayLines = fullText.split('\n').filter((line) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('PLANTS:')) {
+        try {
+          const parsed = JSON.parse(trimmed.slice(7));
+          identifiedPlants = Array.isArray(parsed) ? parsed : [parsed];
+        } catch { /* ignore parse error */ }
+        return false;
       }
-    }
+      if (trimmed.startsWith('TASKS:')) {
+        try {
+          const parsed = JSON.parse(trimmed.slice(6));
+          detectedTasks = Array.isArray(parsed) ? parsed : [parsed];
+        } catch { /* ignore parse error */ }
+        return false;
+      }
+      return true;
+    });
 
-    return { text: displayText, identifiedPlants };
+    return {
+      text: displayLines.join('\n').trim(),
+      identifiedPlants,
+      detectedTasks,
+    };
   }
 }
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask } from '@/models';
 
 interface GardenState {
   garden: Garden | null;
@@ -14,6 +14,8 @@ interface GardenActions {
   updatePlant: (plant: Plant) => void;
   addPlant: (plant: Plant) => void;
   removePlant: (plantId: string) => void;
+  addGardenTask: (task: GardenTask) => void;
+  completeGardenTask: (taskId: string) => void;
   acceptDiffProposal: (proposalId: string) => void;
   rejectDiffProposal: (proposalId: string) => void;
   setScanning: (isScanning: boolean) => void;
@@ -57,6 +59,30 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           garden: {
             ...garden,
             plants: garden.plants.filter((p) => p.id !== plantId),
+          },
+        });
+      },
+
+      addGardenTask: (task) => {
+        const { garden } = get();
+        if (!garden) return;
+        set({
+          garden: {
+            ...garden,
+            tasks: [...(garden.tasks ?? []), task],
+          },
+        });
+      },
+
+      completeGardenTask: (taskId) => {
+        const { garden } = get();
+        if (!garden) return;
+        set({
+          garden: {
+            ...garden,
+            tasks: (garden.tasks ?? []).map((t) =>
+              t.id === taskId ? { ...t, completedDate: new Date().toISOString() } : t,
+            ),
           },
         });
       },

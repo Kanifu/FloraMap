@@ -11,7 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
-import { MaintenanceTask, MaintenanceTaskType, Plant } from '@/models';
+import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask } from '@/models';
 import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
@@ -158,11 +158,49 @@ const TaskItem = ({ flatTask, onComplete, onNavigate }: TaskItemProps): React.JS
   );
 };
 
+const URGENCY_LABELS: Record<string, string> = {
+  high: '⚡ Vandaag',
+  medium: '📅 Binnen 3 dagen',
+  low: '🗓️ Binnen een week',
+};
+
+interface GardenTaskItemProps {
+  task: GardenTask;
+  onComplete: (taskId: string) => void;
+}
+
+const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.Element => {
+  const isOverdue = !task.completedDate && task.dueDate < new Date().toISOString();
+  return (
+    <View style={[styles.taskRow, isOverdue && styles.taskRowOverdue, task.completedDate ? { opacity: 0.5 } : null]}>
+      <Text style={styles.taskIcon}>🌿</Text>
+      <View style={styles.taskBody}>
+        <Text style={[styles.taskPlantName, isOverdue && styles.textOverdue]}>
+          {task.plantName ?? 'Tuin'}
+        </Text>
+        <Text style={styles.taskType}>{task.description}</Text>
+        <Text style={[styles.taskDue, isOverdue && styles.textOverdue]}>
+          {URGENCY_LABELS[task.urgency] ?? ''}
+        </Text>
+      </View>
+      {!task.completedDate && (
+        <TouchableOpacity
+          style={styles.klaarButton}
+          onPress={() => onComplete(task.id)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.klaarButtonText}>✓ Klaar</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
 const MaintenanceScreen = (): React.JSX.Element => {
   const navigation = useNavigation<MaintenanceNavProp>();
   const garden = useGardenStore((s) => s.garden);
   const updatePlant = useGardenStore((s) => s.updatePlant);
   const [weather, setWeather] = useState<WeatherData>({ rainExpected: false, rainMm: 0, loaded: false });
+  const completeGardenTask = useGardenStore((s) => s.completeGardenTask);
 
   const now = useMemo(() => new Date(), []);
   const currentMonth = now.getMonth();
@@ -217,7 +255,23 @@ const MaintenanceScreen = (): React.JSX.Element => {
     [navigation],
   );
 
-  const hasActiveTasks = sections.length > 0;
+  const activeGardenTasks = useMemo(
+    () => (garden?.tasks ?? []).filter((t) => !t.completedDate),
+    [garden],
+  );
+
+  const hasActiveTasks = sections.length > 0 || activeGardenTasks.length > 0;
+
+  const gardenTasksFooter = activeGardenTasks.length > 0 ? (
+    <View style={styles.gardenTasksSection}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionHeaderText}>Tuin taken</Text>
+      </View>
+      {activeGardenTasks.map((t) => (
+        <GardenTaskItem key={t.id} task={t} onComplete={completeGardenTask} />
+      ))}
+    </View>
+  ) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -259,6 +313,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
               </View>
             ) : null
           }
+          ListFooterComponent={gardenTasksFooter}
           renderSectionHeader={({ section }) => (
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionHeaderText}>{section.title}</Text>
@@ -332,6 +387,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   klaarButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  gardenTasksSection: { marginTop: 4 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 12 },
   emptyIcon: { fontSize: 48 },
   emptyText: { fontSize: 16, color: '#aaa', fontStyle: 'italic' },

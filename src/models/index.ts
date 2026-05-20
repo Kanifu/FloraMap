@@ -50,6 +50,18 @@ export interface Plant {
   estimatedSizeM?: number;
   identificationConfidence: number;
   imageUri?: string;
+  careTips?: string[];
+}
+
+export type GardenTaskUrgency = 'high' | 'medium' | 'low';
+
+export interface GardenTask {
+  id: string;
+  description: string;
+  dueDate: string;
+  completedDate?: string;
+  urgency: GardenTaskUrgency;
+  plantName?: string;
 }
 
 export interface Garden {
@@ -58,6 +70,7 @@ export interface Garden {
   name: string;
   polygons: GardenPolygon[];
   plants: Plant[];
+  tasks?: GardenTask[];
   lastScannedAt?: string;
   northOrientationDeg?: number;
 }

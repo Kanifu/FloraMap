@@ -157,6 +157,20 @@ const PlantCardScreen = (): React.JSX.Element => {
           </View>
         </View>
 
+        {plant.careTips && plant.careTips.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Verzorgingstips</Text>
+            <View style={styles.tipsCard}>
+              {plant.careTips.map((tip, i) => (
+                <View key={i} style={styles.tipRow}>
+                  <Text style={styles.tipBullet}>🌱</Text>
+                  <Text style={styles.tipText}>{tip}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Onderhoud</Text>
           {sortedTasks.length === 0 ? (
@@ -202,6 +216,17 @@ const styles = StyleSheet.create({
   section: { gap: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
   emptyTasks: { fontSize: 14, color: '#aaa', fontStyle: 'italic' },
+  tipsCard: {
+    backgroundColor: '#f1f8f3',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#b7e4c7',
+  },
+  tipRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  tipBullet: { fontSize: 14, marginTop: 1 },
+  tipText: { flex: 1, fontSize: 14, color: '#1b4332', lineHeight: 20 },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
