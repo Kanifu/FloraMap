@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { CELL_CM } from '@/components/GardenMap';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
@@ -192,26 +193,30 @@ const MapScreen = (): React.JSX.Element => {
         </View>
       ) : (
         <View style={styles.hintBar}>
-          <Text style={styles.hintText}>Lang indrukken om een plant of zone te verplaatsen / verwijderen</Text>
+          <Text style={styles.hintText}>1 cel = 30 × 30 cm · lang indrukken om te bewerken · scroll om de kaart te verkennen</Text>
         </View>
       )}
 
-      {/* Map */}
+      {/* Map — scrollable in both directions */}
       <View style={styles.mapWrapper}>
-        <GardenMap
-          garden={garden}
-          onPlantPress={handlePlantPress}
-          onPlantLongPress={handlePlantLongPress}
-          onZoneLongPress={handleZoneLongPress}
-          viewMode="2d"
-          isInteractive={isInteractive}
-          highlightPoint={drawMode === 'second-point' ? firstPoint : null}
-          movingPlantId={movingPlant?.id}
-          movingZoneId={movingZone?.id}
-          onMapPress={handleMapPress}
-        />
+        <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
+          <ScrollView bounces={false} style={styles.scrollInner}>
+            <GardenMap
+              garden={garden}
+              onPlantPress={handlePlantPress}
+              onPlantLongPress={handlePlantLongPress}
+              onZoneLongPress={handleZoneLongPress}
+              viewMode="2d"
+              isInteractive={isInteractive}
+              highlightPoint={drawMode === 'second-point' ? firstPoint : null}
+              movingPlantId={movingPlant?.id}
+              movingZoneId={movingZone?.id}
+              onMapPress={handleMapPress}
+            />
+          </ScrollView>
+        </ScrollView>
 
-        {/* FAB — add zone */}
+        {/* FAB — add zone (floats over the scroll area) */}
         {!isInteractive && (
           <TouchableOpacity
             style={styles.fab}
@@ -232,6 +237,7 @@ const MapScreen = (): React.JSX.Element => {
             {pendingBounds && (
               <Text style={styles.modalSubtitle}>
                 {pendingBounds.width} × {pendingBounds.height} vakjes
+                {'  '}({pendingBounds.width * CELL_CM} × {pendingBounds.height * CELL_CM} cm)
               </Text>
             )}
 
@@ -307,7 +313,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
   },
   hintText: { fontSize: 11, color: '#aaa', textAlign: 'center' },
-  mapWrapper: { flex: 1 },
+  mapWrapper: { flex: 1, overflow: 'hidden' },
+  scrollOuter: { flex: 1 },
+  scrollInner: { flex: 1 },
   fab: {
     position: 'absolute', bottom: 20, right: 20,
     backgroundColor: '#2d6a4f', paddingHorizontal: 18, paddingVertical: 12,
