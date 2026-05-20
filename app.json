@@ -5,6 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "extra": {
+      "eas": {
+        "projectId": "30354417-a06c-409c-aa8b-2f1bcdae0928"
+      }
+    },
     "plugins": [
       [
         "expo-camera",
