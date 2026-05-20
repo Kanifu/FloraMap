@@ -22,7 +22,7 @@ interface Message {
   role: 'user' | 'assistant';
   text: string;
   imageUri?: string;
-  identifiedPlant?: IdentifiedPlant;
+  identifiedPlants?: IdentifiedPlant[];
   loading?: boolean;
 }
 
@@ -50,7 +50,7 @@ const makePlant = (plant: IdentifiedPlant, gardenId: string, position: number): 
     plantedDate: new Date().toISOString(),
     maintenanceTasks: [
       {
-        id: `task-${Date.now()}`,
+        id: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         plantId: id,
         type: 'water',
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -65,6 +65,7 @@ const AssistantScreen = (): React.JSX.Element => {
   const [inputText, setInputText] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [addedPlantKeys, setAddedPlantKeys] = useState<Set<string>>(new Set());
   const listRef = useRef<FlatList>(null);
 
   const garden = useGardenStore((s) => s.garden);
@@ -121,7 +122,7 @@ const AssistantScreen = (): React.JSX.Element => {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
           text: response.text,
-          identifiedPlant: response.identifiedPlant,
+          identifiedPlants: response.identifiedPlants,
         };
 
         setMessages((prev) => [...prev.filter((m) => !m.loading), assistantMsg]);
@@ -158,21 +159,36 @@ const AssistantScreen = (): React.JSX.Element => {
     sendMessage(inputText, pendingImage);
   };
 
-  const handleAddToGarden = (plant: IdentifiedPlant) => {
-    const activeGarden = garden ?? makeDefaultGarden();
-    if (!garden) setGarden(activeGarden);
-    const newPlant = makePlant(plant, activeGarden.id, activeGarden.plants.length);
-    addPlant(newPlant);
+  const handleAddToGarden = useCallback(
+    (plant: IdentifiedPlant, messageId: string) => {
+      const key = `${messageId}-${plant.species}`;
+      if (addedPlantKeys.has(key)) return;
 
-    const confirmMsg: Message = {
-      id: `confirm-${Date.now()}`,
-      role: 'assistant',
-      text: `✓ ${plant.commonName} is toegevoegd aan je tuin.`,
-    };
-    setMessages((prev) => prev.map((m) =>
-      m.identifiedPlant === plant ? { ...m, identifiedPlant: undefined } : m
-    ).concat(confirmMsg));
-  };
+      const activeGarden = garden ?? makeDefaultGarden();
+      if (!garden) setGarden(activeGarden);
+      const newPlant = makePlant(plant, activeGarden.id, activeGarden.plants.length);
+      addPlant(newPlant);
+
+      setAddedPlantKeys((prev) => new Set([...prev, key]));
+    },
+    [garden, setGarden, addPlant, addedPlantKeys],
+  );
+
+  const handleAddAll = useCallback(
+    (plants: IdentifiedPlant[], messageId: string) => {
+      const activeGarden = garden ?? makeDefaultGarden();
+      if (!garden) setGarden(activeGarden);
+
+      plants.forEach((plant, idx) => {
+        const key = `${messageId}-${plant.species}`;
+        if (addedPlantKeys.has(key)) return;
+        const newPlant = makePlant(plant, activeGarden.id, activeGarden.plants.length + idx);
+        addPlant(newPlant);
+        setAddedPlantKeys((prev) => new Set([...prev, key]));
+      });
+    },
+    [garden, setGarden, addPlant, addedPlantKeys],
+  );
 
   const renderMessage = ({ item }: { item: Message }) => {
     if (item.loading) {
@@ -197,14 +213,46 @@ const AssistantScreen = (): React.JSX.Element => {
             </Text>
           </View>
         ) : null}
-        {item.identifiedPlant && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => handleAddToGarden(item.identifiedPlant!)}>
-            <Text style={styles.addButtonText}>
-              + {item.identifiedPlant.commonName} toevoegen aan tuin
+        {item.identifiedPlants && item.identifiedPlants.length > 0 && (
+          <View style={styles.plantsCard}>
+            <Text style={styles.plantsCardTitle}>
+              {item.identifiedPlants.length === 1
+                ? '🌿 Plant herkend'
+                : `🌿 ${item.identifiedPlants.length} planten herkend`}
             </Text>
-          </TouchableOpacity>
+            {item.identifiedPlants.map((plant) => {
+              const key = `${item.id}-${plant.species}`;
+              const added = addedPlantKeys.has(key);
+              return (
+                <View key={plant.species} style={styles.plantRow}>
+                  <View style={styles.plantInfo}>
+                    <Text style={styles.plantCommonName}>{plant.commonName}</Text>
+                    <Text style={styles.plantSpecies}>{plant.species}</Text>
+                    <Text style={styles.plantConfidence}>
+                      {Math.round(plant.confidence * 100)}% zekerheid
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.addPlantButton, added && styles.addPlantButtonDone]}
+                    onPress={() => handleAddToGarden(plant, item.id)}
+                    disabled={added}>
+                    <Text style={[styles.addPlantButtonText, added && styles.addPlantButtonTextDone]}>
+                      {added ? '✓' : '+'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            {item.identifiedPlants.length > 1 && (
+              <TouchableOpacity
+                style={styles.addAllButton}
+                onPress={() => handleAddAll(item.identifiedPlants!, item.id)}>
+                <Text style={styles.addAllButtonText}>
+                  Alle {item.identifiedPlants.length} toevoegen aan tuin
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     );
@@ -227,7 +275,7 @@ const AssistantScreen = (): React.JSX.Element => {
             <Text style={styles.emptyIcon}>🌱</Text>
             <Text style={styles.emptyTitle}>Stel een vraag of scan een plant</Text>
             <Text style={styles.emptySubtitle}>
-              Maak een foto van een plant om hem te identificeren, of stel een vraag over je tuin.
+              Maak een foto van een plant of stel een vraag over je tuin.
             </Text>
             <View style={styles.emptyButtons}>
               <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
@@ -317,16 +365,52 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 4,
   },
-  addButton: {
-    backgroundColor: '#d8f3dc',
+  plantsCard: {
+    backgroundColor: '#f1f8f3',
     borderWidth: 1,
     borderColor: '#2d6a4f',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+    maxWidth: '90%',
   },
-  addButtonText: { color: '#1b4332', fontWeight: '700', fontSize: 14 },
+  plantsCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2d6a4f',
+    marginBottom: 2,
+  },
+  plantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+  },
+  plantInfo: { flex: 1, gap: 1 },
+  plantCommonName: { fontSize: 14, fontWeight: '700', color: '#1b4332' },
+  plantSpecies: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
+  plantConfidence: { fontSize: 11, color: '#aaa' },
+  addPlantButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2d6a4f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPlantButtonDone: { backgroundColor: '#b7e4c7' },
+  addPlantButtonText: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  addPlantButtonTextDone: { color: '#2d6a4f' },
+  addAllButton: {
+    backgroundColor: '#2d6a4f',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  addAllButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   emptyState: {
     flex: 1,
     alignItems: 'center',

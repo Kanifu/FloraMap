@@ -11,7 +11,7 @@ export interface IdentifiedPlant {
 
 export interface AssistantResponse {
   text: string;
-  identifiedPlant?: IdentifiedPlant;
+  identifiedPlants?: IdentifiedPlant[];
 }
 
 export interface ChatTurn {
@@ -29,22 +29,17 @@ export class GardenAssistantService {
 
   private buildSystemPrompt(gardenPlants: string[]): string {
     const plantList =
-      gardenPlants.length > 0 ? gardenPlants.join(', ') : 'nog geen planten toegevoegd';
+      gardenPlants.length > 0 ? gardenPlants.join(', ') : 'nog geen planten';
 
-    return `Je bent FloraMap, een behulpzame tuinassistent. Je helpt gebruikers planten te identificeren, vragen over plantenverzorging te beantwoorden en hun tuin te beheren.
+    return `Je bent FloraMap, een beknopte tuinassistent. Antwoord altijd in de taal van de gebruiker.
+Tuin: ${plantList}.
+Geef korte, directe antwoorden — maximaal 3-4 zinnen tenzij meer detail echt nodig is.
+Bij plantenidentificatie vanuit een foto: noem gewone naam, wetenschappelijke naam en 1-2 concrete verzorgingstips.
 
-Huidige tuin: ${plantList}
-
-Wanneer je een plant herkent in een foto, geef:
-1. De gewone naam en wetenschappelijke naam
-2. Korte verzorgingstips
-3. Relevante seizoensgebonden informatie
-
-Houd antwoorden beknopt en praktisch. Antwoord in de taal van de gebruiker.
-
-Als je een plant identificeert vanuit een foto, voeg dan op de LAATSTE REGEL van je antwoord dit toe (en niets anders op die regel):
-PLANT:{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.9}
-Laat deze regel weg als er geen plant identificatie is.`;
+Als je een of meer planten herkent in een foto, voeg op de LAATSTE REGEL van je antwoord exact dit toe:
+PLANTS:[{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.92}]
+Je mag meerdere objecten in de array plaatsen als er meerdere planten zichtbaar zijn.
+Laat deze regel volledig weg als er geen plant te identificeren is.`;
   }
 
   async chat(
@@ -67,7 +62,7 @@ Laat deze regel weg als er geen plant identificatie is.`;
         contents.push({
           role: 'user',
           parts: [
-            { text: turn.text || 'Wat is deze plant?' },
+            { text: turn.text || 'Wat zijn de planten in deze foto?' },
             { inlineData: { mimeType: 'image/jpeg', data: base64 } },
           ],
         });
@@ -86,7 +81,7 @@ Laat deze regel weg als er geen plant identificatie is.`;
         encoding: FileSystem.EncodingType.Base64,
       });
       currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } });
-      if (!userText) currentParts.unshift({ text: 'Wat is deze plant?' });
+      if (!userText) currentParts.unshift({ text: 'Identificeer alle planten in deze foto.' });
     }
     contents.push({ role: 'user', parts: currentParts });
 
@@ -98,7 +93,7 @@ Laat deze regel weg als er geen plant identificatie is.`;
           parts: [{ text: this.buildSystemPrompt(gardenPlants) }],
         },
         contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 0.6, maxOutputTokens: 1500 },
       }),
     });
 
@@ -112,19 +107,20 @@ Laat deze regel weg als er geen plant identificatie is.`;
 
     const lines = fullText.split('\n');
     const lastLine = lines[lines.length - 1].trim();
-    let identifiedPlant: IdentifiedPlant | undefined;
+    let identifiedPlants: IdentifiedPlant[] | undefined;
     let displayText = fullText;
 
-    if (lastLine.startsWith('PLANT:')) {
+    if (lastLine.startsWith('PLANTS:')) {
       try {
-        identifiedPlant = JSON.parse(lastLine.slice(6)) as IdentifiedPlant;
+        const parsed = JSON.parse(lastLine.slice(7));
+        identifiedPlants = Array.isArray(parsed) ? parsed as IdentifiedPlant[] : [parsed as IdentifiedPlant];
         displayText = lines.slice(0, -1).join('\n').trim();
       } catch {
         // keep fullText as-is
       }
     }
 
-    return { text: displayText, identifiedPlant };
+    return { text: displayText, identifiedPlants };
   }
 }
 
