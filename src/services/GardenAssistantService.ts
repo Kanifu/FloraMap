@@ -104,7 +104,11 @@ Laat deze regel volledig weg als er geen plant te identificeren is.`;
           parts: [{ text: this.buildSystemPrompt(gardenPlants) }],
         },
         contents,
-        generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 2048,
+          thinkingConfig: { thinkingLevel: 'minimal' },
+        },
       }),
     });
 
