@@ -68,7 +68,7 @@ const ScanScreen = (): React.JSX.Element => {
     if (!cameraRef.current) return;
     setStep('processing');
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
       if (!photo) throw new Error('Foto mislukt');
       const identified = await plantIdentificationService.identifyFromImageUri(photo.uri);
       if (identified.length === 0) {
@@ -79,7 +79,8 @@ const ScanScreen = (): React.JSX.Element => {
         setStep('results');
       }
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : 'Er ging iets mis.');
+      const msg = e instanceof Error ? e.message : JSON.stringify(e);
+      setErrorMessage(`Fout: ${msg}`);
       setStep('error');
     }
   };
@@ -171,7 +172,7 @@ const ScanScreen = (): React.JSX.Element => {
 
   return (
     <View style={styles.cameraContainer}>
-      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} />
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} isActive={true} />
       <SafeAreaView style={styles.cameraOverlay}>
         <Text style={styles.instruction}>Richt op een plant en maak een foto</Text>
       </SafeAreaView>

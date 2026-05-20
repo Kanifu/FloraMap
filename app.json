@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.floramap.app"
     },
     "android": {
-      "package": "com.floramap.app"
+      "package": "com.floramap.app",
+      "permissions": ["android.permission.CAMERA"]
     },
     "web": {
       "bundler": "metro"
