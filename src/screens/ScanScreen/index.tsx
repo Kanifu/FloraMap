@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,15 @@ import {
   ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { StackNavigationProp } from '@react-navigation/stack';
+import * as ImagePicker from 'expo-image-picker';
 import { useGardenStore } from '@/store/gardenStore';
 import { plantIdentificationService, IdentificationResult } from '@/services/PlantIdentificationService';
 import { Plant, Garden } from '@/models';
 import { ScanStackParamList } from '@/navigation/AppNavigator';
-import { StackNavigationProp } from '@react-navigation/stack';
 
 type ScanNavProp = StackNavigationProp<ScanStackParamList, 'Scan'>;
-type ScanStep = 'camera' | 'processing' | 'results' | 'error';
+type ScanStep = 'idle' | 'processing' | 'results' | 'error';
 
 const DEFAULT_GARDEN_ID = 'main-garden';
 
@@ -30,33 +30,32 @@ const makeDefaultGarden = (): Garden => ({
   lastScannedAt: new Date().toISOString(),
 });
 
-const makePlant = (result: IdentificationResult, gardenId: string, position: number): Plant => ({
-  id: `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  gardenId,
-  species: result.species,
-  commonName: result.commonName,
-  x: 1 + (position % 5),
-  y: 1 + Math.floor(position / 5),
-  z: 0,
-  plantedDate: new Date().toISOString(),
-  maintenanceTasks: [
-    {
-      id: `task-${Date.now()}`,
-      plantId: '',
-      type: 'water',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  ],
-  identificationConfidence: result.confidence,
-});
+const makePlant = (result: IdentificationResult, gardenId: string, position: number): Plant => {
+  const id = `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return {
+    id,
+    gardenId,
+    species: result.species,
+    commonName: result.commonName,
+    x: 1 + (position % 5),
+    y: 1 + Math.floor(position / 5),
+    z: 0,
+    plantedDate: new Date().toISOString(),
+    maintenanceTasks: [
+      {
+        id: `task-${Date.now()}`,
+        plantId: id,
+        type: 'water',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ],
+    identificationConfidence: result.confidence,
+  };
+};
 
 const ScanScreen = (): React.JSX.Element => {
   const navigation = useNavigation<ScanNavProp>();
-  const cameraRef = useRef<CameraView>(null);
-  const [facing] = useState<CameraType>('back');
-  const [permission, requestPermission] = useCameraPermissions();
-
-  const [step, setStep] = useState<ScanStep>('camera');
+  const [step, setStep] = useState<ScanStep>('idle');
   const [results, setResults] = useState<IdentificationResult[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -64,54 +63,50 @@ const ScanScreen = (): React.JSX.Element => {
   const setGarden = useGardenStore((s) => s.setGarden);
   const addPlant = useGardenStore((s) => s.addPlant);
 
-  const handleCapture = async () => {
-    if (!cameraRef.current) return;
+  const identify = async (uri: string) => {
     setStep('processing');
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
-      if (!photo) throw new Error('Foto mislukt');
-      const identified = await plantIdentificationService.identifyFromImageUri(photo.uri);
+      const identified = await plantIdentificationService.identifyFromImageUri(uri);
       if (identified.length === 0) {
-        setErrorMessage('Geen plant herkend. Probeer dichter bij de plant te fotograferen.');
+        setErrorMessage('Geen plant herkend. Probeer een duidelijkere foto.');
         setStep('error');
       } else {
         setResults(identified);
         setStep('results');
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      setErrorMessage(`Fout: ${msg}`);
+      setErrorMessage(e instanceof Error ? e.message : 'Er ging iets mis.');
       setStep('error');
+    }
+  };
+
+  const handleCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      setErrorMessage('Cameratoegang geweigerd.');
+      setStep('error');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: false });
+    if (!result.canceled) {
+      await identify(result.assets[0].uri);
+    }
+  };
+
+  const handleGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsEditing: false });
+    if (!result.canceled) {
+      await identify(result.assets[0].uri);
     }
   };
 
   const handleSelectPlant = (result: IdentificationResult) => {
     const activeGarden = garden ?? makeDefaultGarden();
-    if (!garden) {
-      setGarden(activeGarden);
-    }
+    if (!garden) setGarden(activeGarden);
     const plant = makePlant(result, activeGarden.id, activeGarden.plants.length);
-    plant.maintenanceTasks[0].plantId = plant.id;
     addPlant(plant);
     navigation.getParent()?.navigate('MapTab');
   };
-
-  if (!permission) {
-    return <View style={styles.centered} />;
-  }
-
-  if (!permission.granted) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <Text style={styles.permissionText}>
-          FloraMap heeft cameratoegang nodig om planten te scannen.
-        </Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
-          <Text style={styles.primaryButtonText}>Toestemming geven</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
 
   if (step === 'processing') {
     return (
@@ -127,7 +122,7 @@ const ScanScreen = (): React.JSX.Element => {
       <SafeAreaView style={styles.centered}>
         <Text style={styles.errorIcon}>🌿</Text>
         <Text style={styles.errorText}>{errorMessage}</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => setStep('camera')}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => setStep('idle')}>
           <Text style={styles.primaryButtonText}>Opnieuw proberen</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -138,7 +133,7 @@ const ScanScreen = (): React.JSX.Element => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => setStep('camera')}>
+          <TouchableOpacity onPress={() => setStep('idle')}>
             <Text style={styles.backText}>← Opnieuw</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Gevonden planten</Text>
@@ -171,17 +166,19 @@ const ScanScreen = (): React.JSX.Element => {
   }
 
   return (
-    <View style={styles.cameraContainer}>
-      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} isActive={true} />
-      <SafeAreaView style={styles.cameraOverlay}>
-        <Text style={styles.instruction}>Richt op een plant en maak een foto</Text>
-      </SafeAreaView>
-      <View style={styles.captureRow}>
-        <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
-          <View style={styles.captureButtonInner} />
-        </TouchableOpacity>
-      </View>
-    </View>
+    <SafeAreaView style={styles.centered}>
+      <Text style={styles.idleIcon}>📷</Text>
+      <Text style={styles.idleTitle}>Plant scannen</Text>
+      <Text style={styles.idleSubtitle}>
+        Maak een foto van een plant om hem te identificeren
+      </Text>
+      <TouchableOpacity style={styles.primaryButton} onPress={handleCamera}>
+        <Text style={styles.primaryButtonText}>Camera openen</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.secondaryButton} onPress={handleGallery}>
+        <Text style={styles.secondaryButtonText}>Kies uit galerij</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 };
 
@@ -195,72 +192,38 @@ const styles = StyleSheet.create({
     padding: 32,
     gap: 16,
   },
-  cameraContainer: { flex: 1, backgroundColor: '#000' },
-  cameraOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingTop: 24,
-  },
-  instruction: {
-    color: '#fff',
+  idleIcon: { fontSize: 64 },
+  idleTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  idleSubtitle: {
     fontSize: 15,
-    fontWeight: '600',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  captureRow: {
-    position: 'absolute',
-    bottom: 48,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  captureButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  captureButtonInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
-  },
-  processingText: {
-    fontSize: 16,
-    color: '#2d6a4f',
-    fontWeight: '600',
-  },
-  permissionText: {
-    fontSize: 15,
-    color: '#495057',
+    color: '#6b705c',
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: 8,
   },
   primaryButton: {
     backgroundColor: '#2d6a4f',
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
   },
   primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  errorIcon: { fontSize: 48 },
-  errorText: {
-    fontSize: 15,
-    color: '#495057',
-    textAlign: 'center',
-    lineHeight: 22,
+  secondaryButton: {
+    backgroundColor: '#f1f8f3',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2d6a4f',
   },
+  secondaryButtonText: { color: '#2d6a4f', fontSize: 16, fontWeight: '600' },
+  processingText: { fontSize: 16, color: '#2d6a4f', fontWeight: '600' },
+  errorIcon: { fontSize: 48 },
+  errorText: { fontSize: 15, color: '#495057', textAlign: 'center', lineHeight: 22 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -302,12 +265,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   confidenceText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  hint: {
-    textAlign: 'center',
-    fontSize: 13,
-    color: '#aaa',
-    padding: 16,
-  },
+  hint: { textAlign: 'center', fontSize: 13, color: '#aaa', padding: 16 },
 });
 
 export default ScanScreen;
