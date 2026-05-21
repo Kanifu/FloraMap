@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system';
+import { MaintenanceTask, MaintenanceTaskType } from '@/models';
 
 const GEMINI_MODEL = 'gemini-3.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -19,6 +20,9 @@ export interface IdentifiedPlant {
   commonName: string;
   confidence: number;
   careTips?: string[];
+  waterIntervalDays?: number;     // how often to water (days)
+  fertilizeIntervalDays?: number; // how often to fertilize (days)
+  harvestMonths?: number[];       // 0-indexed months (0=Jan, 5=Jun)
 }
 
 export interface AssistantTask {
@@ -38,6 +42,32 @@ export interface ChatTurn {
   text: string;
   imageUri?: string;
 }
+
+/** Build initial recurring MaintenanceTasks for a newly added plant. */
+export const createInitialTasksForPlant = (
+  plantId: string,
+  identified: IdentifiedPlant,
+): MaintenanceTask[] => {
+  const tasks: MaintenanceTask[] = [];
+  const now = new Date();
+
+  const addTask = (type: MaintenanceTaskType, intervalDays: number) => {
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + intervalDays);
+    tasks.push({
+      id: `${Date.now()}-${type}-${Math.random().toString(36).slice(2, 6)}`,
+      plantId,
+      type,
+      dueDate: dueDate.toISOString(),
+      intervalDays,
+    });
+  };
+
+  if (identified.waterIntervalDays) addTask('water', identified.waterIntervalDays);
+  if (identified.fertilizeIntervalDays) addTask('fertilize', identified.fertilizeIntervalDays);
+
+  return tasks;
+};
 
 export class GardenAssistantService {
   private readonly apiKey: string;
@@ -62,7 +92,12 @@ Je kunt advies geven over:
 - Verzorging, ziektes en seizoenstips
 
 Als je een of meer planten herkent in een foto, scan elke plant voor 2-3 concrete verzorgingstips en voeg toe (één regel, geen markdown):
-PLANTS:[{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.92,"careTips":["tip1","tip2"]}]
+PLANTS:[{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.92,"careTips":["tip1","tip2"],"waterIntervalDays":2,"fertilizeIntervalDays":14,"harvestMonths":[5,6]}]
+
+Veld uitleg:
+- waterIntervalDays: hoe vaak begieten in dagen (bijv. 2 voor tomaten, 7 voor cactus). Laat weg als onbekend.
+- fertilizeIntervalDays: hoe vaak bemesten in dagen (bijv. 14). Laat weg als onbekend.
+- harvestMonths: lijst van maandnummers (0=januari, 5=juni) waarop oogst verwacht kan worden. Laat weg voor niet-oogstbare planten.
 
 Als je in een foto ook onderhoudsproblemen ziet (onkruid, zieke bladeren, droogstress, beschadiging, overrijpe vruchten), voeg toe (één regel, geen markdown):
 TASKS:[{"description":"wat er gedaan moet worden","urgency":"high","plantName":"plantnaam of leeg"}]

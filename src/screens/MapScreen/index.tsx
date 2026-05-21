@@ -11,7 +11,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, ZONE_COLORS } from '@/models';
-import { gardenAssistantService, IdentifiedPlant } from '@/services/GardenAssistantService';
+import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
 type DrawStep = 'first' | 'second';
@@ -22,6 +22,16 @@ const newId = () => `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: number, y: number): Plant => {
   const id = newId();
+  const tasks = createInitialTasksForPlant(id, identified);
+  // Fallback watering task if Gemini didn't return intervals
+  if (tasks.length === 0) {
+    tasks.push({
+      id: `task-${Date.now()}`,
+      plantId: id,
+      type: 'water',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+  }
   return {
     id, gardenId,
     species: identified.species,
@@ -29,14 +39,10 @@ const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: num
     x, y, z: 0,
     width: 1, height: 1,
     plantedDate: new Date().toISOString(),
-    maintenanceTasks: [{
-      id: `task-${Date.now()}`,
-      plantId: id,
-      type: 'water',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    }],
+    maintenanceTasks: tasks,
     identificationConfidence: identified.confidence,
     careTips: identified.careTips ?? [],
+    harvestMonths: identified.harvestMonths,
   };
 };
 
@@ -45,9 +51,10 @@ const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: num
 const MapScreen = (): React.JSX.Element => {
   const navigation = useNavigation<MapNavProp>();
   const garden     = useGardenStore((s) => s.garden);
-  const removePlant = useGardenStore((s) => s.removePlant);
-  const updatePlant = useGardenStore((s) => s.updatePlant);
-  const addPlant    = useGardenStore((s) => s.addPlant);
+  const removePlant  = useGardenStore((s) => s.removePlant);
+  const updatePlant  = useGardenStore((s) => s.updatePlant);
+  const addPlant     = useGardenStore((s) => s.addPlant);
+  const clearGarden  = useGardenStore((s) => s.clearGarden);
 
   // ── plant move ────────────────────────────────────────────────────────────
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
@@ -287,6 +294,20 @@ const MapScreen = (): React.JSX.Element => {
               ? <ActivityIndicator size="small" color="#2d6a4f" />
               : <Text style={styles.scanBtnText}>📷</Text>}
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={() =>
+              Alert.alert(
+                'Tuin verwijderen',
+                'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+                [
+                  { text: 'Annuleren', style: 'cancel' },
+                  { text: 'Verwijderen', style: 'destructive', onPress: clearGarden },
+                ],
+              )
+            }>
+            <Text style={styles.deleteBtnText}>🗑️</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -435,6 +456,12 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#b7e4c7',
   },
   scanBtnText: { fontSize: 20 },
+  deleteBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#fff5f5', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#f4bfc0',
+  },
+  deleteBtnText: { fontSize: 18 },
   banner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 10,

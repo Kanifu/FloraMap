@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useGardenStore } from '@/store/gardenStore';
-import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask } from '@/services/GardenAssistantService';
+import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 
 interface Message {
@@ -42,6 +42,15 @@ const makeDefaultGarden = (): Garden => ({
 
 const makePlant = (plant: IdentifiedPlant, gardenId: string, position: number): Plant => {
   const id = `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const tasks = createInitialTasksForPlant(id, plant);
+  if (tasks.length === 0) {
+    tasks.push({
+      id: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      plantId: id,
+      type: 'water',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+  }
   return {
     id,
     gardenId,
@@ -51,16 +60,10 @@ const makePlant = (plant: IdentifiedPlant, gardenId: string, position: number): 
     y: 1 + Math.floor(position / 5),
     z: 0,
     plantedDate: new Date().toISOString(),
-    maintenanceTasks: [
-      {
-        id: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        plantId: id,
-        type: 'water',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ],
+    maintenanceTasks: tasks,
     identificationConfidence: plant.confidence,
     careTips: plant.careTips ?? [],
+    harvestMonths: plant.harvestMonths,
   };
 };
 

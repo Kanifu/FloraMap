@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask } from '@/models';
 
 interface GardenState {
   garden: Garden | null;
@@ -11,9 +11,11 @@ interface GardenState {
 
 interface GardenActions {
   setGarden: (garden: Garden) => void;
+  clearGarden: () => void;
   updatePlant: (plant: Plant) => void;
   addPlant: (plant: Plant) => void;
   removePlant: (plantId: string) => void;
+  completeMaintenanceTask: (plantId: string, taskId: string) => void;
   addGardenTask: (task: GardenTask) => void;
   completeGardenTask: (taskId: string) => void;
   acceptDiffProposal: (proposalId: string) => void;
@@ -29,6 +31,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       pendingDiffProposals: [],
 
       setGarden: (garden) => set({ garden }),
+
+      clearGarden: () => set({ garden: null }),
 
       updatePlant: (plant) => {
         const { garden } = get();
@@ -59,6 +63,45 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           garden: {
             ...garden,
             plants: garden.plants.filter((p) => p.id !== plantId),
+          },
+        });
+      },
+
+      completeMaintenanceTask: (plantId, taskId) => {
+        const { garden } = get();
+        if (!garden) return;
+        const plant = garden.plants.find((p) => p.id === plantId);
+        if (!plant) return;
+
+        const now = new Date();
+        const completedTask = plant.maintenanceTasks.find((t) => t.id === taskId);
+
+        const updatedTasks: MaintenanceTask[] = plant.maintenanceTasks.map((t) =>
+          t.id === taskId ? { ...t, completedDate: now.toISOString() } : t,
+        );
+
+        // Auto-schedule next occurrence for recurring tasks
+        if (completedTask?.intervalDays && !completedTask.completedDate) {
+          const nextDue = new Date(now);
+          nextDue.setDate(nextDue.getDate() + completedTask.intervalDays);
+          updatedTasks.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            plantId,
+            type: completedTask.type,
+            dueDate: nextDue.toISOString(),
+            intervalDays: completedTask.intervalDays,
+            notes: completedTask.notes,
+          });
+        }
+
+        set({
+          garden: {
+            ...garden,
+            plants: garden.plants.map((p) =>
+              p.id === plantId
+                ? { ...p, maintenanceTasks: updatedTasks, lastMaintenanceDate: now.toISOString() }
+                : p,
+            ),
           },
         });
       },

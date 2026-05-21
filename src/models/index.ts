@@ -31,6 +31,7 @@ export interface MaintenanceTask {
   dueDate: string;
   completedDate?: string;
   notes?: string;
+  intervalDays?: number; // if set, a new task is auto-created when this one is completed
 }
 
 export type LightExposure = 'full_sun' | 'partial_shade' | 'full_shade';
@@ -54,6 +55,7 @@ export interface Plant {
   identificationConfidence: number;
   imageUri?: string;
   careTips?: string[];
+  harvestMonths?: number[]; // 0-indexed months when harvest is expected (0=Jan, 5=Jun)
 }
 
 export type GardenTaskUrgency = 'high' | 'medium' | 'low';
