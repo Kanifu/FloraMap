@@ -295,6 +295,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Onderhoud</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.infoBtn}>
+          <Text style={styles.infoBtnText}>ℹ️</Text>
+        </TouchableOpacity>
       </View>
 
       {weather.rainExpected && (
@@ -342,12 +345,17 @@ const MaintenanceScreen = (): React.JSX.Element => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  infoBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  infoBtnText: { fontSize: 22 },
   rainBanner: {
     backgroundColor: '#cce5ff',
     paddingHorizontal: 16,
