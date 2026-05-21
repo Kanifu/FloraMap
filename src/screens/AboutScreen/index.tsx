@@ -9,7 +9,7 @@ const SECTIONS = [
   {
     title: 'Over FloraMap',
     items: [
-      { label: 'Versie', value: '1.2.0' },
+      { label: 'Versie', value: '1.3.0' },
       { label: 'Platform', value: 'React Native · Expo SDK 52' },
       { label: 'AI-model', value: 'Google Gemini 3.5 Flash' },
       { label: 'Weerdata', value: 'Open-Meteo (gratis, geen sleutel)' },
@@ -42,6 +42,7 @@ const DEVELOPER_LINKS = [
 ];
 
 const LINKS = [
+  { label: '🔒 Privacybeleid', url: 'https://kanifu.github.io/floramap-web/privacy-policy.html' },
   { label: '🌐 Open-Meteo weer API', url: 'https://open-meteo.com' },
   { label: '🤖 Google Gemini API', url: 'https://ai.google.dev' },
 ];
@@ -66,7 +67,7 @@ const AboutScreen = (): React.JSX.Element => {
           <Text style={styles.heroName}>FloraMap</Text>
           <Text style={styles.heroTagline}>Jouw slimme tuinplanner</Text>
           <View style={styles.versionPill}>
-            <Text style={styles.versionPillText}>v1.2.0</Text>
+            <Text style={styles.versionPillText}>v1.3.0</Text>
           </View>
         </View>
 

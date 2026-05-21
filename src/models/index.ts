@@ -35,6 +35,7 @@ export interface MaintenanceTask {
 }
 
 export type LightExposure = 'full_sun' | 'partial_shade' | 'full_shade';
+export type PlantAddedVia = 'scan' | 'manual' | 'seed' | 'seedling' | 'cutting';
 
 export interface Plant {
   id: string;
@@ -48,6 +49,7 @@ export interface Plant {
   height?: number;  // cells tall;  1 = single dot (default)
   color?: string;   // fill colour when width>1 or height>1
   plantedDate?: string;
+  sowDate?: string;
   lastMaintenanceDate?: string;
   maintenanceTasks: MaintenanceTask[];
   lightExposure?: LightExposure;
@@ -56,6 +58,8 @@ export interface Plant {
   imageUri?: string;
   careTips?: string[];
   harvestMonths?: number[]; // 0-indexed months when harvest is expected (0=Jan, 5=Jun)
+  notes?: string;
+  addedVia?: PlantAddedVia;
 }
 
 export type GardenTaskUrgency = 'high' | 'medium' | 'low';
