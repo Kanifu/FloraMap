@@ -1,105 +1,177 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  Alert,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View, Text, StyleSheet, SafeAreaView, Alert,
+  TouchableOpacity, Modal, TextInput, KeyboardAvoidingView,
+  Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { CELL_CM } from '@/components/GardenMap';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
-import { GardenMap } from '@/components/GardenMap';
+import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantZone, ZONE_COLORS } from '@/models';
+import { Plant, ZONE_COLORS } from '@/models';
+import { gardenAssistantService, IdentifiedPlant } from '@/services/GardenAssistantService';
 
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
-type DrawMode = 'idle' | 'first-point' | 'second-point';
+type DrawStep = 'first' | 'second';
+
+// ── helpers ─────────────────────────────────────────────────────────────────
+
+const newId = () => `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: number, y: number): Plant => {
+  const id = newId();
+  return {
+    id, gardenId,
+    species: identified.species,
+    commonName: identified.commonName,
+    x, y, z: 0,
+    width: 1, height: 1,
+    plantedDate: new Date().toISOString(),
+    maintenanceTasks: [{
+      id: `task-${Date.now()}`,
+      plantId: id,
+      type: 'water',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    }],
+    identificationConfidence: identified.confidence,
+    careTips: identified.careTips ?? [],
+  };
+};
+
+// ── component ────────────────────────────────────────────────────────────────
 
 const MapScreen = (): React.JSX.Element => {
   const navigation = useNavigation<MapNavProp>();
-  const garden = useGardenStore((s) => s.garden);
+  const garden     = useGardenStore((s) => s.garden);
   const removePlant = useGardenStore((s) => s.removePlant);
   const updatePlant = useGardenStore((s) => s.updatePlant);
-  const addZone = useGardenStore((s) => s.addZone);
-  const updateZone = useGardenStore((s) => s.updateZone);
-  const removeZone = useGardenStore((s) => s.removeZone);
+  const addPlant    = useGardenStore((s) => s.addPlant);
 
-  // Plant move state
+  // ── plant move ────────────────────────────────────────────────────────────
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
 
-  // Zone draw state
-  const [drawMode, setDrawMode] = useState<DrawMode>('idle');
+  // ── draw / resize ─────────────────────────────────────────────────────────
+  const [drawStep,   setDrawStep]   = useState<DrawStep | null>(null);
   const [firstPoint, setFirstPoint] = useState<{ x: number; y: number } | null>(null);
+  // null = creating a new plant; Plant = resizing an existing one
+  const [drawTarget, setDrawTarget] = useState<Plant | null>(null);
 
-  // Zone move state
-  const [movingZone, setMovingZone] = useState<PlantZone | null>(null);
-
-  // Zone name/color modal
-  const [showZoneModal, setShowZoneModal] = useState(false);
+  // ── new-plant modal ───────────────────────────────────────────────────────
+  const [showModal,   setShowModal]   = useState(false);
+  const [modalName,   setModalName]   = useState('');
+  const [modalColor,  setModalColor]  = useState(ZONE_COLORS[0]);
   const [pendingBounds, setPendingBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [zoneName, setZoneName] = useState('');
-  const [zoneColor, setZoneColor] = useState(ZONE_COLORS[0]);
 
+  // ── quick-scan (tap-to-place queue) ──────────────────────────────────────
+  const [scanning,      setScanning]      = useState(false);
+  const [plantsToPlace, setPlantsToPlace] = useState<IdentifiedPlant[]>([]);
+
+  const isInteractive =
+    !!movingPlant || !!drawStep || plantsToPlace.length > 0;
+
+  // ── overdue badge ─────────────────────────────────────────────────────────
   const pendingTaskCount = useMemo(() => {
     if (!garden) return 0;
     const now = new Date().toISOString();
-    return garden.plants.reduce((acc, plant) => {
-      const overdue = plant.maintenanceTasks.filter(
-        (t) => !t.completedDate && t.dueDate < now,
-      ).length;
-      return acc + overdue;
-    }, 0);
+    return garden.plants.reduce((acc, p) =>
+      acc + p.maintenanceTasks.filter((t) => !t.completedDate && t.dueDate < now).length, 0);
   }, [garden]);
 
-  const isInteractive = !!movingPlant || !!movingZone || drawMode !== 'idle';
-
-  // ── Banner text / cancel ──────────────────────────────────────────────────
+  // ── banner ────────────────────────────────────────────────────────────────
   const bannerInfo = useMemo(() => {
-    if (movingPlant) return { text: `Tik op de kaart om ${movingPlant.commonName} te verplaatsen`, onCancel: () => setMovingPlant(null) };
-    if (movingZone) return { text: `Tik op het nieuwe startpunt van ${movingZone.commonName}`, onCancel: () => setMovingZone(null) };
-    if (drawMode === 'first-point') return { text: 'Tik op het startpunt van de zone', onCancel: () => setDrawMode('idle') };
-    if (drawMode === 'second-point') return { text: 'Tik op het eindpunt van de zone', onCancel: () => { setDrawMode('idle'); setFirstPoint(null); } };
+    if (plantsToPlace.length > 0) {
+      const next = plantsToPlace[0];
+      return {
+        text: `Tik op de kaart om ${next.commonName} te plaatsen`,
+        extra: `${plantsToPlace.length} over`,
+        onCancel: () => setPlantsToPlace([]),
+        onSkip: () => setPlantsToPlace((q) => q.slice(1)),
+      };
+    }
+    if (movingPlant) return {
+      text: `Tik op de kaart om ${movingPlant.commonName} te verplaatsen`,
+      onCancel: () => setMovingPlant(null),
+    };
+    if (drawStep === 'first' && !drawTarget) return {
+      text: 'Tik op het startpunt van de nieuwe plant of zone',
+      onCancel: cancelDraw,
+    };
+    if (drawStep === 'first' && drawTarget) return {
+      text: `Tik op het startpunt voor ${drawTarget.commonName}`,
+      onCancel: cancelDraw,
+    };
+    if (drawStep === 'second') return {
+      text: 'Tik op het eindpunt (tegenovergestelde hoek)',
+      onCancel: cancelDraw,
+    };
     return null;
-  }, [movingPlant, movingZone, drawMode]);
+  }, [plantsToPlace, movingPlant, drawStep, drawTarget]);
 
-  // ── Map tap handler ───────────────────────────────────────────────────────
-  const handleMapPress = (x: number, y: number) => {
+  const cancelDraw = () => {
+    setDrawStep(null);
+    setFirstPoint(null);
+    setDrawTarget(null);
+  };
+
+  // ── map tap ───────────────────────────────────────────────────────────────
+  const handleMapPress = useCallback((x: number, y: number) => {
+    // Tap-to-place from scan queue
+    if (plantsToPlace.length > 0) {
+      const [next, ...rest] = plantsToPlace;
+      if (garden) addPlant(makePlantFromScan(next, garden.id, x, y));
+      setPlantsToPlace(rest);
+      return;
+    }
+    // Move existing plant
     if (movingPlant) {
       updatePlant({ ...movingPlant, x, y });
       setMovingPlant(null);
-    } else if (movingZone) {
-      updateZone({ ...movingZone, x, y });
-      setMovingZone(null);
-    } else if (drawMode === 'first-point') {
+      return;
+    }
+    // Draw: first point
+    if (drawStep === 'first') {
       setFirstPoint({ x, y });
-      setDrawMode('second-point');
-    } else if (drawMode === 'second-point' && firstPoint) {
+      setDrawStep('second');
+      return;
+    }
+    // Draw: second point → compute bounds
+    if (drawStep === 'second' && firstPoint) {
       const bx = Math.min(firstPoint.x, x);
       const by = Math.min(firstPoint.y, y);
       const bw = Math.abs(x - firstPoint.x) + 1;
       const bh = Math.abs(y - firstPoint.y) + 1;
-      setPendingBounds({ x: bx, y: by, width: bw, height: bh });
-      setDrawMode('idle');
       setFirstPoint(null);
-      // Auto-pick next color
-      const usedCount = garden?.zones?.length ?? 0;
-      setZoneColor(ZONE_COLORS[usedCount % ZONE_COLORS.length]);
-      setShowZoneModal(true);
-    }
-  };
+      setDrawStep(null);
 
-  // ── Plant long-press ──────────────────────────────────────────────────────
+      if (drawTarget) {
+        // Resize existing plant
+        const color = drawTarget.color ?? ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length];
+        updatePlant({ ...drawTarget, x: bx, y: by, width: bw, height: bh, color });
+        setDrawTarget(null);
+      } else {
+        // New plant/zone — open modal
+        setPendingBounds({ x: bx, y: by, width: bw, height: bh });
+        setModalColor(ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length]);
+        setModalName('');
+        setShowModal(true);
+      }
+    }
+  }, [plantsToPlace, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant]);
+
+  // ── long-press plant ──────────────────────────────────────────────────────
   const handlePlantLongPress = (plant: Plant) => {
-    Alert.alert(plant.commonName, 'Wat wil je doen?', [
-      { text: 'Verplaatsen', onPress: () => setMovingPlant(plant) },
+    const isZone = (plant.width ?? 1) > 1 || (plant.height ?? 1) > 1;
+    Alert.alert(plant.commonName, undefined, [
+      {
+        text: 'Verplaatsen',
+        onPress: () => setMovingPlant(plant),
+      },
+      {
+        text: isZone ? 'Formaat wijzigen' : 'Uitrekken tot zone',
+        onPress: () => { setDrawTarget(plant); setDrawStep('first'); },
+      },
       {
         text: 'Verwijderen',
         style: 'destructive',
@@ -113,55 +185,85 @@ const MapScreen = (): React.JSX.Element => {
     ]);
   };
 
-  // ── Zone long-press ───────────────────────────────────────────────────────
-  const handleZoneLongPress = (zone: PlantZone) => {
-    Alert.alert(zone.commonName, 'Wat wil je doen?', [
-      { text: 'Verplaatsen', onPress: () => setMovingZone(zone) },
-      {
-        text: 'Verwijderen',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Zone verwijderen', `Zone "${zone.commonName}" verwijderen?`, [
-            { text: 'Annuleren', style: 'cancel' },
-            { text: 'Verwijderen', style: 'destructive', onPress: () => removeZone(zone.id) },
-          ]),
-      },
+  // ── confirm new plant/zone from modal ─────────────────────────────────────
+  const handleConfirmModal = () => {
+    if (!pendingBounds || !modalName.trim() || !garden) return;
+    const id = newId();
+    const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
+    addPlant({
+      id,
+      gardenId: garden.id,
+      species: '',
+      commonName: modalName.trim(),
+      x: pendingBounds.x,
+      y: pendingBounds.y,
+      z: 0,
+      width: pendingBounds.width,
+      height: pendingBounds.height,
+      color: isZone ? modalColor : undefined,
+      plantedDate: new Date().toISOString(),
+      maintenanceTasks: [{
+        id: `task-${Date.now()}`,
+        plantId: id,
+        type: 'water',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }],
+      identificationConfidence: 1,
+    });
+    setShowModal(false);
+    setModalName('');
+    setPendingBounds(null);
+  };
+
+  // ── quick scan ────────────────────────────────────────────────────────────
+  const handleScan = async (fromGallery = false) => {
+    const result = fromGallery
+      ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
+      : await ImagePicker.launchCameraAsync({ quality: 0.85 });
+    if (result.canceled) return;
+
+    setScanning(true);
+    try {
+      const gardenPlants = garden?.plants.map(
+        (p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`,
+      ) ?? [];
+      const response = await gardenAssistantService.chat(
+        '', result.assets[0].uri, [], gardenPlants,
+      );
+      if (response.identifiedPlants && response.identifiedPlants.length > 0) {
+        setPlantsToPlace(response.identifiedPlants);
+      } else {
+        Alert.alert('Geen planten herkend', 'Probeer een duidelijkere foto.');
+      }
+    } catch (e) {
+      Alert.alert('Scannen mislukt', e instanceof Error ? e.message : 'Onbekende fout.');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleScanPress = () => {
+    Alert.alert('Planten scannen', 'Kies een bron', [
+      { text: '📷 Camera',  onPress: () => handleScan(false) },
+      { text: '🖼️ Galerij', onPress: () => handleScan(true) },
       { text: 'Annuleren', style: 'cancel' },
     ]);
   };
 
-  // ── Plant press (navigate) ────────────────────────────────────────────────
-  const handlePlantPress = (plant: Plant) => {
-    navigation.navigate('PlantCard', { plantId: plant.id });
-  };
-
-  // ── Confirm new zone ──────────────────────────────────────────────────────
-  const handleConfirmZone = () => {
-    if (!pendingBounds || !zoneName.trim() || !garden) return;
-    addZone({
-      id: `zone-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      gardenId: garden.id,
-      commonName: zoneName.trim(),
-      x: pendingBounds.x,
-      y: pendingBounds.y,
-      width: pendingBounds.width,
-      height: pendingBounds.height,
-      color: zoneColor,
-    });
-    setShowZoneModal(false);
-    setZoneName('');
-    setPendingBounds(null);
-  };
-
-  // ── Empty state ───────────────────────────────────────────────────────────
-  if (!garden || (garden.plants.length === 0 && (garden.zones ?? []).length === 0)) {
+  // ── empty state ───────────────────────────────────────────────────────────
+  if (!garden || garden.plants.length === 0) {
     return (
       <SafeAreaView style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>🌳</Text>
         <Text style={styles.emptyTitle}>Je tuin is nog leeg</Text>
         <Text style={styles.emptySubtitle}>
-          Ga naar de Assistent tab om je eerste plant te scannen en toe te voegen.
+          Ga naar de Assistent tab om je eerste plant te scannen, of gebruik de scanknop hierboven.
         </Text>
+        <TouchableOpacity style={styles.emptyScanBtn} onPress={handleScanPress} disabled={scanning}>
+          {scanning
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.emptyScanBtnText}>📷 Scan planten</Text>}
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -172,68 +274,83 @@ const MapScreen = (): React.JSX.Element => {
       <View style={styles.header}>
         <View>
           <Text style={styles.gardenName}>{garden.name}</Text>
-          <Text style={styles.plantCount}>
-            {garden.plants.length} planten · {(garden.zones ?? []).length} zones
-          </Text>
+          <Text style={styles.plantCount}>{garden.plants.length} planten</Text>
         </View>
-        {pendingTaskCount > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          {pendingTaskCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
+            </View>
+          )}
+          <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
+            {scanning
+              ? <ActivityIndicator size="small" color="#2d6a4f" />
+              : <Text style={styles.scanBtnText}>📷</Text>}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Interactive mode banner */}
+      {/* Banner */}
       {bannerInfo ? (
         <View style={styles.banner}>
-          <Text style={styles.bannerText}>{bannerInfo.text}</Text>
-          <TouchableOpacity onPress={bannerInfo.onCancel}>
-            <Text style={styles.bannerCancel}>Annuleer</Text>
-          </TouchableOpacity>
+          <View style={styles.bannerLeft}>
+            <Text style={styles.bannerText}>{bannerInfo.text}</Text>
+            {bannerInfo.extra && <Text style={styles.bannerExtra}>{bannerInfo.extra}</Text>}
+          </View>
+          <View style={styles.bannerActions}>
+            {bannerInfo.onSkip && (
+              <TouchableOpacity onPress={bannerInfo.onSkip}>
+                <Text style={styles.bannerSkip}>Sla over</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={bannerInfo.onCancel}>
+              <Text style={styles.bannerCancel}>✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <View style={styles.hintBar}>
-          <Text style={styles.hintText}>1 cel = 30 × 30 cm · lang indrukken om te bewerken · scroll om de kaart te verkennen</Text>
+          <Text style={styles.hintText}>
+            1 cel = 30×30 cm · lang indrukken om te bewerken · ＋ voor nieuwe zone
+          </Text>
         </View>
       )}
 
-      {/* Map — scrollable in both directions */}
+      {/* Map */}
       <View style={styles.mapWrapper}>
         <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
-          <ScrollView bounces={false} style={styles.scrollInner}>
+          <ScrollView bounces={false}>
             <GardenMap
               garden={garden}
-              onPlantPress={handlePlantPress}
+              onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
               onPlantLongPress={handlePlantLongPress}
-              onZoneLongPress={handleZoneLongPress}
               viewMode="2d"
               isInteractive={isInteractive}
-              highlightPoint={drawMode === 'second-point' ? firstPoint : null}
+              highlightPoint={drawStep === 'second' ? firstPoint : null}
               movingPlantId={movingPlant?.id}
-              movingZoneId={movingZone?.id}
               onMapPress={handleMapPress}
             />
           </ScrollView>
         </ScrollView>
 
-        {/* FAB — add zone (floats over the scroll area) */}
+        {/* FAB */}
         {!isInteractive && (
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => setDrawMode('first-point')}
-            activeOpacity={0.85}>
-            <Text style={styles.fabText}>＋ Zone</Text>
+          <TouchableOpacity style={styles.fab} onPress={() => setDrawStep('first')} activeOpacity={0.85}>
+            <Text style={styles.fabText}>＋</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Zone creation modal */}
-      <Modal visible={showZoneModal} transparent animationType="slide">
+      {/* New plant/zone modal */}
+      <Modal visible={showModal} transparent animationType="slide">
         <KeyboardAvoidingView
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Nieuwe zone</Text>
+            <Text style={styles.modalTitle}>
+              {pendingBounds && (pendingBounds.width > 1 || pendingBounds.height > 1)
+                ? 'Nieuwe zone' : 'Nieuwe plant'}
+            </Text>
             {pendingBounds && (
               <Text style={styles.modalSubtitle}>
                 {pendingBounds.width} × {pendingBounds.height} vakjes
@@ -243,36 +360,41 @@ const MapScreen = (): React.JSX.Element => {
 
             <TextInput
               style={styles.modalInput}
-              placeholder="Naam van de plant of groep…"
+              placeholder="Naam…"
               placeholderTextColor="#aaa"
-              value={zoneName}
-              onChangeText={setZoneName}
+              value={modalName}
+              onChangeText={setModalName}
               autoFocus
               returnKeyType="done"
             />
 
-            {/* Color picker */}
-            <Text style={styles.colorLabel}>Kleur</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorRow}>
-              {ZONE_COLORS.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  style={[styles.colorSwatch, { backgroundColor: c }, zoneColor === c && styles.colorSwatchSelected]}
-                  onPress={() => setZoneColor(c)}
-                />
-              ))}
-            </ScrollView>
+            {/* Color picker — only for zones */}
+            {pendingBounds && (pendingBounds.width > 1 || pendingBounds.height > 1) && (
+              <>
+                <Text style={styles.colorLabel}>Kleur</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {ZONE_COLORS.map((c) => (
+                    <TouchableOpacity
+                      key={c}
+                      style={[styles.colorSwatch, { backgroundColor: c },
+                        modalColor === c && styles.colorSwatchSelected]}
+                      onPress={() => setModalColor(c)}
+                    />
+                  ))}
+                </ScrollView>
+              </>
+            )}
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
-                onPress={() => { setShowZoneModal(false); setZoneName(''); setPendingBounds(null); }}>
+                onPress={() => { setShowModal(false); setModalName(''); setPendingBounds(null); }}>
                 <Text style={styles.modalCancelText}>Annuleren</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalConfirmBtn, !zoneName.trim() && styles.modalConfirmBtnDisabled]}
-                onPress={handleConfirmZone}
-                disabled={!zoneName.trim()}>
+                style={[styles.modalConfirmBtn, !modalName.trim() && styles.modalConfirmBtnDisabled]}
+                onPress={handleConfirmModal}
+                disabled={!modalName.trim()}>
                 <Text style={styles.modalConfirmText}>Opslaan</Text>
               </TouchableOpacity>
             </View>
@@ -287,11 +409,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   emptyContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', padding: 32, gap: 12,
+    backgroundColor: '#fff', padding: 32, gap: 14,
   },
   emptyIcon: { fontSize: 64 },
   emptyTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
   emptySubtitle: { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
+  emptyScanBtn: {
+    backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14,
+    borderRadius: 14, marginTop: 8, minWidth: 160, alignItems: 'center',
+  },
+  emptyScanBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
@@ -299,15 +426,26 @@ const styles = StyleSheet.create({
   },
   gardenName: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
   plantCount: { fontSize: 13, color: '#6b705c', marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
+  scanBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#b7e4c7',
+  },
+  scanBtnText: { fontSize: 20 },
   banner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: '#2d6a4f', gap: 8,
   },
-  bannerText: { flex: 1, fontSize: 13, color: '#1b4332', fontWeight: '600' },
-  bannerCancel: { fontSize: 13, color: '#e63946', fontWeight: '700' },
+  bannerLeft: { flex: 1 },
+  bannerText: { fontSize: 13, color: '#1b4332', fontWeight: '600' },
+  bannerExtra: { fontSize: 11, color: '#2d6a4f', marginTop: 1 },
+  bannerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  bannerSkip: { fontSize: 13, color: '#6b705c', fontWeight: '600' },
+  bannerCancel: { fontSize: 18, color: '#e63946', fontWeight: '700' },
   hintBar: {
     paddingHorizontal: 16, paddingVertical: 6,
     backgroundColor: '#f8f9fa', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
@@ -315,15 +453,14 @@ const styles = StyleSheet.create({
   hintText: { fontSize: 11, color: '#aaa', textAlign: 'center' },
   mapWrapper: { flex: 1, overflow: 'hidden' },
   scrollOuter: { flex: 1 },
-  scrollInner: { flex: 1 },
   fab: {
     position: 'absolute', bottom: 20, right: 20,
-    backgroundColor: '#2d6a4f', paddingHorizontal: 18, paddingVertical: 12,
-    borderRadius: 28, elevation: 4,
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#2d6a4f', alignItems: 'center', justifyContent: 'center',
+    elevation: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
-  fabText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  // Modal
+  fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
@@ -336,7 +473,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#1b4332',
   },
   colorLabel: { fontSize: 13, fontWeight: '600', color: '#6b705c' },
-  colorRow: { flexGrow: 0 },
   colorSwatch: {
     width: 36, height: 36, borderRadius: 18, marginRight: 10,
     borderWidth: 2, borderColor: 'transparent',

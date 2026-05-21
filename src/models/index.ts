@@ -43,6 +43,9 @@ export interface Plant {
   x: number;
   y: number;
   z: number;
+  width?: number;   // cells wide;  1 = single dot (default)
+  height?: number;  // cells tall;  1 = single dot (default)
+  color?: string;   // fill colour when width>1 or height>1
   plantedDate?: string;
   lastMaintenanceDate?: string;
   maintenanceTasks: MaintenanceTask[];
