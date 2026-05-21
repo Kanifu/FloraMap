@@ -16,14 +16,11 @@ import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } f
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
 type DrawStep = 'first' | 'second';
 
-// ── helpers ─────────────────────────────────────────────────────────────────
-
 const newId = () => `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: number, y: number): Plant => {
   const id = newId();
   const tasks = createInitialTasksForPlant(id, identified);
-  // Fallback watering task if Gemini didn't return intervals
   if (tasks.length === 0) {
     tasks.push({
       id: `task-${Date.now()}`,
@@ -46,11 +43,87 @@ const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: num
   };
 };
 
-// ── component ────────────────────────────────────────────────────────────────
+// ── Plant action menu (replaces native Alert) ────────────────────────────────
+
+interface PlantMenuProps {
+  plant: Plant | null;
+  onClose: () => void;
+  onMove: (p: Plant) => void;
+  onResize: (p: Plant) => void;
+  onDelete: (p: Plant) => void;
+  onChangeColor: (p: Plant, color: string) => void;
+}
+
+const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor }: PlantMenuProps): React.JSX.Element | null => {
+  const [showColors, setShowColors] = useState(false);
+  if (!plant) return null;
+  const isZone = (plant.width ?? 1) > 1 || (plant.height ?? 1) > 1;
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={menuStyles.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={menuStyles.sheet}>
+          {/* Header */}
+          <View style={menuStyles.header}>
+            <Text style={menuStyles.plantName}>{plant.commonName}</Text>
+            {plant.species ? <Text style={menuStyles.plantSpecies}>{plant.species}</Text> : null}
+          </View>
+
+          {/* Actions */}
+          <TouchableOpacity style={menuStyles.item} onPress={() => { onMove(plant); onClose(); }}>
+            <Text style={menuStyles.itemIcon}>↔️</Text>
+            <Text style={menuStyles.itemLabel}>Verplaatsen</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={menuStyles.item} onPress={() => { onResize(plant); onClose(); }}>
+            <Text style={menuStyles.itemIcon}>{isZone ? '⤢' : '⬛'}</Text>
+            <Text style={menuStyles.itemLabel}>{isZone ? 'Formaat wijzigen' : 'Uitrekken tot zone'}</Text>
+          </TouchableOpacity>
+
+          {isZone && (
+            <TouchableOpacity style={menuStyles.item} onPress={() => setShowColors((v) => !v)}>
+              <View style={[menuStyles.colorDot, { backgroundColor: plant.color ?? ZONE_COLORS[0] }]} />
+              <Text style={menuStyles.itemLabel}>Kleur wijzigen</Text>
+              <Text style={menuStyles.chevron}>{showColors ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+          )}
+
+          {isZone && showColors && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={menuStyles.colorRow}
+              contentContainerStyle={menuStyles.colorRowContent}>
+              {ZONE_COLORS.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={[menuStyles.swatch, { backgroundColor: c },
+                    plant.color === c && menuStyles.swatchSelected]}
+                  onPress={() => { onChangeColor(plant, c); onClose(); }}
+                />
+              ))}
+            </ScrollView>
+          )}
+
+          <TouchableOpacity style={[menuStyles.item, menuStyles.itemDanger]}
+            onPress={() => { onDelete(plant); onClose(); }}>
+            <Text style={menuStyles.itemIcon}>🗑️</Text>
+            <Text style={menuStyles.itemLabelDanger}>Verwijderen</Text>
+          </TouchableOpacity>
+
+          {/* Cancel */}
+          <TouchableOpacity style={menuStyles.cancelBtn} onPress={onClose}>
+            <Text style={menuStyles.cancelText}>Annuleren</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+// ── Main screen ──────────────────────────────────────────────────────────────
 
 const MapScreen = (): React.JSX.Element => {
   const navigation = useNavigation<MapNavProp>();
   const garden     = useGardenStore((s) => s.garden);
+  const setGarden  = useGardenStore((s) => s.setGarden);
   const removePlant  = useGardenStore((s) => s.removePlant);
   const updatePlant  = useGardenStore((s) => s.updatePlant);
   const addPlant     = useGardenStore((s) => s.addPlant);
@@ -62,21 +135,38 @@ const MapScreen = (): React.JSX.Element => {
   // ── draw / resize ─────────────────────────────────────────────────────────
   const [drawStep,   setDrawStep]   = useState<DrawStep | null>(null);
   const [firstPoint, setFirstPoint] = useState<{ x: number; y: number } | null>(null);
-  // null = creating a new plant; Plant = resizing an existing one
   const [drawTarget, setDrawTarget] = useState<Plant | null>(null);
 
+  // ── plant action menu ─────────────────────────────────────────────────────
+  const [menuPlant, setMenuPlant] = useState<Plant | null>(null);
+
   // ── new-plant modal ───────────────────────────────────────────────────────
-  const [showModal,   setShowModal]   = useState(false);
-  const [modalName,   setModalName]   = useState('');
-  const [modalColor,  setModalColor]  = useState(ZONE_COLORS[0]);
+  const [showModal,     setShowModal]     = useState(false);
+  const [modalName,     setModalName]     = useState('');
+  const [modalColor,    setModalColor]    = useState(ZONE_COLORS[0]);
   const [pendingBounds, setPendingBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
-  // ── quick-scan (tap-to-place queue) ──────────────────────────────────────
+  // ── quick-scan queue ──────────────────────────────────────────────────────
   const [scanning,      setScanning]      = useState(false);
   const [plantsToPlace, setPlantsToPlace] = useState<IdentifiedPlant[]>([]);
 
-  const isInteractive =
-    !!movingPlant || !!drawStep || plantsToPlace.length > 0;
+  // ── ensure a garden exists (needed when scanning into empty garden) ────────
+  const ensureGarden = useCallback(() => {
+    if (garden) return garden;
+    const g = {
+      id: `garden-${Date.now()}`,
+      userId: 'local',
+      name: 'Mijn tuin',
+      polygons: [],
+      plants: [],
+      tasks: [],
+    };
+    setGarden(g);
+    return g;
+  }, [garden, setGarden]);
+
+  const isInteractive = !!movingPlant || !!drawStep || plantsToPlace.length > 0;
+  const showMap = !!(garden && garden.plants.length > 0) || plantsToPlace.length > 0;
 
   // ── overdue badge ─────────────────────────────────────────────────────────
   const pendingTaskCount = useMemo(() => {
@@ -87,12 +177,16 @@ const MapScreen = (): React.JSX.Element => {
   }, [garden]);
 
   // ── banner ────────────────────────────────────────────────────────────────
+  const cancelDraw = useCallback(() => {
+    setDrawStep(null); setFirstPoint(null); setDrawTarget(null);
+  }, []);
+
   const bannerInfo = useMemo(() => {
     if (plantsToPlace.length > 0) {
       const next = plantsToPlace[0];
       return {
         text: `Tik op de kaart om ${next.commonName} te plaatsen`,
-        extra: `${plantsToPlace.length} over`,
+        extra: `${plantsToPlace.length} ${plantsToPlace.length === 1 ? 'plant' : 'planten'} over`,
         onCancel: () => setPlantsToPlace([]),
         onSkip: () => setPlantsToPlace((q) => q.slice(1)),
       };
@@ -114,36 +208,27 @@ const MapScreen = (): React.JSX.Element => {
       onCancel: cancelDraw,
     };
     return null;
-  }, [plantsToPlace, movingPlant, drawStep, drawTarget]);
-
-  const cancelDraw = () => {
-    setDrawStep(null);
-    setFirstPoint(null);
-    setDrawTarget(null);
-  };
+  }, [plantsToPlace, movingPlant, drawStep, drawTarget, cancelDraw]);
 
   // ── map tap ───────────────────────────────────────────────────────────────
   const handleMapPress = useCallback((x: number, y: number) => {
-    // Tap-to-place from scan queue
     if (plantsToPlace.length > 0) {
       const [next, ...rest] = plantsToPlace;
-      if (garden) addPlant(makePlantFromScan(next, garden.id, x, y));
+      const g = ensureGarden();
+      addPlant(makePlantFromScan(next, g.id, x, y));
       setPlantsToPlace(rest);
       return;
     }
-    // Move existing plant
     if (movingPlant) {
       updatePlant({ ...movingPlant, x, y });
       setMovingPlant(null);
       return;
     }
-    // Draw: first point
     if (drawStep === 'first') {
       setFirstPoint({ x, y });
       setDrawStep('second');
       return;
     }
-    // Draw: second point → compute bounds
     if (drawStep === 'second' && firstPoint) {
       const bx = Math.min(firstPoint.x, x);
       const by = Math.min(firstPoint.y, y);
@@ -151,55 +236,40 @@ const MapScreen = (): React.JSX.Element => {
       const bh = Math.abs(y - firstPoint.y) + 1;
       setFirstPoint(null);
       setDrawStep(null);
-
       if (drawTarget) {
-        // Resize existing plant
         const color = drawTarget.color ?? ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length];
         updatePlant({ ...drawTarget, x: bx, y: by, width: bw, height: bh, color });
         setDrawTarget(null);
       } else {
-        // New plant/zone — open modal
         setPendingBounds({ x: bx, y: by, width: bw, height: bh });
         setModalColor(ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length]);
         setModalName('');
         setShowModal(true);
       }
     }
-  }, [plantsToPlace, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant]);
+  }, [plantsToPlace, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant, ensureGarden]);
 
-  // ── long-press plant ──────────────────────────────────────────────────────
-  const handlePlantLongPress = (plant: Plant) => {
-    const isZone = (plant.width ?? 1) > 1 || (plant.height ?? 1) > 1;
-    Alert.alert(plant.commonName, undefined, [
-      {
-        text: 'Verplaatsen',
-        onPress: () => setMovingPlant(plant),
-      },
-      {
-        text: isZone ? 'Formaat wijzigen' : 'Uitrekken tot zone',
-        onPress: () => { setDrawTarget(plant); setDrawStep('first'); },
-      },
-      {
-        text: 'Verwijderen',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Verwijderen', `${plant.commonName} uit je tuin verwijderen?`, [
-            { text: 'Annuleren', style: 'cancel' },
-            { text: 'Verwijderen', style: 'destructive', onPress: () => removePlant(plant.id) },
-          ]),
-      },
-      { text: 'Annuleren', style: 'cancel' },
-    ]);
-  };
+  // ── plant menu actions ────────────────────────────────────────────────────
+  const handleDelete = useCallback((plant: Plant) => {
+    Alert.alert(
+      'Verwijderen',
+      `${plant.commonName} uit je tuin verwijderen?`,
+      [
+        { text: 'Annuleren', style: 'cancel' },
+        { text: 'Verwijderen', style: 'destructive', onPress: () => removePlant(plant.id) },
+      ],
+    );
+  }, [removePlant]);
 
-  // ── confirm new plant/zone from modal ─────────────────────────────────────
+  // ── confirm new plant/zone modal ──────────────────────────────────────────
   const handleConfirmModal = () => {
-    if (!pendingBounds || !modalName.trim() || !garden) return;
+    if (!pendingBounds || !modalName.trim()) return;
+    const g = ensureGarden();
     const id = newId();
     const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
     addPlant({
       id,
-      gardenId: garden.id,
+      gardenId: g.id,
       species: '',
       commonName: modalName.trim(),
       x: pendingBounds.x,
@@ -258,13 +328,13 @@ const MapScreen = (): React.JSX.Element => {
   };
 
   // ── empty state ───────────────────────────────────────────────────────────
-  if (!garden || garden.plants.length === 0) {
+  if (!showMap) {
     return (
       <SafeAreaView style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>🌳</Text>
         <Text style={styles.emptyTitle}>Je tuin is nog leeg</Text>
         <Text style={styles.emptySubtitle}>
-          Ga naar de Assistent tab om je eerste plant te scannen, of gebruik de scanknop hierboven.
+          Scan een foto om direct planten toe te voegen, of ga naar de Assistent tab.
         </Text>
         <TouchableOpacity style={styles.emptyScanBtn} onPress={handleScanPress} disabled={scanning}>
           {scanning
@@ -275,13 +345,18 @@ const MapScreen = (): React.JSX.Element => {
     );
   }
 
+  const currentGarden = garden ?? {
+    id: 'temp', userId: 'local', name: 'Mijn tuin',
+    polygons: [], plants: [], tasks: [],
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.gardenName}>{garden.name}</Text>
-          <Text style={styles.plantCount}>{garden.plants.length} planten</Text>
+          <Text style={styles.gardenName}>{currentGarden.name}</Text>
+          <Text style={styles.plantCount}>{currentGarden.plants.length} planten</Text>
         </View>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
@@ -342,9 +417,9 @@ const MapScreen = (): React.JSX.Element => {
         <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
           <ScrollView bounces={false}>
             <GardenMap
-              garden={garden}
+              garden={currentGarden}
               onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
-              onPlantLongPress={handlePlantLongPress}
+              onPlantLongPress={(p) => setMenuPlant(p)}
               viewMode="2d"
               isInteractive={isInteractive}
               highlightPoint={drawStep === 'second' ? firstPoint : null}
@@ -356,11 +431,24 @@ const MapScreen = (): React.JSX.Element => {
 
         {/* FAB */}
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => setDrawStep('first')} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.fab} onPress={() => {
+            ensureGarden();
+            setDrawStep('first');
+          }} activeOpacity={0.85}>
             <Text style={styles.fabText}>＋</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Plant action menu */}
+      <PlantMenu
+        plant={menuPlant}
+        onClose={() => setMenuPlant(null)}
+        onMove={(p) => setMovingPlant(p)}
+        onResize={(p) => { setDrawTarget(p); setDrawStep('first'); }}
+        onDelete={handleDelete}
+        onChangeColor={(p, color) => updatePlant({ ...p, color })}
+      />
 
       {/* New plant/zone modal */}
       <Modal visible={showModal} transparent animationType="slide">
@@ -378,7 +466,6 @@ const MapScreen = (): React.JSX.Element => {
                 {'  '}({pendingBounds.width * CELL_CM} × {pendingBounds.height * CELL_CM} cm)
               </Text>
             )}
-
             <TextInput
               style={styles.modalInput}
               placeholder="Naam…"
@@ -387,9 +474,8 @@ const MapScreen = (): React.JSX.Element => {
               onChangeText={setModalName}
               autoFocus
               returnKeyType="done"
+              onSubmitEditing={handleConfirmModal}
             />
-
-            {/* Color picker — only for zones */}
             {pendingBounds && (pendingBounds.width > 1 || pendingBounds.height > 1) && (
               <>
                 <Text style={styles.colorLabel}>Kleur</Text>
@@ -405,7 +491,6 @@ const MapScreen = (): React.JSX.Element => {
                 </ScrollView>
               </>
             )}
-
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
@@ -517,6 +602,51 @@ const styles = StyleSheet.create({
   },
   modalConfirmBtnDisabled: { backgroundColor: '#ccc' },
   modalConfirmText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+});
+
+const menuStyles = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    paddingBottom: 28, overflow: 'hidden',
+  },
+  header: {
+    backgroundColor: '#1b4332',
+    paddingHorizontal: 20, paddingVertical: 16,
+    marginBottom: 6,
+  },
+  plantName: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  plantSpecies: { fontSize: 13, color: '#b7e4c7', fontStyle: 'italic', marginTop: 2 },
+  item: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef',
+    gap: 14,
+  },
+  itemDanger: { borderBottomWidth: 0 },
+  itemIcon: { fontSize: 20, width: 28, textAlign: 'center' },
+  colorDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#e9ecef' },
+  itemLabel: { fontSize: 16, color: '#1b4332', fontWeight: '500', flex: 1 },
+  itemLabelDanger: { fontSize: 16, color: '#e63946', fontWeight: '500', flex: 1 },
+  chevron: { fontSize: 12, color: '#aaa' },
+  colorRow: { marginLeft: 20, marginBottom: 4 },
+  colorRowContent: { paddingRight: 20, gap: 10, paddingVertical: 8 },
+  swatch: {
+    width: 38, height: 38, borderRadius: 19,
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  swatchSelected: { borderColor: '#1b4332', transform: [{ scale: 1.2 }] },
+  cancelBtn: {
+    marginHorizontal: 20, marginTop: 8,
+    backgroundColor: '#f1f8f3', borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center',
+    borderWidth: 1, borderColor: '#b7e4c7',
+  },
+  cancelText: { fontSize: 16, color: '#2d6a4f', fontWeight: '700' },
 });
 
 export default MapScreen;

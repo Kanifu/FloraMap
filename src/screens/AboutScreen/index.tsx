@@ -9,7 +9,7 @@ const SECTIONS = [
   {
     title: 'Over FloraMap',
     items: [
-      { label: 'Versie', value: '1.0.0' },
+      { label: 'Versie', value: '1.1.0' },
       { label: 'Platform', value: 'React Native · Expo SDK 52' },
       { label: 'AI-model', value: 'Google Gemini 3.5 Flash' },
       { label: 'Weerdata', value: 'Open-Meteo (gratis, geen sleutel)' },
@@ -19,7 +19,7 @@ const SECTIONS = [
     title: 'Licentie',
     items: [
       { label: 'Type', value: 'MIT License' },
-      { label: 'Auteursrecht', value: `© ${new Date().getFullYear()} FloraMap` },
+      { label: 'Auteursrecht', value: `© ${new Date().getFullYear()} Jordy Zinkstok` },
     ],
   },
   {
@@ -34,6 +34,11 @@ const SECTIONS = [
       { label: 'expo-image-picker', value: '~16.0' },
     ],
   },
+];
+
+const DEVELOPER_LINKS = [
+  { label: '💼 LinkedIn — Jordy Zinkstok', url: 'https://linkedin.com/in/jordyzinkstok' },
+  { label: '✉️ jordyzinkstok@gmail.com', url: 'mailto:jordyzinkstok@gmail.com' },
 ];
 
 const LINKS = [
@@ -80,6 +85,26 @@ const AboutScreen = (): React.JSX.Element => {
             </View>
           </View>
         ))}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Ontwikkelaar</Text>
+          <View style={styles.card}>
+            <View style={[styles.row, styles.rowBorder]}>
+              <Text style={styles.rowLabel}>Naam</Text>
+              <Text style={styles.rowValue}>Jordy Zinkstok</Text>
+            </View>
+            {DEVELOPER_LINKS.map((link, i) => (
+              <TouchableOpacity
+                key={link.url}
+                style={[styles.row, i < DEVELOPER_LINKS.length - 1 && styles.rowBorder]}
+                onPress={() => Linking.openURL(link.url)}
+                activeOpacity={0.7}>
+                <Text style={styles.rowLabel}>{link.label}</Text>
+                <Text style={styles.linkChevron}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Links</Text>

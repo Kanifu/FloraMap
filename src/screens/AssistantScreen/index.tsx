@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     gap: 8,
-    maxWidth: '90%',
+    alignSelf: 'stretch',
   },
   taskCard: {
     backgroundColor: '#fff9f0',

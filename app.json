@@ -2,9 +2,10 @@
   "expo": {
     "name": "FloraMap",
     "slug": "floramap",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "extra": {
       "eas": {
         "projectId": "30354417-a06c-409c-aa8b-2f1bcdae0928"
@@ -25,7 +26,11 @@
     },
     "android": {
       "package": "com.floramap.app",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": ["android.permission.CAMERA"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1b4332"
+      }
     },
     "web": {
       "bundler": "metro"
