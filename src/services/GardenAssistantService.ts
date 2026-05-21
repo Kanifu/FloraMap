@@ -1,8 +1,9 @@
 import * as FileSystem from 'expo-file-system';
 import { MaintenanceTask, MaintenanceTaskType } from '@/models';
+import { geminiEndpoint, hasApiAccess } from './ApiConfig';
 
 const GEMINI_MODEL = 'gemini-3.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_PATH = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -70,11 +71,6 @@ export const createInitialTasksForPlant = (
 };
 
 export class GardenAssistantService {
-  private readonly apiKey: string;
-
-  constructor() {
-    this.apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
-  }
 
   private buildSystemPrompt(gardenPlants: string[]): string {
     const plantList =
@@ -112,8 +108,8 @@ Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van t
     history: ChatTurn[],
     gardenPlants: string[],
   ): Promise<AssistantResponse> {
-    if (!this.apiKey) {
-      throw new Error('Geen Gemini API-sleutel gevonden. Voeg EXPO_PUBLIC_GEMINI_API_KEY toe aan .env.');
+    if (!hasApiAccess()) {
+      throw new Error('Geen API-toegang. Stel EXPO_PUBLIC_GEMINI_API_KEY of EXPO_PUBLIC_API_PROXY_URL in.');
     }
 
     const contents = [];
@@ -149,9 +145,10 @@ Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van t
     }
     contents.push({ role: 'user', parts: currentParts });
 
-    const response = await fetchWithRetry(`${GEMINI_URL}?key=${this.apiKey}`, {
+    const { url, headers } = geminiEndpoint(GEMINI_PATH);
+    const response = await fetchWithRetry(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         system_instruction: {
           parts: [{ text: this.buildSystemPrompt(gardenPlants) }],

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacybeleid — FloraMap</title>
+  <style>
+    :root { --green: #1b4332; --green-light: #2d6a4f; --accent: #d8f3dc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 16px; line-height: 1.7; color: #222;
+      max-width: 720px; margin: 0 auto; padding: 40px 24px 80px;
+    }
+    header { text-align: center; padding: 32px 0 40px; border-bottom: 2px solid var(--accent); }
+    header .icon { font-size: 48px; }
+    header h1 { color: var(--green); font-size: 28px; margin: 8px 0 4px; }
+    header p { color: #555; }
+    h2 { color: var(--green-light); font-size: 18px; margin: 36px 0 12px; }
+    p { margin-bottom: 12px; }
+    ul { padding-left: 20px; margin-bottom: 12px; }
+    ul li { margin-bottom: 6px; }
+    .badge {
+      display: inline-block; background: var(--accent); color: var(--green);
+      border-radius: 20px; padding: 3px 12px; font-size: 13px; font-weight: 700;
+    }
+    footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid #eee; color: #888; font-size: 14px; text-align: center; }
+    a { color: var(--green-light); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="icon">🌿</div>
+    <h1>Privacybeleid</h1>
+    <p>FloraMap &mdash; Jouw slimme tuinplanner</p>
+    <br />
+    <span class="badge">Laatst bijgewerkt: mei 2026</span>
+  </header>
+
+  <h2>1. Wie wij zijn</h2>
+  <p>
+    FloraMap is een mobiele applicatie ontwikkeld door <strong>Jordy Zinkstok</strong>.
+    Vragen over privacy? Neem contact op via
+    <a href="mailto:jordyzinkstok@gmail.com">jordyzinkstok@gmail.com</a>.
+  </p>
+
+  <h2>2. Welke gegevens we verzamelen</h2>
+  <p>FloraMap verzamelt <strong>zo min mogelijk gegevens</strong>. Concreet:</p>
+  <ul>
+    <li>
+      <strong>Tuindata (lokaal opgeslagen):</strong> Plantennamen, posities, onderhoudstaken
+      en instellingen worden uitsluitend opgeslagen op jouw apparaat via AsyncStorage.
+      Deze gegevens verlaten het apparaat niet, tenzij jij expliciet een back-up maakt.
+    </li>
+    <li>
+      <strong>Foto's (tijdelijk):</strong> Als je de AI-scan gebruikt, wordt de geselecteerde
+      foto als base64-afbeelding naar de Google Gemini API gestuurd voor plantherkenning.
+      FloraMap bewaart deze foto niet op externe servers.
+    </li>
+    <li>
+      <strong>Locatie (niet verzameld):</strong> FloraMap gebruikt geen
+      GPS-locatie of locatiebepaling.
+    </li>
+    <li>
+      <strong>Weerdata:</strong> FloraMap raadpleegt de Open-Meteo API met vaste coördinaten
+      (Amsterdam) voor weersomstandigheden. Er worden geen persoonsgegevens verstuurd.
+    </li>
+  </ul>
+
+  <h2>3. Waarvoor we gegevens gebruiken</h2>
+  <ul>
+    <li>Plantherkenning via foto (Google Gemini AI)</li>
+    <li>Verzorgingsadvies en tuinassistent (Google Gemini AI)</li>
+    <li>Lokale onderhoudsmeldingen (push notifications via expo-notifications &mdash; volledig apparaat-lokaal)</li>
+    <li>Weersomstandigheden tonen voor watergeefsuggesties</li>
+  </ul>
+
+  <h2>4. Derde partijen</h2>
+  <p>FloraMap maakt gebruik van de volgende externe diensten:</p>
+  <ul>
+    <li>
+      <strong>Google Gemini API</strong> (<a href="https://ai.google.dev" target="_blank">ai.google.dev</a>):
+      voor AI-plantherkenning en tuinassistent. Foto's worden naar Google verzonden.
+      Zie het <a href="https://policies.google.com/privacy" target="_blank">privacybeleid van Google</a>.
+    </li>
+    <li>
+      <strong>Open-Meteo</strong> (<a href="https://open-meteo.com" target="_blank">open-meteo.com</a>):
+      gratis weer-API zonder API-sleutel of gebruikerstracking.
+    </li>
+  </ul>
+  <p>FloraMap verkoopt geen gegevens aan derden en gebruikt geen advertentieplatforms.</p>
+
+  <h2>5. Gegevensbeveiliging</h2>
+  <p>
+    Alle tuindata staat lokaal op jouw apparaat en is niet toegankelijk voor de ontwikkelaar.
+    API-communicatie verloopt via HTTPS.
+  </p>
+
+  <h2>6. Kinderen</h2>
+  <p>
+    FloraMap is niet specifiek gericht op kinderen onder de 13 jaar en verzamelt bewust
+    geen gegevens van minderjarigen.
+  </p>
+
+  <h2>7. Jouw rechten (AVG/GDPR)</h2>
+  <p>Als EU-inwoner heb je het recht om:</p>
+  <ul>
+    <li>Inzage te vragen in gegevens die we over jou hebben (vrijwel geen)</li>
+    <li>Gegevens te laten verwijderen &mdash; verwijder de app om alle lokale data te wissen</li>
+    <li>Bezwaar te maken tegen verwerking via <a href="mailto:jordyzinkstok@gmail.com">jordyzinkstok@gmail.com</a></li>
+  </ul>
+
+  <h2>8. Wijzigingen</h2>
+  <p>
+    Dit privacybeleid kan worden bijgewerkt. Grote wijzigingen worden aangekondigd via
+    een app-update. De datum bovenaan geeft de laatste versie aan.
+  </p>
+
+  <h2>9. Contact</h2>
+  <p>
+    Jordy Zinkstok<br />
+    <a href="mailto:jordyzinkstok@gmail.com">jordyzinkstok@gmail.com</a><br />
+    <a href="https://linkedin.com/in/jordyzinkstok" target="_blank">LinkedIn</a>
+  </p>
+
+  <footer>
+    &copy; <span id="yr"></span> Jordy Zinkstok &mdash; FloraMap &mdash; MIT License
+    <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+  </footer>
+</body>
+</html>

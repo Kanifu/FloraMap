@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
+import { geminiEndpoint, hasApiAccess } from './ApiConfig';
 
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_PATH = '/v1beta/models/gemini-2.5-flash:generateContent';
 
 const IDENTIFY_PROMPT = `Look at this image and identify any plant(s) you can see.
 Return a JSON array of up to 5 results, sorted by confidence (highest first).
@@ -20,16 +20,10 @@ export interface IdentificationResult {
 }
 
 export class PlantIdentificationService {
-  private readonly apiKey: string;
-
-  constructor() {
-    this.apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
-  }
-
   async identifyFromImageUri(imageUri: string): Promise<IdentificationResult[]> {
-    if (!this.apiKey) {
+    if (!hasApiAccess()) {
       throw new Error(
-        'Geen Gemini API-sleutel gevonden. Voeg EXPO_PUBLIC_GEMINI_API_KEY toe aan je .env bestand.',
+        'Geen API-toegang. Stel EXPO_PUBLIC_GEMINI_API_KEY of EXPO_PUBLIC_API_PROXY_URL in.',
       );
     }
 
@@ -37,9 +31,10 @@ export class PlantIdentificationService {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    const response = await fetch(`${GEMINI_URL}?key=${this.apiKey}`, {
+    const { url, headers } = geminiEndpoint(GEMINI_PATH);
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         contents: [
           {
