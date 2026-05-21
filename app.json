@@ -17,14 +17,7 @@
           "cameraPermission": "FloraMap uses your camera to scan your garden and identify plants."
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#2d6a4f",
-          "sounds": []
-        }
-      ]
+      "expo-notifications"
     ],
     "ios": {
       "supportsTablet": false,
