@@ -4,19 +4,23 @@ import {
   ScrollView, TouchableOpacity, Linking, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Constants from 'expo-constants';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
 
-const VERSION = '1.4.0';
+const VERSION     = '1.4.0';
+const BUILD_NUM   = 3;           // increment this + versionCode in app.json with every release
+const BUILD_DATE  = '23 mei 2026';
 
 const SECTIONS = [
   {
     title: 'Over FloraMap',
     items: [
       { label: 'Versie', value: VERSION },
+      { label: 'Build', value: `#${BUILD_NUM} · ${BUILD_DATE}` },
       { label: 'Platform', value: 'React Native · Expo SDK 52' },
       { label: 'AI-model', value: 'Google Gemini 2.5 Flash' },
       { label: 'Weerdata', value: 'Open-Meteo (gratis, geen sleutel)' },
@@ -143,9 +147,20 @@ const AboutScreen = (): React.JSX.Element => {
           <Text style={styles.heroIcon}>🌿</Text>
           <Text style={styles.heroName}>FloraMap</Text>
           <Text style={styles.heroTagline}>Jouw slimme tuinplanner</Text>
-          <View style={styles.versionPill}>
-            <Text style={styles.versionPillText}>v{VERSION}</Text>
+          <View style={styles.versionRow}>
+            <View style={styles.versionPill}>
+              <Text style={styles.versionPillText}>v{VERSION}</Text>
+            </View>
+            <View style={styles.buildPill}>
+              <Text style={styles.buildPillText}>Build #{BUILD_NUM}</Text>
+            </View>
           </View>
+          <Text style={styles.buildDate}>{BUILD_DATE}</Text>
+          <Text style={styles.buildHash}>
+            {Constants.expoConfig?.android?.versionCode
+              ? `versionCode ${Constants.expoConfig.android.versionCode}`
+              : `versionCode ${BUILD_NUM}`}
+          </Text>
         </View>
 
         {/* Backup & Restore */}
@@ -256,14 +271,23 @@ const styles = StyleSheet.create({
   heroIcon: { fontSize: 56 },
   heroName: { fontSize: 28, fontWeight: '800', color: '#1b4332' },
   heroTagline: { fontSize: 14, color: '#6b705c' },
+  versionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   versionPill: {
     backgroundColor: '#d8f3dc',
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: 20,
-    marginTop: 4,
   },
   versionPillText: { fontSize: 13, fontWeight: '700', color: '#2d6a4f' },
+  buildPill: {
+    backgroundColor: '#1b4332',
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  buildPillText: { fontSize: 13, fontWeight: '700', color: '#d8f3dc' },
+  buildDate: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  buildHash: { fontSize: 11, color: '#ccc', fontFamily: 'monospace' },
   section: { gap: 8 },
   sectionTitle: {
     fontSize: 12,
