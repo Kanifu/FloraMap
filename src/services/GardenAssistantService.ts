@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import { MaintenanceTask, MaintenanceTaskType } from '@/models';
 import { geminiEndpoint, hasApiAccess } from './ApiConfig';
 
-const GEMINI_MODEL = 'gemini-3.5-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_PATH = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

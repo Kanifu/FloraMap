@@ -37,6 +37,13 @@ export interface MaintenanceTask {
 export type LightExposure = 'full_sun' | 'partial_shade' | 'full_shade';
 export type PlantAddedVia = 'scan' | 'manual' | 'seed' | 'seedling' | 'cutting';
 
+export interface PhotoLogEntry {
+  id: string;
+  uri: string;       // local file path
+  date: string;      // ISO 8601
+  note?: string;
+}
+
 export interface Plant {
   id: string;
   gardenId: string;
@@ -60,6 +67,7 @@ export interface Plant {
   harvestMonths?: number[]; // 0-indexed months when harvest is expected (0=Jan, 5=Jun)
   notes?: string;
   addedVia?: PlantAddedVia;
+  photoLog?: PhotoLogEntry[];
 }
 
 export type GardenTaskUrgency = 'high' | 'medium' | 'low';

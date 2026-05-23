@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Alert,
   TouchableOpacity, Modal, TextInput, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
@@ -12,6 +13,9 @@ import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { OnboardingModal } from '@/components/OnboardingModal';
+
+const ONBOARDED_KEY = 'floramap_onboarded';
 
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
 type DrawStep = 'first' | 'second';
@@ -197,6 +201,18 @@ const MapScreen = (): React.JSX.Element => {
   const [drawTarget,     setDrawTarget]     = useState<Plant | null>(null);
   const [menuPlant,      setMenuPlant]      = useState<Plant | null>(null);
   const [forceShowMap,   setForceShowMap]   = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
+      if (!val) setShowOnboarding(true);
+    });
+  }, []);
+
+  const handleOnboardingDone = useCallback(() => {
+    setShowOnboarding(false);
+    AsyncStorage.setItem(ONBOARDED_KEY, '1');
+  }, []);
 
   // ── new-plant modal state ─────────────────────────────────────────────────
   const [showModal,      setShowModal]      = useState(false);
@@ -364,6 +380,7 @@ const MapScreen = (): React.JSX.Element => {
         <TouchableOpacity style={styles.emptyManualBtn} onPress={startManualAdd}>
           <Text style={styles.emptyManualBtnText}>✏️ Handmatig toevoegen</Text>
         </TouchableOpacity>
+        <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
       </SafeAreaView>
     );
   }
@@ -443,6 +460,9 @@ const MapScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Onboarding */}
+      <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
 
       {/* Plant action menu */}
       <PlantMenu

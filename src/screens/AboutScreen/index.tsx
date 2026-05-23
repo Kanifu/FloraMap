@@ -1,17 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView,
-  ScrollView, TouchableOpacity, Linking,
+  ScrollView, TouchableOpacity, Linking, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { useGardenStore } from '@/store/gardenStore';
+import { Garden } from '@/models';
+
+const VERSION = '1.4.0';
 
 const SECTIONS = [
   {
     title: 'Over FloraMap',
     items: [
-      { label: 'Versie', value: '1.3.0' },
+      { label: 'Versie', value: VERSION },
       { label: 'Platform', value: 'React Native · Expo SDK 52' },
-      { label: 'AI-model', value: 'Google Gemini 3.5 Flash' },
+      { label: 'AI-model', value: 'Google Gemini 2.5 Flash' },
       { label: 'Weerdata', value: 'Open-Meteo (gratis, geen sleutel)' },
     ],
   },
@@ -32,6 +39,7 @@ const SECTIONS = [
       { label: 'react-native-svg', value: '15.8' },
       { label: 'expo-notifications', value: '~0.28' },
       { label: 'expo-image-picker', value: '~16.0' },
+      { label: 'expo-location', value: '~17.0' },
     ],
   },
 ];
@@ -49,6 +57,75 @@ const LINKS = [
 
 const AboutScreen = (): React.JSX.Element => {
   const navigation = useNavigation();
+  const garden = useGardenStore((s) => s.garden);
+  const setGarden = useGardenStore((s) => s.setGarden);
+  const [importing, setImporting] = useState(false);
+
+  // ── Backup export ─────────────────────────────────────────────────────────
+  const handleExport = async () => {
+    if (!garden) {
+      Alert.alert('Geen tuin', 'Er is nog geen tuindata om te exporteren.');
+      return;
+    }
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert('Delen niet beschikbaar', 'Delen wordt niet ondersteund op dit apparaat.');
+      return;
+    }
+    try {
+      const json = JSON.stringify({ version: VERSION, exportedAt: new Date().toISOString(), garden }, null, 2);
+      const fileUri = `${FileSystem.cacheDirectory}floramap-backup.json`;
+      await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'application/json',
+        dialogTitle: 'FloraMap backup exporteren',
+      });
+    } catch {
+      Alert.alert('Exporteren mislukt', 'Kon de backup niet aanmaken.');
+    }
+  };
+
+  // ── Backup import ─────────────────────────────────────────────────────────
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const raw = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const parsed = JSON.parse(raw);
+
+      // Basic validation
+      const importedGarden: Garden = parsed.garden ?? parsed;
+      if (!importedGarden.id || !Array.isArray(importedGarden.plants)) {
+        Alert.alert('Ongeldig bestand', 'Dit bestand bevat geen geldige FloraMap-data.');
+        return;
+      }
+
+      Alert.alert(
+        'Backup importeren',
+        `Wil je de tuindata van "${importedGarden.name}" importeren? Je huidige tuin wordt overschreven.`,
+        [
+          { text: 'Annuleren', style: 'cancel' },
+          {
+            text: 'Importeren',
+            style: 'destructive',
+            onPress: () => {
+              setGarden(importedGarden);
+              Alert.alert('Gelukt! 🌿', 'Je tuin is hersteld vanuit de backup.');
+            },
+          },
+        ],
+      );
+    } catch {
+      Alert.alert('Importeren mislukt', 'Kon het bestand niet lezen. Controleer of het een geldig FloraMap-backup is.');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,7 +144,35 @@ const AboutScreen = (): React.JSX.Element => {
           <Text style={styles.heroName}>FloraMap</Text>
           <Text style={styles.heroTagline}>Jouw slimme tuinplanner</Text>
           <View style={styles.versionPill}>
-            <Text style={styles.versionPillText}>v1.3.0</Text>
+            <Text style={styles.versionPillText}>v{VERSION}</Text>
+          </View>
+        </View>
+
+        {/* Backup & Restore */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Gegevens</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={[styles.row, styles.rowBorder]}
+              onPress={handleExport}
+              activeOpacity={0.7}>
+              <View style={styles.rowLeft}>
+                <Text style={styles.rowLabel}>💾 Backup exporteren</Text>
+                <Text style={styles.rowSub}>Sla je tuin op als JSON-bestand</Text>
+              </View>
+              <Text style={styles.linkChevron}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.row}
+              onPress={handleImport}
+              disabled={importing}
+              activeOpacity={0.7}>
+              <View style={styles.rowLeft}>
+                <Text style={styles.rowLabel}>📂 Backup importeren</Text>
+                <Text style={styles.rowSub}>Herstel tuin vanuit een JSON-bestand</Text>
+              </View>
+              <Text style={styles.linkChevron}>{importing ? '⏳' : '›'}</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -182,8 +287,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
   },
+  rowLeft: { flex: 1, gap: 2 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
   rowLabel: { fontSize: 14, color: '#1b4332', fontWeight: '500' },
+  rowSub: { fontSize: 12, color: '#aaa' },
   rowValue: { fontSize: 14, color: '#6b705c', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
   linkChevron: { fontSize: 20, color: '#aaa' },
   footer: {

@@ -1,13 +1,19 @@
-import React, { useCallback, useMemo, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, SectionList,
-  TouchableOpacity, ScrollView, FlatList,
+  TouchableOpacity, ScrollView, FlatList, Alert,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask } from '@/models';
 import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
+import { relativeDueLabel } from '@/utils/dateUtils';
+import { generateICS } from '@/utils/icsExport';
+import { getCachedLocation } from '@/utils/location';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'geschiedenis';
@@ -54,7 +60,8 @@ interface WeatherData { rainExpected: boolean; rainMm: number; loaded: boolean; 
 
 const fetchWeather = async (): Promise<WeatherData> => {
   try {
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=52.37&longitude=4.89&hourly=precipitation&forecast_days=2&timezone=Europe%2FAmsterdam';
+    const loc = await getCachedLocation();
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=precipitation&forecast_days=2&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) return { rainExpected: false, rainMm: 0, loaded: true };
     const data = await res.json();
@@ -98,16 +105,16 @@ const groupTasks = (flatTasks: FlatTask[], now: Date): Section[] => {
   return sections;
 };
 
-const formatDateLabel = (dateStr: string, todayStr: string): string => {
-  if (dateStr === todayStr) return 'Vandaag';
+const formatDateLabel = (dateKey: string, todayStr: string): string => {
+  if (dateKey === todayStr) return 'Vandaag';
   const tomorrowDate = new Date(todayStr);
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  if (dateStr === tomorrowDate.toISOString().slice(0, 10)) return 'Morgen';
-  const d = new Date(dateStr);
+  if (dateKey === tomorrowDate.toISOString().slice(0, 10)) return 'Morgen';
+  const d = new Date(dateKey);
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
 };
 
-// ── TaskItem ──────────────────────────────────────────────────────────────────
+// ── SwipeableTaskItem ──────────────────────────────────────────────────────────
 
 interface TaskItemProps {
   flatTask: FlatTask;
@@ -118,34 +125,59 @@ interface TaskItemProps {
 
 const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected }: TaskItemProps): React.JSX.Element => {
   const { task, plant, isOverdue, isRecurring } = flatTask;
+  const swipeableRef = useRef<Swipeable>(null);
   const isWateringInRain = task.type === 'water' && rainExpected;
-  const dueDate = new Date(task.dueDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
-  return (
-    <TouchableOpacity
-      style={[styles.taskRow, isOverdue && !isWateringInRain && styles.taskRowOverdue, isWateringInRain && styles.taskRowSkip]}
-      onPress={() => onNavigate(plant.id)}
-      activeOpacity={0.7}>
-      <Text style={styles.taskIcon}>{TASK_ICONS[task.type]}</Text>
-      <View style={styles.taskBody}>
-        <View style={styles.taskNameRow}>
-          <Text style={[styles.taskPlantName, isOverdue && !isWateringInRain && styles.textOverdue]}>
-            {plant.commonName}
-          </Text>
-          {isRecurring && <Text style={styles.recurringBadge}>↺ herhalend</Text>}
-        </View>
-        <Text style={styles.taskType}>{TASK_LABELS[task.type]}</Text>
-        {task.notes ? <Text style={styles.taskNotes}>{task.notes}</Text> : null}
-        {isWateringInRain
-          ? <Text style={styles.skipText}>🌧️ Regen verwacht — begieten overslaan?</Text>
-          : <Text style={[styles.taskDue, isOverdue && styles.textOverdue]}>{dueDate}</Text>}
-      </View>
-      <TouchableOpacity
-        style={[styles.klaarButton, isWateringInRain && styles.klaarButtonMuted]}
-        onPress={() => onComplete(plant.id, task.id)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Text style={styles.klaarButtonText}>✓ Klaar</Text>
-      </TouchableOpacity>
+
+  const handleComplete = () => {
+    swipeableRef.current?.close();
+    onComplete(plant.id, task.id);
+  };
+
+  const renderRightActions = () => (
+    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}>
+      <Text style={styles.swipeCompleteText}>✓{'\n'}Klaar</Text>
     </TouchableOpacity>
+  );
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={60}
+      overshootRight={false}
+      friction={2}>
+      <TouchableOpacity
+        style={[
+          styles.taskRow,
+          isOverdue && !isWateringInRain && styles.taskRowOverdue,
+          isWateringInRain && styles.taskRowSkip,
+        ]}
+        onPress={() => onNavigate(plant.id)}
+        activeOpacity={0.7}>
+        <Text style={styles.taskIcon}>{TASK_ICONS[task.type]}</Text>
+        <View style={styles.taskBody}>
+          <View style={styles.taskNameRow}>
+            <Text style={[styles.taskPlantName, isOverdue && !isWateringInRain && styles.textOverdue]}>
+              {plant.commonName}
+            </Text>
+            {isRecurring && <Text style={styles.recurringBadge}>↺ herhalend</Text>}
+          </View>
+          <Text style={styles.taskType}>{TASK_LABELS[task.type]}</Text>
+          {task.notes ? <Text style={styles.taskNotes}>{task.notes}</Text> : null}
+          {isWateringInRain
+            ? <Text style={styles.skipText}>🌧️ Regen verwacht — begieten overslaan?</Text>
+            : <Text style={[styles.taskDue, isOverdue && styles.textOverdue]}>
+                {relativeDueLabel(task.dueDate)}
+              </Text>}
+        </View>
+        <TouchableOpacity
+          style={[styles.klaarButton, isWateringInRain && styles.klaarButtonMuted]}
+          onPress={handleComplete}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.klaarButtonText}>✓</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Swipeable>
   );
 };
 
@@ -167,7 +199,7 @@ const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.El
       {!task.completedDate && (
         <TouchableOpacity style={styles.klaarButton} onPress={() => onComplete(task.id)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.klaarButtonText}>✓ Klaar</Text>
+          <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -183,10 +215,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const completeGardenTask = useGardenStore((s) => s.completeGardenTask);
   const [weather, setWeather] = useState<WeatherData>({ rainExpected: false, rainMm: 0, loaded: false });
   const [activeTab, setActiveTab] = useState<Tab>('taken');
+  const [exporting, setExporting] = useState(false);
 
-  const now = useMemo(() => new Date(), []);
-  const currentMonth = now.getMonth();
-  const todayStr = useMemo(() => now.toISOString().slice(0, 10), [now]);
+  const currentMonth = new Date().getMonth();
 
   useEffect(() => { fetchWeather().then(setWeather); }, []);
 
@@ -198,6 +229,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
   // ── Taken tab data ────────────────────────────────────────────────────────
   const sections = useMemo((): Section[] => {
     if (!garden) return [];
+    const now = new Date();
     const nowStr = now.toISOString();
     const flatTasks: FlatTask[] = [];
     for (const plant of garden.plants) {
@@ -208,17 +240,19 @@ const MaintenanceScreen = (): React.JSX.Element => {
     }
     flatTasks.sort((a, b) => a.task.dueDate.localeCompare(b.task.dueDate));
     return groupTasks(flatTasks, now);
-  }, [garden, now]);
+  }, [garden]);
 
   // ── Planning tab data (next 30 days, grouped by date) ────────────────────
   const planningGroups = useMemo(() => {
     if (!garden) return [];
-    const map = new Map<string, FlatTask[]>();
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
     const nowStr = now.toISOString();
     const limit = new Date(now);
     limit.setDate(limit.getDate() + 30);
     const limitStr = limit.toISOString().slice(0, 10);
 
+    const map = new Map<string, FlatTask[]>();
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
         if (task.completedDate) continue;
@@ -233,7 +267,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([dateKey, tasks]) => ({ dateKey, label: formatDateLabel(dateKey, todayStr), tasks }));
-  }, [garden, now, todayStr]);
+  }, [garden]);
 
   // ── Geschiedenis tab data ─────────────────────────────────────────────────
   interface CompletedEntry { task: MaintenanceTask; plant: Plant; }
@@ -267,6 +301,31 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   const activeGardenTasks = useMemo(() => (garden?.tasks ?? []).filter((t) => !t.completedDate), [garden]);
   const hasActiveTasks = sections.length > 0 || activeGardenTasks.length > 0;
+
+  // ── ICS export ────────────────────────────────────────────────────────────
+  const handleExportICS = useCallback(async () => {
+    if (!garden) return;
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert('Delen niet beschikbaar', 'Delen wordt niet ondersteund op dit apparaat.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const icsContent = generateICS(garden.plants);
+      const fileUri = `${FileSystem.cacheDirectory}floramap-taken.ics`;
+      await FileSystem.writeAsStringAsync(fileUri, icsContent, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'text/calendar',
+        dialogTitle: 'FloraMap taken exporteren',
+        UTI: 'public.calendar',
+      });
+    } catch {
+      Alert.alert('Exporteren mislukt', 'Kon het kalenderbestand niet aanmaken.');
+    } finally {
+      setExporting(false);
+    }
+  }, [garden]);
 
   // ── Shared header pieces ──────────────────────────────────────────────────
   const seasonalTip = SEASONAL_TIPS[currentMonth];
@@ -308,9 +367,17 @@ const MaintenanceScreen = (): React.JSX.Element => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Onderhoud</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.infoBtn}>
-          <Text style={styles.infoBtnText}>ℹ️</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={handleExportICS}
+            style={styles.headerIconBtn}
+            disabled={exporting || !garden}>
+            <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+            <Text style={styles.headerIconText}>ℹ️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Rain banner */}
@@ -359,7 +426,12 @@ const MaintenanceScreen = (): React.JSX.Element => {
               </View>
             )}
             renderItem={({ item }) => (
-              <TaskItem flatTask={item} onComplete={handleComplete} onNavigate={handleNavigate} rainExpected={weather.rainExpected} />
+              <TaskItem
+                flatTask={item}
+                onComplete={handleComplete}
+                onNavigate={handleNavigate}
+                rainExpected={weather.rainExpected}
+              />
             )}
           />
         )
@@ -454,8 +526,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#e9ecef',
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
-  infoBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  infoBtnText: { fontSize: 22 },
+  headerActions: { flexDirection: 'row', gap: 4 },
+  headerIconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerIconText: { fontSize: 22 },
   rainBanner: {
     backgroundColor: '#cce5ff', paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: '#b8d4f0',
@@ -510,6 +583,11 @@ const styles = StyleSheet.create({
   },
   klaarButtonMuted: { backgroundColor: '#6b705c' },
   klaarButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  swipeComplete: {
+    backgroundColor: '#40916c', justifyContent: 'center', alignItems: 'center',
+    width: 72, borderRadius: 12, marginBottom: 8,
+  },
+  swipeCompleteText: { color: '#fff', fontWeight: '700', fontSize: 13, textAlign: 'center' },
   gardenTasksSection: { marginTop: 4 },
   seasonCard: {
     backgroundColor: '#f1f8f3', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7',
