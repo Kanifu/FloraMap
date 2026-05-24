@@ -56,20 +56,80 @@ const SEASONAL_TIPS: Record<number, string> = {
   11: '❄️ December: Rust voor de tuin. Maak gereedschap schoon en plan volgend jaar.',
 };
 
-interface WeatherData { rainExpected: boolean; rainMm: number; loaded: boolean; }
+interface DailyForecast { date: string; rainMm: number; tempMax: number; emoji: string; }
+interface WeatherData {
+  loaded: boolean;
+  rainExpected: boolean;
+  rainMm: number;
+  tempMax: number;
+  tempMin: number;
+  isDry: boolean;
+  weatherEmoji: string;
+  dailyForecast: DailyForecast[];
+}
+
+const EMPTY_WEATHER: WeatherData = {
+  loaded: false, rainExpected: false, rainMm: 0,
+  tempMax: 0, tempMin: 0, isDry: false, weatherEmoji: '🌡️', dailyForecast: [],
+};
+
+const weatherCodeToEmoji = (code: number): string => {
+  if (code === 0) return '☀️';
+  if (code <= 3)  return '⛅';
+  if (code <= 48) return '🌫️';
+  if (code <= 67) return '🌧️';
+  if (code <= 77) return '❄️';
+  if (code <= 82) return '🌦️';
+  if (code <= 86) return '🌨️';
+  return '⛈️';
+};
 
 const fetchWeather = async (): Promise<WeatherData> => {
   try {
     const loc = await getCachedLocation();
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=precipitation&forecast_days=2&timezone=auto`;
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${loc.latitude}&longitude=${loc.longitude}` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode` +
+      `&hourly=precipitation&forecast_days=7&timezone=auto`;
     const res = await fetch(url);
-    if (!res.ok) return { rainExpected: false, rainMm: 0, loaded: true };
+    if (!res.ok) return { ...EMPTY_WEATHER, loaded: true };
     const data = await res.json();
-    const precipitation: number[] = data.hourly?.precipitation ?? [];
-    const totalMm = precipitation.reduce((sum: number, v: number) => sum + v, 0);
-    return { rainExpected: totalMm > 4, rainMm: Math.round(totalMm * 10) / 10, loaded: true };
+
+    const hourlyPrecip: number[] = data.hourly?.precipitation ?? [];
+    const totalMm = Math.round(
+      hourlyPrecip.slice(0, 48).reduce((s: number, v: number) => s + v, 0) * 10,
+    ) / 10;
+
+    const dates: string[]    = data.daily?.time ?? [];
+    const maxTemps: number[] = data.daily?.temperature_2m_max ?? [];
+    const minTemps: number[] = data.daily?.temperature_2m_min ?? [];
+    const rainSums: number[] = data.daily?.precipitation_sum ?? [];
+    const wCodes: number[]   = data.daily?.weathercode ?? [];
+
+    const dailyForecast: DailyForecast[] = dates.map((date, i) => ({
+      date,
+      rainMm: Math.round((rainSums[i] ?? 0) * 10) / 10,
+      tempMax: Math.round(maxTemps[i] ?? 0),
+      emoji: weatherCodeToEmoji(wCodes[i] ?? 0),
+    }));
+
+    const todayMax  = Math.round(maxTemps[0] ?? 0);
+    const todayMin  = Math.round(minTemps[0] ?? 0);
+    const next3Rain = (rainSums.slice(0, 3) as number[]).reduce((s, v) => s + v, 0);
+
+    return {
+      loaded: true,
+      rainExpected: totalMm > 4,
+      rainMm: totalMm,
+      tempMax: todayMax,
+      tempMin: todayMin,
+      isDry: next3Rain < 2 && todayMax >= 20,
+      weatherEmoji: weatherCodeToEmoji(wCodes[0] ?? 0),
+      dailyForecast,
+    };
   } catch {
-    return { rainExpected: false, rainMm: 0, loaded: true };
+    return { ...EMPTY_WEATHER, loaded: true };
   }
 };
 
@@ -213,9 +273,11 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const completeGardenTask = useGardenStore((s) => s.completeGardenTask);
-  const [weather, setWeather] = useState<WeatherData>({ rainExpected: false, rainMm: 0, loaded: false });
-  const [activeTab, setActiveTab] = useState<Tab>('taken');
-  const [exporting, setExporting] = useState(false);
+  const [weather, setWeather]               = useState<WeatherData>(EMPTY_WEATHER);
+  const [activeTab, setActiveTab]           = useState<Tab>('taken');
+  const [exporting, setExporting]           = useState(false);
+  const [showAllTasks, setShowAllTasks]     = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const currentMonth = new Date().getMonth();
 
@@ -292,8 +354,15 @@ const MaintenanceScreen = (): React.JSX.Element => {
   }, [garden]);
 
   const handleComplete = useCallback((plantId: string, taskId: string) => {
+    const plant = garden?.plants.find((p) => p.id === plantId);
+    const task  = plant?.maintenanceTasks.find((t) => t.id === taskId);
     completeMaintenanceTask(plantId, taskId);
-  }, [completeMaintenanceTask]);
+    if (task?.intervalDays) {
+      const msg = `✓ ${TASK_LABELS[task.type]} klaar · volgende beurt over ${task.intervalDays} dagen`;
+      setToast(msg);
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [completeMaintenanceTask, garden]);
 
   const handleNavigate = useCallback((plantId: string) => {
     navigation.navigate('PlantCard', { plantId });
@@ -332,6 +401,32 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   const infoHeader = (
     <>
+      {/* Weather card */}
+      {weather.loaded && (
+        <View style={[styles.weatherCard, weather.isDry && styles.weatherCardDry]}>
+          <View style={styles.weatherMain}>
+            <Text style={styles.weatherEmoji}>{weather.weatherEmoji}</Text>
+            <View style={styles.weatherInfo}>
+              <Text style={styles.weatherTemp}>
+                {weather.tempMax}° / {weather.tempMin}°
+              </Text>
+              <Text style={styles.weatherDesc}>
+                {weather.rainExpected
+                  ? `🌧️ ${weather.rainMm} mm regen de komende 48u`
+                  : weather.isDry
+                  ? '☀️ Droog — extra begieten nodig!'
+                  : 'Geen regen verwacht de komende tijd'}
+              </Text>
+            </View>
+          </View>
+          {weather.isDry && (
+            <Text style={styles.weatherDryAlert}>
+              💧 Droog en warm weer · Controleer of je planten genoeg water krijgen
+            </Text>
+          )}
+        </View>
+      )}
+
       {seasonalTip && (
         <View style={styles.seasonCard}>
           <Text style={styles.seasonTitle}>Seizoenstip</Text>
@@ -413,28 +508,54 @@ const MaintenanceScreen = (): React.JSX.Element => {
             </View>
             {infoHeader}
           </ScrollView>
-        ) : (
-          <SectionList
-            sections={sections}
-            keyExtractor={(item) => `${item.plant.id}-${item.task.id}`}
-            contentContainerStyle={styles.listContent}
-            ListHeaderComponent={infoHeader}
-            ListFooterComponent={gardenTasksSection}
-            renderSectionHeader={({ section }) => (
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeaderText}>{section.title}</Text>
-              </View>
-            )}
-            renderItem={({ item }) => (
-              <TaskItem
-                flatTask={item}
-                onComplete={handleComplete}
-                onNavigate={handleNavigate}
-                rainExpected={weather.rainExpected}
-              />
-            )}
-          />
-        )
+        ) : (() => {
+          const visibleSections = showAllTasks ? sections : sections.slice(0, 1);
+          const hiddenCount = showAllTasks
+            ? 0
+            : sections.slice(1).reduce((n, s) => n + s.data.length, 0);
+          return (
+            <SectionList
+              sections={visibleSections}
+              keyExtractor={(item) => `${item.plant.id}-${item.task.id}`}
+              contentContainerStyle={styles.listContent}
+              ListHeaderComponent={infoHeader}
+              ListFooterComponent={(
+                <>
+                  {hiddenCount > 0 && (
+                    <TouchableOpacity
+                      style={styles.showMoreBtn}
+                      onPress={() => setShowAllTasks(true)}>
+                      <Text style={styles.showMoreText}>
+                        Toon {hiddenCount} meer {hiddenCount === 1 ? 'taak' : 'taken'} deze week →
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {showAllTasks && sections.length > 1 && (
+                    <TouchableOpacity
+                      style={styles.showMoreBtn}
+                      onPress={() => setShowAllTasks(false)}>
+                      <Text style={styles.showMoreText}>Toon alleen vandaag ↑</Text>
+                    </TouchableOpacity>
+                  )}
+                  {gardenTasksSection}
+                </>
+              )}
+              renderSectionHeader={({ section }) => (
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                </View>
+              )}
+              renderItem={({ item }) => (
+                <TaskItem
+                  flatTask={item}
+                  onComplete={handleComplete}
+                  onNavigate={handleNavigate}
+                  rainExpected={weather.rainExpected}
+                />
+              )}
+            />
+          );
+        })()
       )}
 
       {/* ── Planning tab ── */}
@@ -446,11 +567,20 @@ const MaintenanceScreen = (): React.JSX.Element => {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.listContent}>
-            {planningGroups.map(({ dateKey, label, tasks }) => (
+            {planningGroups.map(({ dateKey, label, tasks }) => {
+              const dayWeather = weather.dailyForecast.find((d) => d.date === dateKey);
+              return (
               <View key={dateKey}>
                 <View style={styles.planningDayHeader}>
-                  <Text style={styles.planningDayLabel}>{label}</Text>
-                  <Text style={styles.planningDayCount}>{tasks.length} {tasks.length === 1 ? 'taak' : 'taken'}</Text>
+                  <Text style={styles.planningDayLabel}>
+                    {dayWeather ? `${dayWeather.emoji} ` : ''}{label}
+                  </Text>
+                  <View style={styles.planningDayRight}>
+                    {dayWeather && (
+                      <Text style={styles.planningDayTemp}>{dayWeather.tempMax}°</Text>
+                    )}
+                    <Text style={styles.planningDayCount}>{tasks.length} {tasks.length === 1 ? 'taak' : 'taken'}</Text>
+                  </View>
                 </View>
                 {tasks.map((ft) => (
                   <View key={`${ft.plant.id}-${ft.task.id}`} style={[styles.planningRow, ft.isOverdue && styles.planningRowOverdue]}>
@@ -469,7 +599,8 @@ const MaintenanceScreen = (): React.JSX.Element => {
                   </View>
                 ))}
               </View>
-            ))}
+              );
+            })}
           </ScrollView>
         )
       )}
@@ -513,6 +644,13 @@ const MaintenanceScreen = (): React.JSX.Element => {
             )}
           />
         )
+      )}
+
+      {/* Toast voor herhalende taken */}
+      {toast !== null && (
+        <View style={styles.toast} pointerEvents="none">
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -606,7 +744,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 8, paddingHorizontal: 4, marginTop: 4,
   },
-  planningDayLabel: { fontSize: 14, fontWeight: '700', color: '#1b4332' },
+  planningDayLabel: { fontSize: 14, fontWeight: '700', color: '#1b4332', flex: 1 },
+  planningDayRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  planningDayTemp:  { fontSize: 13, fontWeight: '600', color: '#2d6a4f' },
   planningDayCount: { fontSize: 12, color: '#aaa' },
   planningRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -629,6 +769,35 @@ const styles = StyleSheet.create({
   historyMeta: { alignItems: 'flex-end', gap: 2 },
   historyDate: { fontSize: 12, fontWeight: '600', color: '#6b705c' },
   historyTime: { fontSize: 11, color: '#aaa' },
+  // Weather card
+  weatherCard: {
+    backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7',
+    padding: 14, gap: 8, marginBottom: 12,
+  },
+  weatherCardDry: { borderColor: '#f4a261', backgroundColor: '#fff9f4' },
+  weatherMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  weatherEmoji: { fontSize: 36 },
+  weatherInfo: { flex: 1, gap: 2 },
+  weatherTemp: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  weatherDesc: { fontSize: 13, color: '#6b705c' },
+  weatherDryAlert: {
+    fontSize: 13, fontWeight: '600', color: '#c05600',
+    backgroundColor: '#fff4e6', borderRadius: 8, padding: 8, textAlign: 'center',
+  },
+  // Show more tasks
+  showMoreBtn: {
+    backgroundColor: '#f1f8f3', borderRadius: 10, borderWidth: 1, borderColor: '#b7e4c7',
+    padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 8,
+  },
+  showMoreText: { fontSize: 14, fontWeight: '600', color: '#2d6a4f' },
+  // Toast
+  toast: {
+    position: 'absolute', bottom: 24, left: 16, right: 16,
+    backgroundColor: '#1b4332', borderRadius: 12, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22, shadowRadius: 4, elevation: 6,
+  },
+  toastText: { color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center' },
 });
 
 export default MaintenanceScreen;
