@@ -11,16 +11,18 @@ import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
 
-const VERSION     = '1.4.0';
-const BUILD_NUM   = 3;           // increment this + versionCode in app.json with every release
-const BUILD_DATE  = '23 mei 2026';
+// Single source of truth: all values come from app.json → expo.extra
+const extra      = Constants.expoConfig?.extra ?? {};
+const VERSION    = (Constants.expoConfig?.version ?? '?') as string;
+const BUILD_LABEL = (extra.buildLabel ?? '?') as string;
+const BUILD_DATE  = (extra.buildDate  ?? '?') as string;
 
 const SECTIONS = [
   {
     title: 'Over FloraMap',
     items: [
-      { label: 'Versie', value: VERSION },
-      { label: 'Build', value: `#${BUILD_NUM} · ${BUILD_DATE}` },
+      { label: 'Versie', value: `v${VERSION}` },
+      { label: 'Build', value: `#${BUILD_LABEL} · ${BUILD_DATE}` },
       { label: 'Platform', value: 'React Native · Expo SDK 52' },
       { label: 'AI-model', value: 'Google Gemini 2.5 Flash' },
       { label: 'Weerdata', value: 'Open-Meteo (gratis, geen sleutel)' },
@@ -152,14 +154,12 @@ const AboutScreen = (): React.JSX.Element => {
               <Text style={styles.versionPillText}>v{VERSION}</Text>
             </View>
             <View style={styles.buildPill}>
-              <Text style={styles.buildPillText}>Build #{BUILD_NUM}</Text>
+              <Text style={styles.buildPillText}>Build #{BUILD_LABEL}</Text>
             </View>
           </View>
           <Text style={styles.buildDate}>{BUILD_DATE}</Text>
           <Text style={styles.buildHash}>
-            {Constants.expoConfig?.android?.versionCode
-              ? `versionCode ${Constants.expoConfig.android.versionCode}`
-              : `versionCode ${BUILD_NUM}`}
+            {`versionCode ${Constants.expoConfig?.android?.versionCode ?? '?'}`}
           </Text>
         </View>
 

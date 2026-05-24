@@ -2,11 +2,13 @@
   "expo": {
     "name": "FloraMap",
     "slug": "floramap",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
     "extra": {
+      "buildLabel": "4",
+      "buildDate": "24 mei 2026",
       "eas": {
         "projectId": "30354417-a06c-409c-aa8b-2f1bcdae0928"
       }
@@ -32,7 +34,7 @@
     },
     "android": {
       "package": "com.floramap.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
