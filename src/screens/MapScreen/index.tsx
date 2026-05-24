@@ -245,6 +245,17 @@ const MapScreen = (): React.JSX.Element => {
       acc + p.maintenanceTasks.filter((t) => !t.completedDate && t.dueDate < now).length, 0);
   }, [garden]);
 
+  // Plants with overdue water tasks → shown on map as water indicator (#23)
+  const thirstyPlantIds = useMemo<string[]>(() => {
+    if (!garden) return [];
+    const now = new Date().toISOString();
+    return garden.plants
+      .filter((p) => p.maintenanceTasks.some(
+        (t) => t.type === 'water' && !t.completedDate && t.dueDate < now,
+      ))
+      .map((p) => p.id);
+  }, [garden]);
+
   const companionPairs = useMemo<CompanionPair[]>(() => {
     if (!garden || !showCompanionOverlay) return [];
     return findCompanionPairs(garden.plants);
@@ -475,6 +486,15 @@ const MapScreen = (): React.JSX.Element => {
         </View>
       )}
 
+      {/* Water banner (#23) */}
+      {!isInteractive && thirstyPlantIds.length > 0 && (
+        <View style={styles.waterBanner}>
+          <Text style={styles.waterBannerText}>
+            💧 {thirstyPlantIds.length} {thirstyPlantIds.length === 1 ? 'plant heeft' : 'planten hebben'} water nodig
+          </Text>
+        </View>
+      )}
+
       {/* Map */}
       <View style={styles.mapWrapper}>
         <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
@@ -490,6 +510,7 @@ const MapScreen = (): React.JSX.Element => {
               onMapPress={handleMapPress}
               companionPairs={companionPairs}
               showCompanionOverlay={showCompanionOverlay}
+              thirstyPlantIds={thirstyPlantIds}
             />
           </ScrollView>
         </ScrollView>
@@ -649,6 +670,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
   },
   companionBtnText: { fontSize: 20 },
+  waterBanner: {
+    backgroundColor: '#e0f0ff', paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: '#90c8f0',
+  },
+  waterBannerText: { fontSize: 13, fontWeight: '600', color: '#0a558c' },
   companionLegend: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
     paddingHorizontal: 16, paddingVertical: 8,
