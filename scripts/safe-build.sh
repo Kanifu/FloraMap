@@ -15,7 +15,17 @@
 #
 set -euo pipefail
 
-PROFILE="${1:-preview}"
+# ── flags ──────────────────────────────────────────────────────────────────────
+# --yes / -y : sla alle bevestigingsvragen over en mail de link automatisch
+AUTO_YES=0
+PROFILE="preview"
+for arg in "$@"; do
+  case "$arg" in
+    --yes|-y) AUTO_YES=1 ;;
+    production|preview) PROFILE="$arg" ;;
+  esac
+done
+
 PLATFORM="android"
 
 # ── kleuren ────────────────────────────────────────────────────────────────
@@ -25,14 +35,30 @@ yellow() { printf "\033[33m%s\033[0m\n" "$1"; }
 blue()   { printf "\033[36m%s\033[0m\n" "$1"; }
 step()   { printf "\n\033[1m▸ %s\033[0m\n" "$1"; }
 
-# Vraag ja/nee. Default = ja (Enter).
+# Vraag ja/nee. Default = ja (Enter). Bij --yes altijd ja.
 confirm() {
   local prompt="$1"
+  if [[ "$AUTO_YES" == "1" ]]; then
+    yellow "→ (auto-ja) $prompt"
+    return 0
+  fi
   read -r -p "$(printf "\033[33m%s [J/n] \033[0m" "$prompt")" answer
   case "${answer:-j}" in
     [Nn]*) return 1 ;;
     *)     return 0 ;;
   esac
+}
+
+# Open een URL in de standaard browser (Mac + Linux).
+open_url() {
+  local url="$1"
+  if command -v xdg-open > /dev/null 2>&1; then
+    xdg-open "$url" 2>/dev/null &
+  elif command -v open > /dev/null 2>&1; then
+    open "$url" 2>/dev/null &
+  else
+    yellow "! Kan URL niet automatisch openen: $url"
+  fi
 }
 
 echo "──────────────────────────────────────────────"
@@ -173,4 +199,40 @@ if ! confirm "Alles gecontroleerd. Nu de EAS build starten?"; then
   exit 0
 fi
 
-npx eas build --profile "$PROFILE" --platform "$PLATFORM"
+BUILD_LOG="$(mktemp /tmp/floramap-build-XXXXXX.log)"
+
+if [[ "$AUTO_YES" == "1" ]]; then
+  # Niet-interactief: stroom output naar scherm én naar logbestand
+  npx eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive \
+    2>&1 | tee "$BUILD_LOG"
+else
+  npx eas build --profile "$PROFILE" --platform "$PLATFORM" \
+    2>&1 | tee "$BUILD_LOG"
+fi
+
+# ── Bouw-URL opvangen ──────────────────────────────────────────────────────────
+BUILD_URL=$(grep -oE 'https://expo\.dev/[^ ]+' "$BUILD_LOG" | head -1 || true)
+rm -f "$BUILD_LOG"
+
+if [[ -n "$BUILD_URL" ]]; then
+  BUILD_LABEL_VAL="$(node -p "require('./app.json').expo.extra.buildLabel" 2>/dev/null || echo '?')"
+  echo
+  green "✓ Build-URL: $BUILD_URL"
+
+  if [[ "$AUTO_YES" == "1" ]]; then
+    # URL-encode de relevante velden voor mailto
+    SUBJECT="FloraMap Build %23${BUILD_LABEL_VAL} %C2%B7 v${VERSION} (versionCode ${VCODE})"
+    BODY="Hoi%2C%0A%0AJe nieuwe FloraMap-build staat klaar!%0A%0A"\
+"Build%3A %23${BUILD_LABEL_VAL} %C2%B7 v${VERSION} %C2%B7 versionCode ${VCODE}%0A"\
+"Commit%3A ${COMMIT}%0A%0A"\
+"Download%2Finstalleer via%3A%0A${BUILD_URL}%0A%0A"\
+"Groetjes%2C Claude"
+    MAILTO="mailto:jordyzinkstok%40gmail.com?subject=${SUBJECT}&body=${BODY}"
+
+    blue "→ Mail-concept openen…"
+    open_url "$MAILTO"
+    green "✓ Concept geopend — klik 'Verzenden' in je mailprogramma."
+  fi
+else
+  yellow "! Kon de build-URL niet automatisch vinden in de output."
+fi
