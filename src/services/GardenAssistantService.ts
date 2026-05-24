@@ -157,7 +157,6 @@ Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van t
         generationConfig: {
           temperature: 0.4,
           maxOutputTokens: 2048,
-          thinkingConfig: { thinkingLevel: 'minimal' },
         },
       }),
     });
