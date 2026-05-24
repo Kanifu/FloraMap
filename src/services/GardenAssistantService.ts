@@ -1,9 +1,9 @@
 import * as FileSystem from 'expo-file-system';
-import { MaintenanceTask, MaintenanceTaskType } from '@/models';
+import { Plant, MaintenanceTask, MaintenanceTaskType } from '@/models';
 import { geminiEndpoint, hasApiAccess } from './ApiConfig';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_PATH = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_PATH  = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -44,6 +44,15 @@ export interface ChatTurn {
   imageUri?: string;
 }
 
+/**
+ * Companion planting compatibility result.
+ * Issue #15 — companion planting overlay.
+ */
+export interface CompatibilityResult {
+  plantId: string;
+  score: 'good' | 'neutral' | 'bad';
+}
+
 /** Build initial recurring MaintenanceTasks for a newly added plant. */
 export const createInitialTasksForPlant = (
   plantId: string,
@@ -64,11 +73,55 @@ export const createInitialTasksForPlant = (
     });
   };
 
-  if (identified.waterIntervalDays) addTask('water', identified.waterIntervalDays);
+  if (identified.waterIntervalDays)     addTask('water',     identified.waterIntervalDays);
   if (identified.fertilizeIntervalDays) addTask('fertilize', identified.fertilizeIntervalDays);
 
   return tasks;
 };
+
+/**
+ * Ask Gemini which plants are good or bad neighbours for each other.
+ * Returns [] when fewer than 2 plants are provided or when API is unavailable.
+ * Issue #15 — companion planting overlay.
+ */
+export async function getCompanionCompatibility(
+  plants: Plant[],
+): Promise<CompatibilityResult[]> {
+  if (plants.length < 2) return [];
+  if (!hasApiAccess()) return [];
+
+  const list = plants.map((p) => `id:${p.id} naam:${p.commonName}`).join('\n');
+  const prompt =
+    'Analyseer welke planten goede of slechte buren zijn. ' +
+    'Geef ALLEEN een JSON-array terug: [{"plantId":"","score":"good"|"neutral"|"bad"},...] ' +
+    'Planten:\n' + list;
+
+  try {
+    const { url, headers } = geminiEndpoint(GEMINI_PATH);
+    const response = await fetchWithRetry(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 512 },
+      }),
+    });
+
+    if (!response.ok) return [];
+
+    const data    = await response.json();
+    const rawText: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+    // Extract JSON array from response (Gemini may add extra prose)
+    const match = rawText.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+
+    const parsed = JSON.parse(match[0]);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 export class GardenAssistantService {
 
@@ -179,7 +232,7 @@ Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van t
 
     // Scan all lines for structured markers, then strip them from display text
     let identifiedPlants: IdentifiedPlant[] | undefined;
-    let detectedTasks: AssistantTask[] | undefined;
+    let detectedTasks:    AssistantTask[]   | undefined;
 
     const displayLines = fullText.split('\n').filter((line) => {
       const trimmed = line.trim();
