@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Pressable } from 'react-native';
-import Svg, { Polygon, Circle, G, Text as SvgText, Rect } from 'react-native-svg';
+import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Line, Path } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
+import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM = 30;
 export const SCALE = 40;
@@ -19,6 +20,8 @@ interface GardenMapProps {
   highlightPoint?: { x: number; y: number } | null;
   movingPlantId?: string | null;
   onMapPress?: (gridX: number, gridY: number) => void;
+  companionPairs?: CompanionPair[];
+  showCompanionOverlay?: boolean;
 }
 
 const POLYGON_COLORS: Record<GardenPolygonType, string> = {
@@ -32,6 +35,32 @@ const toSvgPoints = (p: GardenPolygon) =>
 const rx = (col: number) => (col - 0.5) * SCALE;
 const ry = (row: number) => (row - 0.5) * SCALE;
 
+/** Centre pixel of a plant cell (single or zone) */
+const plantCx = (plant: Plant): number => {
+  const w = plant.width ?? 1;
+  if (w > 1) return rx(plant.x) + (w * SCALE) / 2;
+  return plant.x * SCALE;
+};
+const plantCy = (plant: Plant): number => {
+  const h = plant.height ?? 1;
+  if (h > 1) return ry(plant.y) + (h * SCALE) / 2;
+  return plant.y * SCALE;
+};
+
+/** Quadratic bezier arc between two points with a gentle perpendicular curve */
+const arcPath = (x1: number, y1: number, x2: number, y2: number): string => {
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  // Perpendicular offset — 20% of distance, max 30px
+  const bend = Math.min(len * 0.20, 30);
+  const cx = mx - (dy / len) * bend;
+  const cy = my + (dx / len) * bend;
+  return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+};
+
 export const GardenMap = ({
   garden,
   onPlantPress,
@@ -40,6 +69,8 @@ export const GardenMap = ({
   highlightPoint,
   movingPlantId,
   onMapPress,
+  companionPairs = [],
+  showCompanionOverlay = false,
 }: GardenMapProps): React.JSX.Element => {
   const handleBgTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
     if (!onMapPress) return;
@@ -66,6 +97,44 @@ export const GardenMap = ({
         {garden.polygons.map((polygon) => (
           <Polygon key={polygon.id} points={toSvgPoints(polygon)} fill={POLYGON_COLORS[polygon.type]} />
         ))}
+
+        {/* ── Companion overlay ── */}
+        {showCompanionOverlay && companionPairs.map((pair, idx) => {
+          const pA = garden.plants.find((p) => p.id === pair.plantIdA);
+          const pB = garden.plants.find((p) => p.id === pair.plantIdB);
+          if (!pA || !pB) return null;
+
+          const x1 = plantCx(pA);
+          const y1 = plantCy(pA);
+          const x2 = plantCx(pB);
+          const y2 = plantCy(pB);
+          const color = pair.relation === 'good' ? '#2d6a4f' : '#e63946';
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+
+          return (
+            <G key={`companion-${idx}`}>
+              <Path
+                d={arcPath(x1, y1, x2, y2)}
+                stroke={color}
+                strokeWidth={2.5}
+                strokeDasharray={pair.relation === 'good' ? '6,4' : '3,3'}
+                fill="none"
+                opacity={0.75}
+              />
+              {/* midpoint badge */}
+              <Circle cx={midX} cy={midY} r={8} fill={color} opacity={0.9} />
+              <SvgText
+                x={midX} y={midY + 4}
+                textAnchor="middle"
+                fontSize={9}
+                fontWeight="700"
+                fill="#fff">
+                {pair.relation === 'good' ? '♥' : '✕'}
+              </SvgText>
+            </G>
+          );
+        })}
 
         {garden.plants.map((plant) => {
           const isMoving = plant.id === movingPlantId;

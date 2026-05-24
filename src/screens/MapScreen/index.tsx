@@ -14,6 +14,7 @@ import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -195,13 +196,14 @@ const MapScreen = (): React.JSX.Element => {
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
 
-  const [movingPlant,    setMovingPlant]    = useState<Plant | null>(null);
-  const [drawStep,       setDrawStep]       = useState<DrawStep | null>(null);
-  const [firstPoint,     setFirstPoint]     = useState<{ x: number; y: number } | null>(null);
-  const [drawTarget,     setDrawTarget]     = useState<Plant | null>(null);
-  const [menuPlant,      setMenuPlant]      = useState<Plant | null>(null);
-  const [forceShowMap,   setForceShowMap]   = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
+  const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
+  const [firstPoint,          setFirstPoint]          = useState<{ x: number; y: number } | null>(null);
+  const [drawTarget,          setDrawTarget]          = useState<Plant | null>(null);
+  const [menuPlant,           setMenuPlant]           = useState<Plant | null>(null);
+  const [forceShowMap,        setForceShowMap]        = useState(false);
+  const [showOnboarding,      setShowOnboarding]      = useState(false);
+  const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -242,6 +244,16 @@ const MapScreen = (): React.JSX.Element => {
     return garden.plants.reduce((acc, p) =>
       acc + p.maintenanceTasks.filter((t) => !t.completedDate && t.dueDate < now).length, 0);
   }, [garden]);
+
+  const companionPairs = useMemo<CompanionPair[]>(() => {
+    if (!garden || !showCompanionOverlay) return [];
+    return findCompanionPairs(garden.plants);
+  }, [garden, showCompanionOverlay]);
+
+  const companionCounts = useMemo(() => ({
+    good: companionPairs.filter((p) => p.relation === 'good').length,
+    bad:  companionPairs.filter((p) => p.relation === 'bad').length,
+  }), [companionPairs]);
 
   const cancelDraw = useCallback(() => {
     setDrawStep(null); setFirstPoint(null); setDrawTarget(null);
@@ -405,6 +417,11 @@ const MapScreen = (): React.JSX.Element => {
             {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
           </TouchableOpacity>
           <TouchableOpacity
+            style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
+            onPress={() => setShowCompanionOverlay((v) => !v)}>
+            <Text style={styles.companionBtnText}>🌿</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.deleteBtn}
             onPress={() => Alert.alert(
               'Tuin verwijderen',
@@ -437,6 +454,27 @@ const MapScreen = (): React.JSX.Element => {
         </View>
       )}
 
+      {/* Companion legend */}
+      {showCompanionOverlay && (
+        <View style={styles.companionLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDash, styles.legendGood]} />
+            <Text style={styles.legendText}>
+              {companionCounts.good === 0 ? 'Geen goede buren' : `${companionCounts.good} goede ${companionCounts.good === 1 ? 'buur' : 'buren'}`}
+            </Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDash, styles.legendBad]} />
+            <Text style={styles.legendText}>
+              {companionCounts.bad === 0 ? 'Geen slechte buren' : `${companionCounts.bad} slechte ${companionCounts.bad === 1 ? 'buur' : 'buren'}`}
+            </Text>
+          </View>
+          {companionCounts.good === 0 && companionCounts.bad === 0 && (
+            <Text style={styles.legendHint}>Voeg meer planten toe om relaties te zien</Text>
+          )}
+        </View>
+      )}
+
       {/* Map */}
       <View style={styles.mapWrapper}>
         <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
@@ -450,6 +488,8 @@ const MapScreen = (): React.JSX.Element => {
               highlightPoint={drawStep === 'second' ? firstPoint : null}
               movingPlantId={movingPlant?.id}
               onMapPress={handleMapPress}
+              companionPairs={companionPairs}
+              showCompanionOverlay={showCompanionOverlay}
             />
           </ScrollView>
         </ScrollView>
@@ -600,6 +640,28 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#f4bfc0',
   },
   deleteBtnText: { fontSize: 18 },
+  companionBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#b7e4c7',
+  },
+  companionBtnActive: {
+    backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
+  },
+  companionBtnText: { fontSize: 20 },
+  companionLegend: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: '#f0faf4',
+    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
+    gap: 16,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDash: { width: 22, height: 3, borderRadius: 2 },
+  legendGood: { backgroundColor: '#2d6a4f' },
+  legendBad:  { backgroundColor: '#e63946' },
+  legendText: { fontSize: 12, color: '#1b4332', fontWeight: '600' },
+  legendHint: { fontSize: 11, color: '#6b705c', fontStyle: 'italic' },
   banner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 10,
