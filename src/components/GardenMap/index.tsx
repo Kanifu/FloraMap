@@ -209,10 +209,7 @@ export const GardenMap = ({
             const emojiY = ry(plant.y) + 18;
 
             return (
-              <G key={plant.id}
-                onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
-                onPressOut={!isInteractive ? cancelLP : undefined}
-                onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}>
+              <G key={plant.id}>
                 {/* Drop shadow */}
                 <Rect
                   x={rx(plant.x) + 2} y={ry(plant.y) + 3}
@@ -236,6 +233,15 @@ export const GardenMap = ({
                   opacity={isMoving ? 0.3 : 1}>
                   {label}
                 </SvgText>
+                {/* Transparent touch target — must be last so it sits on top */}
+                <Rect
+                  x={rx(plant.x)} y={ry(plant.y)}
+                  width={w * SCALE} height={h * SCALE}
+                  fill="transparent" rx={10}
+                  onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
+                  onPressOut={!isInteractive ? cancelLP : undefined}
+                  onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
+                />
               </G>
             );
           }
@@ -250,10 +256,7 @@ export const GardenMap = ({
             : plant.commonName;
 
           return (
-            <G key={plant.id}
-              onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
-              onPressOut={!isInteractive ? cancelLP : undefined}
-              onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}>
+            <G key={plant.id}>
               {/* Drop shadow */}
               <Circle cx={cx + 1.5} cy={cy + 2} r={r} fill="rgba(0,0,0,0.15)" />
               {/* Main circle */}
@@ -271,6 +274,13 @@ export const GardenMap = ({
                 opacity={isMoving ? 0.4 : 1}>
                 {name}
               </SvgText>
+              {/* Transparent touch target — must be last so it sits on top */}
+              <Circle cx={cx} cy={cy} r={r + 4}
+                fill="transparent"
+                onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
+                onPressOut={!isInteractive ? cancelLP : undefined}
+                onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
+              />
             </G>
           );
         })}
