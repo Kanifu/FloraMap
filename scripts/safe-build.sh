@@ -151,7 +151,7 @@ green "✓ Expo config is geldig"
 
 # 4c. Algemene gezondheidscheck (waarschuwt, blokkeert niet)
 yellow "→ npx expo-doctor (waarschuwingen)…"
-npx expo-doctor || yellow "! expo-doctor gaf waarschuwingen — lees ze hierboven."
+npx --yes expo-doctor || yellow "! expo-doctor gaf waarschuwingen — lees ze hierboven."
 
 # ── 5. Build-identiteit tonen + bouwen ──────────────────────────────────────
 step "Stap 5/5 — Bouwen"
