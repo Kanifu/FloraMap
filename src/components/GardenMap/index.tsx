@@ -11,34 +11,147 @@ export const GRID_ROWS = 25;
 export const MAP_WIDTH  = GRID_COLS * SCALE;
 export const MAP_HEIGHT = GRID_ROWS * SCALE;
 
-// ── Plant emoji lookup ────────────────────────────────────────────────────────
+// ── Plant emoji lookup — 100+ soorten ────────────────────────────────────────
 
 const EMOJI_MAP: [string[], string][] = [
-  [['tomaat', 'tomato', 'lycopersicon'],                  '🍅'],
-  [['komkommer', 'cucumber', 'cucumis sativus'],          '🥒'],
-  [['wortel', 'carrot', 'daucus'],                        '🥕'],
-  [['aardappel', 'potato', 'solanum tuberosum'],          '🥔'],
-  [['ui', 'onion', 'allium cepa', 'sjalot'],              '🧅'],
-  [['knoflook', 'garlic', 'allium sativum'],              '🧄'],
-  [['paprika', 'pepper', 'capsicum'],                     '🫑'],
-  [['maïs', 'mais', 'corn', 'zea mays'],                  '🌽'],
-  [['boon', 'bean', 'phaseolus'],                         '🫘'],
-  [['erwt', 'pea', 'pisum'],                              '🫛'],
-  [['broccoli', 'brassica oleracea'],                     '🥦'],
-  [['sla', 'lettuce', 'lactuca', 'spinazie', 'spinach', 'boerenkool', 'kale'], '🥬'],
-  [['radijs', 'radish', 'raphanus'],                      '🌸'],
-  [['pompoen', 'pumpkin', 'courgette', 'squash', 'cucurbita'], '🎃'],
-  [['aardbeien', 'aardbei', 'strawberry', 'fragaria'],    '🍓'],
-  [['roos', 'rose', 'rosa'],                              '🌹'],
-  [['zonnebloem', 'sunflower', 'helianthus'],             '🌻'],
-  [['tulp', 'tulip', 'tulipa'],                           '🌷'],
-  [['basilicum', 'basil', 'ocimum'],                      '🌿'],
-  [['munt', 'mint', 'mentha'],                            '🌿'],
-  [['kool', 'cabbage', 'bloemkool', 'spruitjes'],         '🥦'],
-  [['peer', 'pear', 'pyrus'],                             '🍐'],
-  [['appel', 'apple', 'malus'],                           '🍎'],
-  [['druif', 'grape', 'vitis'],                           '🍇'],
-  [['citroen', 'lemon', 'citrus limon'],                  '🍋'],
+  // ── Groenten ──────────────────────────────────────────────────────────────
+  [['tomaat', 'tomato', 'lycopersicon', 'cherrytomaatje'],         '🍅'],
+  [['komkommer', 'cucumber', 'cucumis sativus'],                   '🥒'],
+  [['aubergine', 'eggplant', 'solanum melongena'],                 '🍆'],
+  [['wortel', 'carrot', 'daucus', 'pastinaak', 'parsnip'],        '🥕'],
+  [['aardappel', 'potato', 'solanum tuberosum'],                   '🥔'],
+  [['zoete aardappel', 'sweet potato', 'ipomoea batatas', 'yam'], '🍠'],
+  [['ui', 'onion', 'allium cepa', 'sjalot', 'shallot'],           '🧅'],
+  [['prei', 'leek', 'allium ampeloprasum'],                       '🧅'],
+  [['knoflook', 'garlic', 'allium sativum'],                      '🧄'],
+  [['paprika', 'sweet pepper', 'capsicum annuum'],                 '🫑'],
+  [['chili', 'chilipeper', 'hot pepper', 'jalapeño', 'capsicum frutescens'], '🌶️'],
+  [['maïs', 'mais', 'corn', 'zea mays'],                          '🌽'],
+  [['boon', 'bean', 'phaseolus', 'tuinboon', 'broad bean', 'sperzieboon'], '🫘'],
+  [['erwt', 'pea', 'pisum', 'sugarsnap', 'peul'],                 '🫛'],
+  [['broccoli'],                                                   '🥦'],
+  [['bloemkool', 'cauliflower', 'brassica oleracea botrytis'],     '🥦'],
+  [['spruitjes', 'brussels sprout', 'brassica oleracea gemmifera'],'🥦'],
+  [['kool', 'cabbage', 'brassica oleracea capitata', 'rode kool', 'savooie'], '🥬'],
+  [['koolraap', 'kohlrabi', 'brassica oleracea gongylodes'],       '🥬'],
+  [['sla', 'lettuce', 'lactuca sativa'],                          '🥬'],
+  [['spinazie', 'spinach', 'spinacia oleracea'],                  '🥬'],
+  [['boerenkool', 'kale', 'brassica oleracea acephala'],          '🥬'],
+  [['paksoi', 'bok choy', 'chinese kool', 'brassica rapa chinensis'], '🥬'],
+  [['snijbiet', 'chard', 'beta vulgaris cicla', 'mangold'],       '🥬'],
+  [['rucola', 'arugula', 'eruca sativa', 'raketsla'],             '🥬'],
+  [['veldsla', 'mâche', 'corn salad', 'valerianella'],            '🥬'],
+  [['andijvie', 'endive', 'cichorium endivia'],                   '🥬'],
+  [['postelein', 'purslane', 'portulaca oleracea'],               '🥬'],
+  [['waterkers', 'watercress', 'nasturtium officinale'],          '🥬'],
+  [['radijs', 'radish', 'raphanus sativus'],                      '🌸'],
+  [['rettich', 'daikon', 'raphanus sativus longipinnatus'],       '🌸'],
+  [['biet', 'beetroot', 'beta vulgaris', 'rode biet'],            '🍠'],
+  [['knolselderij', 'celeriac', 'apium graveolens rapaceum'],     '🥕'],
+  [['selderij', 'celery', 'apium graveolens'],                    '🌿'],
+  [['venkel', 'fennel', 'foeniculum vulgare'],                    '🌿'],
+  [['pompoen', 'pumpkin', 'cucurbita maxima'],                    '🎃'],
+  [['courgette', 'zucchini', 'cucurbita pepo'],                   '🥒'],
+  [['rabarber', 'rhubarb', 'rheum rhabarbarum'],                  '🌱'],
+  [['asperge', 'asparagus', 'asparagus officinalis'],             '🌿'],
+  [['artisjok', 'artichoke', 'cynara scolymus'],                  '🌸'],
+  [['schorseneer', 'salsify', 'scorzonera hispanica'],            '🥕'],
+  // ── Kruiden ───────────────────────────────────────────────────────────────
+  [['basilicum', 'basil', 'ocimum basilicum'],                    '🌿'],
+  [['munt', 'mint', 'mentha'],                                    '🌿'],
+  [['rozemarijn', 'rosemary', 'salvia rosmarinus'],               '🌿'],
+  [['tijm', 'thyme', 'thymus vulgaris'],                          '🌿'],
+  [['peterselie', 'parsley', 'petroselinum crispum'],             '🌿'],
+  [['bieslook', 'chives', 'allium schoenoprasum'],                '🌿'],
+  [['dille', 'dill', 'anethum graveolens'],                      '🌿'],
+  [['koriander', 'cilantro', 'coriandrum sativum'],              '🌿'],
+  [['oregano', 'marjolein', 'origanum vulgare'],                  '🌿'],
+  [['salie', 'sage', 'salvia officinalis'],                       '🌿'],
+  [['lavendel', 'lavender', 'lavandula'],                         '🪻'],
+  [['citroenmelisse', 'lemon balm', 'melissa officinalis'],      '🌿'],
+  [['dragon', 'tarragon', 'artemisia dracunculus'],               '🌿'],
+  [['bonenkruid', 'savory', 'satureja'],                         '🌿'],
+  [['kervel', 'chervil', 'anthriscus cerefolium'],               '🌿'],
+  [['stevia'],                                                    '🌿'],
+  // ── Fruit ─────────────────────────────────────────────────────────────────
+  [['aardbeien', 'aardbei', 'strawberry', 'fragaria'],           '🍓'],
+  [['framboos', 'raspberry', 'rubus idaeus'],                    '🍓'],
+  [['bramen', 'blackberry', 'rubus fruticosus'],                 '🫐'],
+  [['blauwe bes', 'bosbes', 'blueberry', 'vaccinium'],           '🫐'],
+  [['zwarte bes', 'blackcurrant', 'ribes nigrum'],               '🫐'],
+  [['kruisbes', 'gooseberry', 'ribes uva-crispa'],               '🍇'],
+  [['rode bes', 'redcurrant', 'ribes rubrum'],                   '🍒'],
+  [['kers', 'cherry', 'prunus cerasus', 'prunus avium'],         '🍒'],
+  [['appel', 'apple', 'malus domestica'],                        '🍎'],
+  [['peer', 'pear', 'pyrus communis'],                           '🍐'],
+  [['pruim', 'plum', 'prunus domestica'],                        '🍑'],
+  [['perzik', 'peach', 'prunus persica'],                        '🍑'],
+  [['abrikoos', 'apricot', 'prunus armeniaca'],                  '🍑'],
+  [['nectarine', 'prunus persica nucipersica'],                  '🍑'],
+  [['druif', 'grape', 'vitis vinifera'],                         '🍇'],
+  [['vijg', 'fig', 'ficus carica'],                              '🍇'],
+  [['citroen', 'lemon', 'citrus limon'],                         '🍋'],
+  [['limoen', 'lime', 'citrus aurantiifolia'],                   '🍋'],
+  [['sinaasappel', 'orange', 'citrus sinensis', 'mandarijn', 'mandarin'], '🍊'],
+  [['mango', 'mangifera indica'],                                '🥭'],
+  [['banaan', 'banana', 'musa'],                                 '🍌'],
+  // ── Bloemen ───────────────────────────────────────────────────────────────
+  [['roos', 'rose', 'rosa'],                                     '🌹'],
+  [['tulp', 'tulip', 'tulipa'],                                  '🌷'],
+  [['zonnebloem', 'sunflower', 'helianthus annuus'],             '🌻'],
+  [['dahlia'],                                                    '🌸'],
+  [['chrysant', 'chrysanthemum'],                                '🌼'],
+  [['narcis', 'daffodil', 'narcissus'],                          '🌼'],
+  [['kamille', 'chamomile', 'matricaria'],                       '🌼'],
+  [['madelief', 'daisy', 'bellis perennis'],                     '🌼'],
+  [['afrikaantje', 'marigold', 'tagetes'],                       '🌼'],
+  [['gerbera'],                                                  '🌼'],
+  [['hyacint', 'hyacinth', 'hyacinthus'],                        '🪻'],
+  [['seringen', 'lilac', 'syringa'],                             '🪻'],
+  [['lupine', 'lupinus'],                                        '🪻'],
+  [['viooltje', 'pansy', 'viola'],                               '🌸'],
+  [['hortensia', 'hydrangea'],                                   '🌸'],
+  [['rododendron', 'rhododendron'],                              '🌸'],
+  [['magnolia'],                                                 '🌸'],
+  [['geranium', 'pelargonium'],                                  '🌸'],
+  [['petunia'],                                                  '🌸'],
+  [['begonia'],                                                  '🌸'],
+  [['zinnia'],                                                   '🌸'],
+  [['cosmo', 'cosmos'],                                          '🌸'],
+  [['krokus', 'crocus'],                                         '🌸'],
+  [['gladiool', 'gladiolus'],                                    '🌸'],
+  [['pioenroos', 'peony', 'paeonia'],                            '🌸'],
+  [['forsythia'],                                                '🌼'],
+  // ── Gras & bodembedekkers ─────────────────────────────────────────────────
+  [['gras', 'gazon', 'lawn', 'grass', 'lolium', 'poa'],         '🌾'],
+  [['klaver', 'clover', 'trifolium'],                            '🍀'],
+  [['varen', 'fern', 'pteridophyta'],                            '🌿'],
+  // ── Struiken & hagen ──────────────────────────────────────────────────────
+  [['buxus', 'boxwood', 'buxus sempervirens'],                   '🌿'],
+  [['liguster', 'privet', 'ligustrum'],                          '🌿'],
+  [['haag', 'hedge', 'haagbeuk', 'carpinus betulus'],            '🌿'],
+  [['hulst', 'holly', 'ilex'],                                   '🌲'],
+  [['taxus', 'yew', 'taxus baccata'],                            '🌲'],
+  [['vlier', 'elder', 'sambucus'],                               '🌳'],
+  [['bamboe', 'bamboo', 'bambusoideae'],                         '🎋'],
+  [['struik', 'shrub', 'bush'],                                  '🌿'],
+  // ── Bomen ─────────────────────────────────────────────────────────────────
+  [['eik', 'oak', 'quercus'],                                    '🌳'],
+  [['beuk', 'beech', 'fagus'],                                   '🌳'],
+  [['berk', 'birch', 'betula'],                                  '🌳'],
+  [['linde', 'linden', 'tilia'],                                 '🌳'],
+  [['kastanje', 'chestnut', 'castanea'],                         '🌰'],
+  [['walnoot', 'walnut', 'juglans'],                             '🌰'],
+  [['hazelaar', 'hazel', 'corylus'],                             '🌰'],
+  [['den', 'pine', 'pinus'],                                     '🌲'],
+  [['spar', 'spruce', 'picea'],                                  '🌲'],
+  [['thuja', 'levensboom'],                                      '🌲'],
+  [['boom', 'tree', 'fruitboom'],                                '🌳'],
+  // ── Graan & overig ────────────────────────────────────────────────────────
+  [['tarwe', 'wheat', 'triticum'],                               '🌾'],
+  [['gerst', 'barley', 'hordeum'],                               '🌾'],
+  [['graan', 'grain', 'cereal'],                                 '🌾'],
+  [['zonnekruid', 'sunflower', 'helios'],                        '🌻'],
 ];
 
 const getPlantEmoji = (name: string, species: string): string => {
@@ -230,25 +343,20 @@ export const GardenMap = ({
 
             return (
               <G key={plant.id}>
-                {/* Subtle coloured background */}
+                {/* Fully transparent background — zones defined by emoji tiling only */}
+                {/* Subtle dashed border for zone boundary (no fill) */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH}
-                  fill={color} opacity={isMoving ? 0.08 : 0.18} rx={10} />
-                {/* Coloured border */}
-                <Rect x={zLeft} y={zTop} width={zW} height={zH}
-                  fill="none" stroke={color} strokeWidth={isThirsty ? 0 : 2}
-                  opacity={isMoving ? 0.3 : 0.6} rx={10} />
-                {/* Water-thirsty dashed border */}
-                {isThirsty && (
-                  <Rect x={zLeft} y={zTop} width={zW} height={zH}
-                    fill="none" stroke="#3a86ff" strokeWidth={2.5}
-                    strokeDasharray="6,4" opacity={0.75} rx={10} />
-                )}
+                  fill="none"
+                  stroke={isThirsty ? '#3a86ff' : color}
+                  strokeWidth={isThirsty ? 2.5 : 1.5}
+                  strokeDasharray={isThirsty ? '6,4' : '4,3'}
+                  opacity={isMoving ? 0.25 : 0.45} rx={10} />
 
-                {/* Tiled emoji pattern */}
+                {/* Tiled emoji pattern — more opaque since no fill behind them */}
                 {tileEmojis.map(({ key, ex, ey }) => (
                   <SvgText key={key} x={ex} y={ey + 6}
                     textAnchor="middle" fontSize={EMOJI_STEP * 0.55}
-                    opacity={isMoving ? 0.15 : 0.42}>
+                    opacity={isMoving ? 0.15 : 0.65}>
                     {emoji}
                   </SvgText>
                 ))}
