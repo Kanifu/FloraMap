@@ -12,13 +12,16 @@ import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
-import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import {
+  gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant,
+  CompatibilityResult, getCompanionCompatibility,
+} from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
-type DrawStep = 'first' | 'second';
+type DrawStep  = 'first' | 'second';
 type PlantType = 'plant' | 'seed' | 'seedling' | 'cutting';
 
 const PLANT_TYPES: { type: PlantType; icon: string; label: string }[] = [
@@ -28,16 +31,15 @@ const PLANT_TYPES: { type: PlantType; icon: string; label: string }[] = [
   { type: 'cutting',  icon: '✂️', label: 'Stek' },
 ];
 
-const newId = () => `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
+const newId   = () => `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const addDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
 const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] => {
   switch (type) {
     case 'seed':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water',    dueDate: addDays(1),  intervalDays: 2 },
-        { id: `${Date.now()}-r`, plantId, type: 'repot',    dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
+        { id: `${Date.now()}-w`, plantId, type: 'water',  dueDate: addDays(1),  intervalDays: 2 },
+        { id: `${Date.now()}-r`, plantId, type: 'repot',  dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
       ];
     case 'seedling':
       return [
@@ -55,7 +57,7 @@ const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] =
 };
 
 const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: number, y: number): Plant => {
-  const id = newId();
+  const id    = newId();
   const tasks = createInitialTasksForPlant(id, identified);
   if (tasks.length === 0) {
     tasks.push({ id: `task-${Date.now()}`, plantId: id, type: 'water', dueDate: addDays(7) });
@@ -75,8 +77,7 @@ const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: num
   };
 };
 
-// ── Plant action menu ─────────────────────────────────────────────────────────
-
+// ── Plant action menu ────────────────────────────────────────────────────────────────
 interface PlantMenuProps {
   plant: Plant | null;
   onClose: () => void;
@@ -89,8 +90,8 @@ interface PlantMenuProps {
 
 const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, onSaveNote }: PlantMenuProps): React.JSX.Element | null => {
   const [showColors, setShowColors] = useState(false);
-  const [showNote, setShowNote] = useState(false);
-  const [noteText, setNoteText] = useState('');
+  const [showNote,   setShowNote]   = useState(false);
+  const [noteText,   setNoteText]   = useState('');
 
   const handleOpen = () => {
     setShowColors(false);
@@ -112,7 +113,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
           </View>
 
           <TouchableOpacity style={menuStyles.item} onPress={() => { onMove(plant); onClose(); }}>
-            <Text style={menuStyles.itemIcon}>↔️</Text>
+            <Text style={menuStyles.itemIcon}>⇔️</Text>
             <Text style={menuStyles.itemLabel}>Verplaatsen</Text>
           </TouchableOpacity>
 
@@ -184,10 +185,9 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
   );
 };
 
-// ── Main screen ───────────────────────────────────────────────────────────────
-
+// ── Main screen ─────────────────────────────────────────────────────────────────────────────
 const MapScreen = (): React.JSX.Element => {
-  const navigation = useNavigation<MapNavProp>();
+  const navigation  = useNavigation<MapNavProp>();
   const garden      = useGardenStore((s) => s.garden);
   const setGarden   = useGardenStore((s) => s.setGarden);
   const removePlant  = useGardenStore((s) => s.removePlant);
@@ -203,6 +203,26 @@ const MapScreen = (): React.JSX.Element => {
   const [forceShowMap,   setForceShowMap]   = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // ── Companion planting state (issue #15) ─────────────────────────────────
+  const [showCompat,    setShowCompat]    = useState(false);
+  const [compat,        setCompat]        = useState<CompatibilityResult[]>([]);
+  const [loadingCompat, setLoadingCompat] = useState(false);
+
+  const handleToggleCompat = useCallback(async () => {
+    if (showCompat) { setShowCompat(false); return; }
+    if (!garden || garden.plants.length < 2) return;
+    setLoadingCompat(true);
+    try {
+      const result = await getCompanionCompatibility(garden.plants);
+      setCompat(result);
+      setShowCompat(true);
+    } catch {
+      Alert.alert('Fout', 'Buuranalyse kon niet worden geladen. Probeer het opnieuw.');
+    } finally {
+      setLoadingCompat(false);
+    }
+  }, [showCompat, garden]);
+
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
       if (!val) setShowOnboarding(true);
@@ -214,7 +234,7 @@ const MapScreen = (): React.JSX.Element => {
     AsyncStorage.setItem(ONBOARDED_KEY, '1');
   }, []);
 
-  // ── new-plant modal state ─────────────────────────────────────────────────
+  // ── new-plant modal state ──────────────────────────────────────────────────────
   const [showModal,      setShowModal]      = useState(false);
   const [modalName,      setModalName]      = useState('');
   const [modalNotes,     setModalNotes]     = useState('');
@@ -222,7 +242,7 @@ const MapScreen = (): React.JSX.Element => {
   const [modalPlantType, setModalPlantType] = useState<PlantType>('plant');
   const [pendingBounds,  setPendingBounds]  = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
-  // ── scan state ────────────────────────────────────────────────────────────
+  // ── scan state ────────────────────────────────────────────────────────────────────
   const [scanning,       setScanning]       = useState(false);
   const [plantsToPlace,  setPlantsToPlace]  = useState<IdentifiedPlant[]>([]);
 
@@ -259,13 +279,13 @@ const MapScreen = (): React.JSX.Element => {
     }
     if (movingPlant) return { text: `Tik om ${movingPlant.commonName} te verplaatsen`, onCancel: () => setMovingPlant(null) };
     if (drawStep === 'first' && !drawTarget) return { text: 'Tik op het startpunt van de nieuwe plant of zone', onCancel: cancelDraw };
-    if (drawStep === 'first' && drawTarget) return { text: `Tik op startpunt voor ${drawTarget.commonName}`, onCancel: cancelDraw };
+    if (drawStep === 'first' && drawTarget)  return { text: `Tik op startpunt voor ${drawTarget.commonName}`, onCancel: cancelDraw };
     if (drawStep === 'second') return { text: 'Tik op het eindpunt (tegenovergestelde hoek)', onCancel: cancelDraw };
     return null;
   }, [plantsToPlace, movingPlant, drawStep, drawTarget, cancelDraw]);
 
-  // ── map tap ───────────────────────────────────────────────────────────────
-  const handleMapPress = useCallback((x: number, y: number) => {
+  // ── map tap ──────────────────────────────────────────────────────────────────────────
+const handleMapPress = useCallback((x: number, y: number) => {
     if (plantsToPlace.length > 0) {
       const [next, ...rest] = plantsToPlace;
       const g = ensureGarden();
@@ -301,11 +321,11 @@ const MapScreen = (): React.JSX.Element => {
     ]);
   }, [removePlant]);
 
-  // ── confirm new plant/zone modal ──────────────────────────────────────────
+  // ── confirm new plant/zone modal ─────────────────────────────────────────────────────
   const handleConfirmModal = () => {
     if (!pendingBounds || !modalName.trim()) return;
-    const g = ensureGarden();
-    const id = newId();
+    const g     = ensureGarden();
+    const id    = newId();
     const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
     addPlant({
       id, gardenId: g.id,
@@ -327,8 +347,8 @@ const MapScreen = (): React.JSX.Element => {
     setForceShowMap(false);
   };
 
-  // ── scan ──────────────────────────────────────────────────────────────────
-  const handleScan = async (fromGallery = false) => {
+  // ── scan ─────────────────────────────────────────────────────────────────────────────
+const handleScan = async (fromGallery = false) => {
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -363,8 +383,8 @@ const MapScreen = (): React.JSX.Element => {
     setDrawStep('first');
   };
 
-  // ── empty state ───────────────────────────────────────────────────────────
-  if (!showMap) {
+  // ── empty state ───────────────────────────────────────────────────────────────────────
+if (!showMap) {
     return (
       <SafeAreaView style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>🌳</Text>
@@ -401,6 +421,17 @@ const MapScreen = (): React.JSX.Element => {
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
             </View>
           )}
+
+          {/* Companion planting toggle — issue #15 */}
+          <TouchableOpacity
+            style={[styles.compatBtn, showCompat && styles.compatBtnActive]}
+            onPress={handleToggleCompat}
+            disabled={loadingCompat || !garden || garden.plants.length < 2}>
+            {loadingCompat
+              ? <ActivityIndicator size="small" color="#2d6a4f" />
+              : <Text style={styles.compatBtnText}>{showCompat ? '🌿 Verberg' : '🌿 Buren'}</Text>}
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
             {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
           </TouchableOpacity>
@@ -450,6 +481,8 @@ const MapScreen = (): React.JSX.Element => {
               highlightPoint={drawStep === 'second' ? firstPoint : null}
               movingPlantId={movingPlant?.id}
               onMapPress={handleMapPress}
+              compatibility={compat}
+              showCompatibility={showCompat}
             />
           </ScrollView>
         </ScrollView>
@@ -559,19 +592,19 @@ const MapScreen = (): React.JSX.Element => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container:      { flex: 1, backgroundColor: '#fff' },
   emptyContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#fff', padding: 32, gap: 14,
   },
-  emptyIcon: { fontSize: 64 },
-  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
-  emptySubtitle: { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
+  emptyIcon:         { fontSize: 64 },
+  emptyTitle:        { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  emptySubtitle:     { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
   emptyScanBtn: {
     backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14,
     borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center',
   },
-  emptyScanBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  emptyScanBtnText:   { color: '#fff', fontWeight: '700', fontSize: 16 },
   emptyManualBtn: {
     backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 14,
     borderRadius: 14, minWidth: 200, alignItems: 'center',
@@ -583,11 +616,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: '#e9ecef',
   },
-  gardenName: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  plantCount: { fontSize: 13, color: '#6b705c', marginTop: 2 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  gardenName:  { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  plantCount:  { fontSize: 13, color: '#6b705c', marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
+  // Companion planting button
+  compatBtn: {
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#b7e4c7', minWidth: 70,
+  },
+  compatBtnActive: { backgroundColor: '#d8f3dc', borderColor: '#2d6a4f' },
+  compatBtnText:   { fontSize: 12, color: '#2d6a4f', fontWeight: '600' },
   scanBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
@@ -605,17 +646,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: '#2d6a4f', gap: 8,
   },
-  bannerLeft: { flex: 1 },
-  bannerText: { fontSize: 13, color: '#1b4332', fontWeight: '600' },
-  bannerExtra: { fontSize: 11, color: '#2d6a4f', marginTop: 1 },
+  bannerLeft:    { flex: 1 },
+  bannerText:    { fontSize: 13, color: '#1b4332', fontWeight: '600' },
+  bannerExtra:   { fontSize: 11, color: '#2d6a4f', marginTop: 1 },
   bannerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  bannerSkip: { fontSize: 13, color: '#6b705c', fontWeight: '600' },
-  bannerCancel: { fontSize: 18, color: '#e63946', fontWeight: '700' },
+  bannerSkip:    { fontSize: 13, color: '#6b705c', fontWeight: '600' },
+  bannerCancel:  { fontSize: 18, color: '#e63946', fontWeight: '700' },
   hintBar: {
     paddingHorizontal: 16, paddingVertical: 6,
     backgroundColor: '#f8f9fa', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
   },
-  hintText: { fontSize: 11, color: '#aaa', textAlign: 'center' },
+  hintText:   { fontSize: 11, color: '#aaa', textAlign: 'center' },
   mapWrapper: { flex: 1, overflow: 'hidden' },
   scrollOuter: { flex: 1 },
   fab: {
@@ -626,40 +667,40 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalOverlay:  { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 24, gap: 14, paddingBottom: 36,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  modalTitle:    { fontSize: 20, fontWeight: '700', color: '#1b4332' },
   modalSubtitle: { fontSize: 13, color: '#6b705c', marginTop: -8 },
   modalInput: {
     backgroundColor: '#f8f9fa', borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
     paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#1b4332',
   },
   modalInputNotes: { fontSize: 14, minHeight: 60, textAlignVertical: 'top' },
-  typeRow: { flexDirection: 'row', gap: 8 },
+  typeRow:  { flexDirection: 'row', gap: 8 },
   typeBtn: {
     flex: 1, alignItems: 'center', paddingVertical: 10,
     borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
     backgroundColor: '#f8f9fa', gap: 4,
   },
-  typeBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
-  typeBtnIcon: { fontSize: 18 },
-  typeBtnLabel: { fontSize: 11, color: '#6b705c', fontWeight: '600' },
-  typeBtnLabelActive: { color: '#2d6a4f' },
+  typeBtnActive:       { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
+  typeBtnIcon:         { fontSize: 18 },
+  typeBtnLabel:        { fontSize: 11, color: '#6b705c', fontWeight: '600' },
+  typeBtnLabelActive:  { color: '#2d6a4f' },
   colorLabel: { fontSize: 13, fontWeight: '600', color: '#6b705c' },
   colorSwatch: {
     width: 36, height: 36, borderRadius: 18, marginRight: 10,
     borderWidth: 2, borderColor: 'transparent',
   },
   colorSwatchSelected: { borderColor: '#1b4332', transform: [{ scale: 1.2 }] },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  modalButtons:     { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalCancelBtn: {
     flex: 1, borderWidth: 1, borderColor: '#e9ecef', borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',
   },
-  modalCancelText: { color: '#6b705c', fontWeight: '600', fontSize: 15 },
+  modalCancelText:       { color: '#6b705c', fontWeight: '600', fontSize: 15 },
   modalConfirmBtn: {
     flex: 2, backgroundColor: '#2d6a4f', borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',
@@ -672,24 +713,24 @@ const menuStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 28, overflow: 'hidden' },
   header: { backgroundColor: '#1b4332', paddingHorizontal: 20, paddingVertical: 16, marginBottom: 6 },
-  plantName: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  plantName:    { fontSize: 18, fontWeight: '700', color: '#fff' },
   plantSpecies: { fontSize: 13, color: '#b7e4c7', fontStyle: 'italic', marginTop: 2 },
   item: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef', gap: 14,
   },
-  itemDanger: { borderBottomWidth: 0 },
-  itemIcon: { fontSize: 20, width: 28, textAlign: 'center' },
-  colorDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#e9ecef' },
-  itemLabel: { fontSize: 16, color: '#1b4332', fontWeight: '500', flex: 1 },
+  itemDanger:      { borderBottomWidth: 0 },
+  itemIcon:        { fontSize: 20, width: 28, textAlign: 'center' },
+  colorDot:        { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#e9ecef' },
+  itemLabel:       { fontSize: 16, color: '#1b4332', fontWeight: '500', flex: 1 },
   itemLabelDanger: { fontSize: 16, color: '#e63946', fontWeight: '500', flex: 1 },
-  chevron: { fontSize: 12, color: '#aaa' },
-  colorRow: { marginLeft: 20, marginBottom: 4 },
+  chevron:         { fontSize: 12, color: '#aaa' },
+  colorRow:        { marginLeft: 20, marginBottom: 4 },
   colorRowContent: { paddingRight: 20, gap: 10, paddingVertical: 8 },
-  swatch: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: 'transparent' },
+  swatch:         { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: 'transparent' },
   swatchSelected: { borderColor: '#1b4332', transform: [{ scale: 1.2 }] },
-  noteArea: { marginHorizontal: 20, marginBottom: 4, gap: 8 },
+  noteArea:  { marginHorizontal: 20, marginBottom: 4, gap: 8 },
   noteInput: {
     backgroundColor: '#f8f9fa', borderRadius: 10, borderWidth: 1, borderColor: '#e9ecef',
     paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#1b4332',
