@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Alert,
   TouchableOpacity, Modal, TextInput, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator,
+  Platform, ScrollView, ActivityIndicator, FlatList,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,15 +11,17 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
+import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
+import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
 type DrawStep = 'first' | 'second';
+type FabMode = 'idle' | 'menu' | 'boundary';
 type PlantType = 'plant' | 'seed' | 'seedling' | 'cutting';
 
 const PLANT_TYPES: { type: PlantType; icon: string; label: string }[] = [
@@ -30,6 +32,18 @@ const PLANT_TYPES: { type: PlantType; icon: string; label: string }[] = [
 ];
 
 const newId = () => `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const newBoundaryId = () => `boundary-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const BOUNDARY_TYPES: { type: BoundaryType; emoji: string; label: string; isLine: boolean }[] = [
+  { type: 'fence',  emoji: '🪵', label: 'Schutting', isLine: true },
+  { type: 'wall',   emoji: '🧱', label: 'Muur',      isLine: true },
+  { type: 'hedge',  emoji: '🌿', label: 'Haag',      isLine: true },
+  { type: 'path',   emoji: '🪨', label: 'Looppad',   isLine: true },
+  { type: 'forest', emoji: '🌳', label: 'Bebossing',  isLine: false },
+  { type: 'lawn',   emoji: '🌾', label: 'Gras',      isLine: false },
+  { type: 'patio',  emoji: '🪨', label: 'Terras',    isLine: false },
+  { type: 'pond',   emoji: '🌊', label: 'Vijver',    isLine: false },
+];
 
 const addDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
@@ -195,6 +209,8 @@ const MapScreen = (): React.JSX.Element => {
   const updatePlant  = useGardenStore((s) => s.updatePlant);
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
+  const addBoundary  = useGardenStore((s) => s.addBoundary);
+  const removeBoundary = useGardenStore((s) => s.removeBoundary);
 
   const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
@@ -204,6 +220,18 @@ const MapScreen = (): React.JSX.Element => {
   const [forceShowMap,        setForceShowMap]        = useState(false);
   const [showOnboarding,      setShowOnboarding]      = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
+
+  // Plant search state
+  const [showPlantSearch,     setShowPlantSearch]     = useState(false);
+  const [plantSearchQuery,    setPlantSearchQuery]    = useState('');
+
+  // Boundary state
+  const [fabMode,             setFabMode]             = useState<FabMode>('idle');
+  const [showBoundaryPicker,  setShowBoundaryPicker]  = useState(false);
+  const [pendingBoundaryType, setPendingBoundaryType] = useState<BoundaryType | null>(null);
+  const [pendingBoundaryIsLine, setPendingBoundaryIsLine] = useState(false);
+  const [boundaryDrawStep,    setBoundaryDrawStep]    = useState<DrawStep | null>(null);
+  const [boundaryFirstPoint,  setBoundaryFirstPoint]  = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -235,7 +263,7 @@ const MapScreen = (): React.JSX.Element => {
     return g;
   }, [garden, setGarden]);
 
-  const isInteractive = !!movingPlant || !!drawStep || plantsToPlace.length > 0;
+  const isInteractive = !!movingPlant || !!drawStep || plantsToPlace.length > 0 || !!boundaryDrawStep;
   const showMap = !!(garden && garden.plants.length > 0) || plantsToPlace.length > 0 || forceShowMap;
 
   const pendingTaskCount = useMemo(() => {
@@ -284,11 +312,38 @@ const MapScreen = (): React.JSX.Element => {
     if (drawStep === 'first' && !drawTarget) return { text: 'Tik op het startpunt van de nieuwe plant of zone', onCancel: cancelDraw };
     if (drawStep === 'first' && drawTarget) return { text: `Tik op startpunt voor ${drawTarget.commonName}`, onCancel: cancelDraw };
     if (drawStep === 'second') return { text: 'Tik op het eindpunt (tegenovergestelde hoek)', onCancel: cancelDraw };
+    if (boundaryDrawStep === 'first') return { text: 'Tik op het startpunt van de grens', onCancel: () => { setBoundaryDrawStep(null); setBoundaryFirstPoint(null); setPendingBoundaryType(null); } };
+    if (boundaryDrawStep === 'second') return { text: 'Tik op het eindpunt van de grens', onCancel: () => { setBoundaryDrawStep(null); setBoundaryFirstPoint(null); setPendingBoundaryType(null); } };
     return null;
-  }, [plantsToPlace, movingPlant, drawStep, drawTarget, cancelDraw]);
+  }, [plantsToPlace, movingPlant, drawStep, drawTarget, cancelDraw, boundaryDrawStep]);
 
   // ── map tap ───────────────────────────────────────────────────────────────
   const handleMapPress = useCallback((x: number, y: number) => {
+    // Boundary draw flow
+    if (boundaryDrawStep === 'first') {
+      setBoundaryFirstPoint({ x, y });
+      setBoundaryDrawStep('second');
+      return;
+    }
+    if (boundaryDrawStep === 'second' && boundaryFirstPoint && pendingBoundaryType) {
+      const boundary: GardenBoundary = pendingBoundaryIsLine
+        ? { id: newBoundaryId(), type: pendingBoundaryType, x1: boundaryFirstPoint.x, y1: boundaryFirstPoint.y, x2: x, y2: y }
+        : {
+            id: newBoundaryId(), type: pendingBoundaryType,
+            x: Math.min(boundaryFirstPoint.x, x),
+            y: Math.min(boundaryFirstPoint.y, y),
+            width:  Math.abs(x - boundaryFirstPoint.x) + 1,
+            height: Math.abs(y - boundaryFirstPoint.y) + 1,
+          };
+      ensureGarden();
+      addBoundary(boundary);
+      setBoundaryDrawStep(null);
+      setBoundaryFirstPoint(null);
+      setPendingBoundaryType(null);
+      setPendingBoundaryIsLine(false);
+      return;
+    }
+
     if (plantsToPlace.length > 0) {
       const [next, ...rest] = plantsToPlace;
       const g = ensureGarden();
@@ -315,7 +370,7 @@ const MapScreen = (): React.JSX.Element => {
         setShowModal(true);
       }
     }
-  }, [plantsToPlace, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant, ensureGarden]);
+  }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, plantsToPlace, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updatePlant, ensureGarden]);
 
   const handleDelete = useCallback((plant: Plant) => {
     Alert.alert('Verwijderen', `${plant.commonName} uit je tuin verwijderen?`, [
@@ -373,9 +428,10 @@ const MapScreen = (): React.JSX.Element => {
   };
 
   const handleScanPress = () => {
-    Alert.alert('Planten scannen', 'Kies een bron', [
-      { text: '📷 Camera',  onPress: () => handleScan(false) },
-      { text: '🖼️ Galerij', onPress: () => handleScan(true) },
+    Alert.alert('Plant toevoegen', 'Kies een methode', [
+      { text: '📷 Camera',   onPress: () => handleScan(false) },
+      { text: '🖼️ Galerij',  onPress: () => handleScan(true) },
+      { text: '🔍 Database', onPress: () => { setPlantSearchQuery(''); setShowPlantSearch(true); } },
       { text: 'Annuleren', style: 'cancel' },
     ]);
   };
@@ -385,6 +441,48 @@ const MapScreen = (): React.JSX.Element => {
     setForceShowMap(true);
     setDrawStep('first');
   };
+
+  // ── plant search ───────────────────────────────────────────────────────────
+  const currentMonth = new Date().getMonth();
+  const seasonalPlants = useMemo<PlantProfile[]>(() =>
+    plantDatabase.filter((p) => p.sowMonths?.includes(currentMonth)).slice(0, 6),
+  [currentMonth]);
+
+  const filteredPlants = useMemo<PlantProfile[]>(() => {
+    const q = plantSearchQuery.toLowerCase().trim();
+    if (!q) return plantDatabase;
+    return plantDatabase.filter(
+      (p) =>
+        p.commonName.toLowerCase().includes(q) ||
+        p.species.toLowerCase().includes(q),
+    );
+  }, [plantSearchQuery]);
+
+  const handleSelectPlant = useCallback((profile: PlantProfile) => {
+    const ip: IdentifiedPlant = {
+      species: profile.species,
+      commonName: profile.commonName,
+      confidence: 1,
+      careTips: profile.careTips,
+      waterIntervalDays: profile.waterIntervalDays,
+      fertilizeIntervalDays: profile.fertilizeIntervalDays,
+      harvestMonths: profile.harvestMonths,
+    };
+    setPlantsToPlace([ip]);
+    setShowPlantSearch(false);
+    ensureGarden();
+    setForceShowMap(true);
+  }, [ensureGarden]);
+
+  // ── boundary picker ───────────────────────────────────────────────────────
+  const handleSelectBoundaryType = useCallback((bt: { type: BoundaryType; isLine: boolean }) => {
+    setShowBoundaryPicker(false);
+    setPendingBoundaryType(bt.type);
+    setPendingBoundaryIsLine(bt.isLine);
+    ensureGarden();
+    setForceShowMap(true);
+    setBoundaryDrawStep('first');
+  }, [ensureGarden]);
 
   // ── empty state ───────────────────────────────────────────────────────────
   if (!showMap) {
@@ -505,20 +603,38 @@ const MapScreen = (): React.JSX.Element => {
               onPlantLongPress={(p) => setMenuPlant(p)}
               viewMode="2d"
               isInteractive={isInteractive}
-              highlightPoint={drawStep === 'second' ? firstPoint : null}
+              highlightPoint={
+                boundaryDrawStep === 'second' ? boundaryFirstPoint :
+                drawStep === 'second' ? firstPoint : null
+              }
               movingPlantId={movingPlant?.id}
               onMapPress={handleMapPress}
               companionPairs={companionPairs}
               showCompanionOverlay={showCompanionOverlay}
               thirstyPlantIds={thirstyPlantIds}
+              boundaries={currentGarden.boundaries ?? []}
             />
           </ScrollView>
         </ScrollView>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => { ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
-            <Text style={styles.fabText}>＋</Text>
+          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
+            <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
           </TouchableOpacity>
+        )}
+
+        {/* FAB menu */}
+        {!isInteractive && fabMode === 'menu' && (
+          <View style={styles.fabMenu}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setForceShowMap(true); setDrawStep('first'); }} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>🌱</Text>
+              <Text style={styles.fabMenuLabel}>Plant/zone toevoegen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>🏡</Text>
+              <Text style={styles.fabMenuLabel}>Grens toevoegen</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -535,6 +651,84 @@ const MapScreen = (): React.JSX.Element => {
         onChangeColor={(p, color) => updatePlant({ ...p, color })}
         onSaveNote={(p, notes) => updatePlant({ ...p, notes: notes.trim() || undefined })}
       />
+
+      {/* Plant search modal */}
+      <Modal visible={showPlantSearch} transparent animationType="slide" onRequestClose={() => setShowPlantSearch(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+            <Text style={styles.modalTitle}>🔍 Plantendatabase</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Zoek op naam of soort…"
+              placeholderTextColor="#aaa"
+              value={plantSearchQuery}
+              onChangeText={setPlantSearchQuery}
+              autoFocus
+              returnKeyType="search"
+            />
+            {!plantSearchQuery.trim() && seasonalPlants.length > 0 && (
+              <>
+                <Text style={styles.colorLabel}>Nu in het seizoen</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                  {seasonalPlants.map((p) => (
+                    <TouchableOpacity
+                      key={p.species}
+                      style={styles.seasonChip}
+                      onPress={() => handleSelectPlant(p)}
+                      activeOpacity={0.8}>
+                      <Text style={styles.seasonChipEmoji}>{p.emoji}</Text>
+                      <Text style={styles.seasonChipLabel}>{p.commonName}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+            <FlatList
+              data={filteredPlants}
+              keyExtractor={(item) => item.species}
+              style={{ flex: 1 }}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.plantSearchRow} onPress={() => handleSelectPlant(item)} activeOpacity={0.7}>
+                  <Text style={styles.plantSearchEmoji}>{item.emoji}</Text>
+                  <View style={styles.plantSearchInfo}>
+                    <Text style={styles.plantSearchName}>{item.commonName}</Text>
+                    <Text style={styles.plantSearchSpecies}>{item.species}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowPlantSearch(false)}>
+              <Text style={styles.modalCancelText}>Annuleren</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Boundary picker modal */}
+      <Modal visible={showBoundaryPicker} transparent animationType="slide" onRequestClose={() => setShowBoundaryPicker(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowBoundaryPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>🏡 Grens toevoegen</Text>
+            <Text style={styles.modalSubtitle}>Kies het type grens en tik twee punten op de kaart</Text>
+            <View style={styles.boundaryGrid}>
+              {BOUNDARY_TYPES.map((bt) => (
+                <TouchableOpacity
+                  key={bt.type}
+                  style={styles.boundaryBtn}
+                  onPress={() => handleSelectBoundaryType(bt)}
+                  activeOpacity={0.8}>
+                  <Text style={styles.boundaryBtnEmoji}>{bt.emoji}</Text>
+                  <Text style={styles.boundaryBtnLabel}>{bt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowBoundaryPicker(false)}>
+              <Text style={styles.modalCancelText}>Annuleren</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* New plant/zone modal */}
       <Modal visible={showModal} transparent animationType="slide">
@@ -714,6 +908,48 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
+  fabMenu: {
+    position: 'absolute', bottom: 80, right: 16,
+    backgroundColor: '#fff', borderRadius: 14,
+    paddingVertical: 8,
+    elevation: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6,
+    minWidth: 200,
+  },
+  fabMenuItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 13, gap: 12,
+  },
+  fabMenuIcon: { fontSize: 22 },
+  fabMenuLabel: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  // Plant search
+  plantSearchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef',
+  },
+  plantSearchEmoji: { fontSize: 26, width: 36, textAlign: 'center' },
+  plantSearchInfo: { flex: 1 },
+  plantSearchName: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  plantSearchSpecies: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
+  seasonChip: {
+    alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12,
+    backgroundColor: '#f1f8f3', borderRadius: 12,
+    borderWidth: 1, borderColor: '#b7e4c7', marginRight: 8, gap: 4,
+  },
+  seasonChipEmoji: { fontSize: 22 },
+  seasonChipLabel: { fontSize: 11, fontWeight: '600', color: '#2d6a4f' },
+  // Boundary picker
+  boundaryGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    justifyContent: 'center', marginVertical: 8,
+  },
+  boundaryBtn: {
+    alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 12, borderWidth: 1.5, borderColor: '#e9ecef',
+    backgroundColor: '#f8f9fa', minWidth: 80,
+  },
+  boundaryBtnEmoji: { fontSize: 24, marginBottom: 4 },
+  boundaryBtnLabel: { fontSize: 12, color: '#1b4332', fontWeight: '600' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,

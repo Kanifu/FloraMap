@@ -100,6 +100,25 @@ export interface PlantZone {
   notes?: string;
 }
 
+export type BoundaryType =
+  | 'fence'       // 🪵 Schutting
+  | 'wall'        // 🧱 Muur
+  | 'hedge'       // 🌿 Haag
+  | 'forest'      // 🌳 Bebossing
+  | 'lawn'        // 🌾 Gras
+  | 'patio'       // 🪨 Terras
+  | 'pond'        // 🌊 Vijver
+  | 'path';       // 🪵 Looppad
+
+export interface GardenBoundary {
+  id: string;
+  type: BoundaryType;
+  // Rechthoekig vlak (voor lawn, patio, pond, forest):
+  x?: number; y?: number; width?: number; height?: number;
+  // Lijn/looppad (voor fence, wall, hedge, path) — 2 punten:
+  x1?: number; y1?: number; x2?: number; y2?: number;
+}
+
 export interface Garden {
   id: string;
   userId: string;
@@ -108,6 +127,7 @@ export interface Garden {
   plants: Plant[];
   zones?: PlantZone[];
   tasks?: GardenTask[];
+  boundaries?: GardenBoundary[];
   lastScannedAt?: string;
   northOrientationDeg?: number;
 }

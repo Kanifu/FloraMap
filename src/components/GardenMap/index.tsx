@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { StyleSheet, Pressable } from 'react-native';
-import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path } from 'react-native-svg';
-import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
+import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Line } from 'react-native-svg';
+import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary, BoundaryType } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM  = 30;
@@ -198,6 +198,19 @@ const arcPath = (x1: number, y1: number, x2: number, y2: number): string => {
   return `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`;
 };
 
+// ── Boundary config ───────────────────────────────────────────────────────────
+
+const BOUNDARY_CONFIG: Record<BoundaryType, { fill: string; stroke: string; emoji: string; isLine: boolean }> = {
+  fence:  { fill: 'none',      stroke: '#8d6e63', emoji: '🪵', isLine: true  },
+  wall:   { fill: 'none',      stroke: '#9e9e9e', emoji: '🧱', isLine: true  },
+  hedge:  { fill: 'none',      stroke: '#388e3c', emoji: '🌿', isLine: true  },
+  forest: { fill: '#2e7d3222', stroke: '#2e7d32', emoji: '🌳', isLine: false },
+  lawn:   { fill: '#81c78422', stroke: '#52b788', emoji: '🌾', isLine: false },
+  patio:  { fill: '#bdbdbd22', stroke: '#9e9e9e', emoji: '🪨', isLine: false },
+  pond:   { fill: '#64b5f622', stroke: '#1565c0', emoji: '🌊', isLine: false },
+  path:   { fill: '#bcaaa422', stroke: '#8d6e63', emoji: '🪵', isLine: false },
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface GardenMapProps {
@@ -212,6 +225,7 @@ interface GardenMapProps {
   companionPairs?: CompanionPair[];
   showCompanionOverlay?: boolean;
   thirstyPlantIds?: string[];    // plants with overdue water tasks (#23)
+  boundaries?: GardenBoundary[];
 }
 
 const LONG_PRESS_MS = 300;
@@ -228,6 +242,7 @@ export const GardenMap = ({
   companionPairs = [],
   showCompanionOverlay = false,
   thirstyPlantIds = [],
+  boundaries = [],
 }: GardenMapProps): React.JSX.Element => {
 
   // ── Fast long-press via manual timer ────────────────────────────────────────
@@ -278,6 +293,74 @@ export const GardenMap = ({
         {garden.polygons.map((polygon) => (
           <Polygon key={polygon.id} points={toSvgPoints(polygon)} fill={POLYGON_COLORS[polygon.type]} />
         ))}
+
+        {/* ── Boundaries ────────────────────────────────────────────────────── */}
+        {boundaries.map((b) => {
+          const cfg = BOUNDARY_CONFIG[b.type];
+          if (cfg.isLine) {
+            // Lijn-boundaries: dikke lijn van (x1,y1) naar (x2,y2)
+            const lx1 = (b.x1 ?? 0) * SCALE;
+            const ly1 = (b.y1 ?? 0) * SCALE;
+            const lx2 = (b.x2 ?? 0) * SCALE;
+            const ly2 = (b.y2 ?? 0) * SCALE;
+            return (
+              <G key={b.id}>
+                <Line
+                  x1={lx1} y1={ly1}
+                  x2={lx2} y2={ly2}
+                  stroke={cfg.stroke} strokeWidth={6}
+                  strokeLinecap="round"
+                  opacity={0.8}
+                />
+                <SvgText
+                  x={(lx1 + lx2) / 2} y={(ly1 + ly2) / 2 + 6}
+                  textAnchor="middle" fontSize={14}
+                  opacity={0.9}>
+                  {cfg.emoji}
+                </SvgText>
+              </G>
+            );
+          } else {
+            // Vlak-boundaries: rechthoek met fill + stroke
+            const bLeft  = (b.x ?? 0) * SCALE;
+            const bTop   = (b.y ?? 0) * SCALE;
+            const bW     = (b.width  ?? 1) * SCALE;
+            const bH     = (b.height ?? 1) * SCALE;
+            const bCx    = bLeft + bW / 2;
+            const bCy    = bTop  + bH / 2;
+            const eCols  = Math.max(1, Math.floor(bW / EMOJI_STEP));
+            const eRows  = Math.max(1, Math.floor(bH / EMOJI_STEP));
+            const eOffX  = (bW - eCols * EMOJI_STEP) / 2 + EMOJI_STEP / 2;
+            const eOffY  = (bH - eRows * EMOJI_STEP) / 2 + EMOJI_STEP / 2;
+            return (
+              <G key={b.id}>
+                <Rect
+                  x={bLeft} y={bTop} width={bW} height={bH}
+                  fill={cfg.fill} stroke={cfg.stroke} strokeWidth={1.5}
+                  strokeDasharray="6,4" opacity={0.45} rx={8}
+                />
+                {Array.from({ length: eRows * eCols }, (_, i) => {
+                  const row = Math.floor(i / eCols);
+                  const col = i % eCols;
+                  return (
+                    <SvgText
+                      key={i}
+                      x={bLeft + eOffX + col * EMOJI_STEP}
+                      y={bTop  + eOffY + row * EMOJI_STEP + 6}
+                      textAnchor="middle" fontSize={16}
+                      opacity={0.45}>
+                      {cfg.emoji}
+                    </SvgText>
+                  );
+                })}
+                <SvgText x={bCx} y={bCy + 5} textAnchor="middle" fontSize={10}
+                  fill={cfg.stroke} fontWeight="700" opacity={0.8}>
+                  {b.type}
+                </SvgText>
+              </G>
+            );
+          }
+        })}
 
         {/* ── Companion overlay ─────────────────────────────────────────────── */}
         {showCompanionOverlay && companionPairs.map((pair, idx) => {

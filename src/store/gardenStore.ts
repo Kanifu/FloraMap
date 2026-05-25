@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, GardenBoundary } from '@/models';
 
 interface GardenState {
   garden: Garden | null;
@@ -21,6 +21,8 @@ interface GardenActions {
   acceptDiffProposal: (proposalId: string) => void;
   rejectDiffProposal: (proposalId: string) => void;
   setScanning: (isScanning: boolean) => void;
+  addBoundary: (boundary: GardenBoundary) => void;
+  removeBoundary: (boundaryId: string) => void;
 }
 
 export const useGardenStore = create<GardenState & GardenActions>()(
@@ -161,6 +163,14 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       setScanning: (isScanning) => set({ isScanning }),
+
+      addBoundary: (boundary) => set((s) => ({
+        garden: s.garden ? { ...s.garden, boundaries: [...(s.garden.boundaries ?? []), boundary] } : null,
+      })),
+
+      removeBoundary: (id) => set((s) => ({
+        garden: s.garden ? { ...s.garden, boundaries: (s.garden.boundaries ?? []).filter(b => b.id !== id) } : null,
+      })),
     }),
     {
       name: 'garden-storage',

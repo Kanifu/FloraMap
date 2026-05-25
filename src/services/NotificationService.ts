@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Garden } from '@/models';
+import { getCachedLocation } from '@/utils/location';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -70,4 +71,41 @@ export const scheduleDailyMaintenanceNotification = async (
       repeats: true,
     },
   });
+};
+
+export const checkAndScheduleFrostAlert = async (): Promise<void> => {
+  // 1. Vraag permissie (expo-notifications, al aanwezig)
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return;
+
+  // 2. Haal locatie op via getCachedLocation()
+  const loc = await getCachedLocation();
+
+  // 3. Open-Meteo: hourly temperatuur komende 48u
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=temperature_2m&forecast_hours=48&timezone=auto`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const temps: number[] = data.hourly?.temperature_2m ?? [];
+
+  // 4. Laagste nachttemperatuur (uur 20:00-08:00)
+  const nightTemps = temps.filter((_, i) => { const h = i % 24; return h >= 20 || h < 8; });
+  if (nightTemps.length === 0) return;
+  const minTemp = Math.min(...nightTemps);
+
+  // 5. Bij vorst (≤ 2°C): schedule een notificatie voor 20:00 die avond
+  if (minTemp <= 2) {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    const tonight20 = new Date();
+    tonight20.setHours(20, 0, 0, 0);
+    if (tonight20 < new Date()) tonight20.setDate(tonight20.getDate() + 1);
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '❄️ Vorstmelding FloraMap',
+        body: `Vannacht vorst verwacht (${Math.round(minTemp)}°C) — dek gevoelige planten af!`,
+        sound: true,
+      },
+      trigger: { date: tonight20 },
+    });
+  }
 };

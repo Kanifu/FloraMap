@@ -14,6 +14,7 @@ import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
 import { getCachedLocation } from '@/utils/location';
+import { checkAndScheduleFrostAlert } from '@/services/NotificationService';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'geschiedenis';
@@ -306,7 +307,10 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   const currentMonth = new Date().getMonth();
 
-  useEffect(() => { fetchWeather().then(setWeather); }, []);
+  useEffect(() => {
+    fetchWeather().then(setWeather);
+    checkAndScheduleFrostAlert().catch(() => {}); // stil falen als geen locatie/permissie
+  }, []);
 
   const harvestAlerts = useMemo(() => {
     if (!garden) return [];
