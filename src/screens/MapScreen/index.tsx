@@ -13,7 +13,7 @@ import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
-import { OnboardingModal } from '@/components/OnboardingModal';
+import { OnboardingModal, OnboardingPreferences } from '@/components/OnboardingModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
@@ -211,9 +211,11 @@ const MapScreen = (): React.JSX.Element => {
     });
   }, []);
 
-  const handleOnboardingDone = useCallback(() => {
+  const handleOnboardingDone = useCallback((prefs: OnboardingPreferences) => {
     setShowOnboarding(false);
+    // Persist onboarding completion + user preferences (issue #38)
     AsyncStorage.setItem(ONBOARDED_KEY, '1');
+    AsyncStorage.setItem('floramap_onboarding_prefs', JSON.stringify(prefs));
   }, []);
 
   // ── new-plant modal state ─────────────────────────────────────────────────
@@ -403,6 +405,10 @@ const MapScreen = (): React.JSX.Element => {
         <TouchableOpacity style={styles.emptyManualBtn} onPress={startManualAdd}>
           <Text style={styles.emptyManualBtnText}>✏️ Handmatig toevoegen</Text>
         </TouchableOpacity>
+        {/* Issue #29 — plant database shortcut on empty state */}
+        <TouchableOpacity style={styles.emptyManualBtn} onPress={() => navigation.navigate('PlantDatabase')}>
+          <Text style={styles.emptyManualBtnText}>🔍 Plantendatabase</Text>
+        </TouchableOpacity>
         <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
       </SafeAreaView>
     );
@@ -426,6 +432,12 @@ const MapScreen = (): React.JSX.Element => {
           )}
           <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
             {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
+          </TouchableOpacity>
+          {/* Issue #29 — navigate to plant database */}
+          <TouchableOpacity
+            style={styles.companionBtn}
+            onPress={() => navigation.navigate('PlantDatabase')}>
+            <Text style={styles.companionBtnText}>🔍</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
