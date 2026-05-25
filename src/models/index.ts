@@ -148,6 +148,18 @@ export interface Garden {
   northOrientationDeg?: number;
 }
 
+export interface SeedPacket {
+  id: string;
+  commonName: string;
+  species?: string;
+  emoji?: string;
+  purchaseDate?: string;   // ISO date
+  expiryYear?: number;     // e.g. 2026
+  amountGrams?: number;
+  notes?: string;
+  isUsedUp?: boolean;
+}
+
 export interface ScanResult {
   gardenSnapshot: Garden;
   newPlants: Plant[];

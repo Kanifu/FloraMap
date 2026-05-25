@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, GardenBoundary, GardenStats, BADGE_DEFINITIONS, HarvestEntry, RotationRecord } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, GardenBoundary, GardenStats, BADGE_DEFINITIONS, HarvestEntry, RotationRecord, SeedPacket } from '@/models';
 
 const DEFAULT_STATS: GardenStats = {
   currentStreak: 0,
@@ -17,6 +17,7 @@ interface GardenState {
   pendingDiffProposals: DiffProposal[];
   gardenStats: GardenStats;
   rotationHistory: RotationRecord[];
+  seedPackets: SeedPacket[];
 }
 
 interface GardenActions {
@@ -36,6 +37,9 @@ interface GardenActions {
   recordTaskCompletion: () => void;
   recordHarvest: (plantId: string, entry: HarvestEntry) => void;
   addRotationRecord: (record: RotationRecord) => void;
+  addSeedPacket: (packet: SeedPacket) => void;
+  updateSeedPacket: (packet: SeedPacket) => void;
+  removeSeedPacket: (id: string) => void;
 }
 
 export const useGardenStore = create<GardenState & GardenActions>()(
@@ -46,6 +50,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       pendingDiffProposals: [],
       gardenStats: DEFAULT_STATS,
       rotationHistory: [],
+      seedPackets: [],
 
       setGarden: (garden) => set({ garden }),
 
@@ -255,11 +260,23 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       addRotationRecord: (record) => set((s) => ({
         rotationHistory: [...s.rotationHistory, record],
       })),
+
+      addSeedPacket: (packet) => set((s) => ({
+        seedPackets: [...s.seedPackets, packet],
+      })),
+
+      updateSeedPacket: (packet) => set((s) => ({
+        seedPackets: s.seedPackets.map((p) => (p.id === packet.id ? packet : p)),
+      })),
+
+      removeSeedPacket: (id) => set((s) => ({
+        seedPackets: s.seedPackets.filter((p) => p.id !== id),
+      })),
     }),
     {
       name: 'garden-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ garden: state.garden, gardenStats: state.gardenStats, rotationHistory: state.rotationHistory }),
+      partialize: (state) => ({ garden: state.garden, gardenStats: state.gardenStats, rotationHistory: state.rotationHistory, seedPackets: state.seedPackets }),
     },
   ),
 );

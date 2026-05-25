@@ -17,6 +17,7 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
+import { findOvercrowdedPlants } from '@/utils/plantSpacing';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -362,6 +363,19 @@ const MapScreen = (): React.JSX.Element => {
       if (rotationWarning) {
         Alert.alert('Gewasrotatie', rotationWarning, [{ text: 'Begrepen' }]);
       }
+      // Plant spacing check
+      const overcrowded = findOvercrowdedPlants(
+        { x: newPlant.x, y: newPlant.y, estimatedSizeM: newPlant.estimatedSizeM },
+        g.plants,
+      );
+      if (overcrowded.length > 0) {
+        const minDistanceCells = Math.max(1, Math.round((newPlant.estimatedSizeM ?? 0.4) * 2));
+        Alert.alert(
+          '📐 Plantafstand',
+          `Let op: ${overcrowded.length} plant(en) staan mogelijk te krap. Houd rekening met minimaal ${minDistanceCells} vakjes afstand.`,
+          [{ text: 'Begrepen' }],
+        );
+      }
       setPlantsToPlace(rest);
       return;
     }
@@ -675,6 +689,10 @@ const MapScreen = (): React.JSX.Element => {
             <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>🏡</Text>
               <Text style={styles.fabMenuLabel}>Grens toevoegen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); navigation.navigate('SeedInventory'); }} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>🌱</Text>
+              <Text style={styles.fabMenuLabel}>Zaadkast</Text>
             </TouchableOpacity>
           </View>
         )}

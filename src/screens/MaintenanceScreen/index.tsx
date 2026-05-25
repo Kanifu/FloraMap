@@ -18,7 +18,7 @@ import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } f
 import { plantDatabase } from '@/data/plantDatabase';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
-type Tab = 'taken' | 'planning' | 'zaai' | 'geschiedenis';
+type Tab = 'taken' | 'planning' | 'zaai' | 'stats' | 'geschiedenis';
 
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Begieten',
@@ -604,7 +604,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
-        {(['taken', 'planning', 'zaai', 'geschiedenis'] as Tab[]).map((tab) => (
+        {(['taken', 'planning', 'zaai', 'stats', 'geschiedenis'] as Tab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
@@ -616,6 +616,8 @@ const MaintenanceScreen = (): React.JSX.Element => {
                 ? 'Planning'
                 : tab === 'zaai'
                 ? 'Zaaikal.'
+                : tab === 'stats'
+                ? 'Stats'
                 : 'Log'}
             </Text>
           </TouchableOpacity>
@@ -792,6 +794,162 @@ const MaintenanceScreen = (): React.JSX.Element => {
           })}
         </ScrollView>
       )}
+
+      {/* ── Stats tab ── */}
+      {activeTab === 'stats' && (() => {
+        const PLANT_EMOJI_HINTS: Record<string, string> = {
+          tomaat: '🍅', komkommer: '🥒', paprika: '🫑', sla: '🥬', wortel: '🥕',
+          aardappel: '🥔', ui: '🧅', courgette: '🥒', basilicum: '🌿', aardbei: '🍓',
+        };
+        const getPlantEmoji = (name: string): string => {
+          const lower = name.toLowerCase();
+          for (const [key, emoji] of Object.entries(PLANT_EMOJI_HINTS)) {
+            if (lower.includes(key)) return emoji;
+          }
+          return '🌿';
+        };
+
+        const plants = garden?.plants ?? [];
+        const totalPlants = plants.length;
+        const totalCompleted = plants.reduce(
+          (sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length,
+          0,
+        );
+        const activeTasks = plants.reduce(
+          (sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length,
+          0,
+        );
+        const totalHarvestGrams = plants.reduce((sum, p) => {
+          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0);
+        }, 0);
+
+        // Top 5 harvest plants
+        const harvestRanking = plants
+          .map((p) => ({
+            id: p.id,
+            name: p.commonName,
+            emoji: getPlantEmoji(p.commonName),
+            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0),
+          }))
+          .filter((p) => p.totalGrams > 0)
+          .sort((a, b) => b.totalGrams - a.totalGrams)
+          .slice(0, 5);
+
+        // Task counts per type (completed)
+        const taskTypeCounts: Record<string, number> = {};
+        for (const p of plants) {
+          for (const t of p.maintenanceTasks) {
+            if (t.completedDate) {
+              taskTypeCounts[t.type] = (taskTypeCounts[t.type] ?? 0) + 1;
+            }
+          }
+        }
+        const taskTypeEntries = Object.entries(taskTypeCounts).sort((a, b) => b[1] - a[1]);
+        const maxTaskCount = taskTypeEntries.length > 0 ? taskTypeEntries[0][1] : 1;
+        const taskTypeIconLabel: Record<string, { icon: string; label: string }> = {
+          water: { icon: '💧', label: 'Begieten' },
+          fertilize: { icon: '🌱', label: 'Bemesten' },
+          prune: { icon: '✂️', label: 'Snoeien' },
+          repot: { icon: '🪴', label: 'Verpotten' },
+          treat: { icon: '🩹', label: 'Behandelen' },
+        };
+
+        const earnedBadgesList = gardenStats.badges;
+
+        return (
+          <ScrollView contentContainerStyle={styles.listContent}>
+            {/* Section 1: Tuin overzicht */}
+            <View style={statsStyles.section}>
+              <Text style={statsStyles.sectionTitle}>🌳 Tuin overzicht</Text>
+              <View style={statsStyles.statRow}>
+                <View style={statsStyles.statCard}>
+                  <Text style={statsStyles.statValue}>{totalPlants}</Text>
+                  <Text style={statsStyles.statLabel}>Planten</Text>
+                </View>
+                <View style={statsStyles.statCard}>
+                  <Text style={statsStyles.statValue}>{totalCompleted}</Text>
+                  <Text style={statsStyles.statLabel}>Taken afgerond</Text>
+                </View>
+                <View style={statsStyles.statCard}>
+                  <Text style={statsStyles.statValue}>{activeTasks}</Text>
+                  <Text style={statsStyles.statLabel}>Open taken</Text>
+                </View>
+              </View>
+              <View style={statsStyles.harvestRow}>
+                <Text style={statsStyles.harvestLabel}>🍓 Totale oogst</Text>
+                <Text style={statsStyles.harvestValue}>
+                  {totalHarvestGrams > 0 ? `${totalHarvestGrams}g` : 'Nog niets geoogst'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Section 2: Streak & badges */}
+            <View style={statsStyles.section}>
+              <Text style={statsStyles.sectionTitle}>🔥 Streak & badges</Text>
+              <View style={statsStyles.streakCard}>
+                <Text style={statsStyles.streakMain}>
+                  {gardenStats.currentStreak > 0 ? '🔥 ' : ''}{gardenStats.currentStreak} {gardenStats.currentStreak === 1 ? 'dag actief' : 'dagen actief'}
+                </Text>
+                <Text style={statsStyles.streakSub}>
+                  Record: {gardenStats.longestStreak} dagen
+                </Text>
+                <Text style={statsStyles.streakSub}>
+                  {gardenStats.totalTasksCompleted} taken afgerond
+                </Text>
+              </View>
+              {earnedBadgesList.length > 0 ? (
+                <View style={statsStyles.badgesWrap}>
+                  {earnedBadgesList.map((b) => (
+                    <View key={b.id} style={statsStyles.badgeChip}>
+                      <Text style={statsStyles.badgeChipEmoji}>{b.emoji}</Text>
+                      <Text style={statsStyles.badgeChipName}>{b.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={statsStyles.emptyHint}>Nog geen badges — rond je eerste taken af!</Text>
+              )}
+            </View>
+
+            {/* Section 3: Oogstranking */}
+            {harvestRanking.length > 0 && (
+              <View style={statsStyles.section}>
+                <Text style={statsStyles.sectionTitle}>🏆 Oogstranking</Text>
+                {harvestRanking.map((item, idx) => (
+                  <View key={item.id} style={statsStyles.rankRow}>
+                    <Text style={statsStyles.rankNum}>#{idx + 1}</Text>
+                    <Text style={statsStyles.rankEmoji}>{item.emoji}</Text>
+                    <Text style={statsStyles.rankName}>{item.name}</Text>
+                    <Text style={statsStyles.rankGrams}>{item.totalGrams}g</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Section 4: Taken per type */}
+            {taskTypeEntries.length > 0 && (
+              <View style={statsStyles.section}>
+                <Text style={statsStyles.sectionTitle}>📊 Taken per type (afgerond)</Text>
+                {taskTypeEntries.map(([type, count]) => {
+                  const info = taskTypeIconLabel[type] ?? { icon: '🔧', label: type };
+                  const pct = count / maxTaskCount;
+                  return (
+                    <View key={type} style={statsStyles.barRow}>
+                      <Text style={statsStyles.barIcon}>{info.icon}</Text>
+                      <Text style={statsStyles.barLabel}>{info.label}</Text>
+                      <View style={statsStyles.barTrack}>
+                        <View style={[statsStyles.barFill, { flex: pct }]} />
+                        <View style={{ flex: 1 - pct }} />
+                      </View>
+                      <Text style={statsStyles.barCount}>{count}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+        );
+      })()}
 
       {/* ── Geschiedenis tab ── */}
       {activeTab === 'geschiedenis' && (
@@ -1025,6 +1183,63 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22, shadowRadius: 4, elevation: 6,
   },
   toastText: { color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center' },
+});
+
+const statsStyles = StyleSheet.create({
+  section: {
+    backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef',
+    padding: 14, marginBottom: 12, gap: 8,
+  },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+  statRow: { flexDirection: 'row', gap: 8 },
+  statCard: {
+    flex: 1, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1,
+    borderColor: '#e9ecef', padding: 12, alignItems: 'center', gap: 4,
+  },
+  statValue: { fontSize: 24, fontWeight: '700', color: '#2d6a4f' },
+  statLabel: { fontSize: 11, color: '#6b705c', fontWeight: '600', textAlign: 'center' },
+  harvestRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#fff9e6', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#ffe08a',
+  },
+  harvestLabel: { fontSize: 14, fontWeight: '600', color: '#7c5a00' },
+  harvestValue: { fontSize: 14, fontWeight: '700', color: '#7c5a00' },
+  streakCard: {
+    backgroundColor: '#d8f3dc', borderRadius: 10, padding: 12, gap: 4,
+  },
+  streakMain: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
+  streakSub: { fontSize: 13, color: '#2d6a4f' },
+  badgesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badgeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#b7e4c7',
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  badgeChipEmoji: { fontSize: 16 },
+  badgeChipName: { fontSize: 12, fontWeight: '700', color: '#1b4332' },
+  emptyHint: { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
+  rankRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#fff', borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: '#e9ecef',
+  },
+  rankNum: { fontSize: 13, fontWeight: '700', color: '#aaa', width: 24 },
+  rankEmoji: { fontSize: 20 },
+  rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1b4332' },
+  rankGrams: { fontSize: 14, fontWeight: '700', color: '#2d6a4f' },
+  barRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 4,
+  },
+  barIcon: { fontSize: 16, width: 22, textAlign: 'center' },
+  barLabel: { fontSize: 12, fontWeight: '600', color: '#6b705c', width: 72 },
+  barTrack: {
+    flex: 1, height: 10, borderRadius: 5,
+    backgroundColor: '#e9ecef', flexDirection: 'row', overflow: 'hidden',
+  },
+  barFill: { backgroundColor: '#2d6a4f', borderRadius: 5 },
+  barCount: { fontSize: 13, fontWeight: '700', color: '#1b4332', width: 28, textAlign: 'right' },
 });
 
 export default MaintenanceScreen;

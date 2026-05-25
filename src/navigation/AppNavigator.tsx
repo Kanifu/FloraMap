@@ -8,6 +8,7 @@ import AssistantScreen from '@/screens/AssistantScreen';
 import MaintenanceScreen from '@/screens/MaintenanceScreen';
 import PlantCardScreen from '@/screens/PlantCardScreen';
 import AboutScreen from '@/screens/AboutScreen';
+import SeedInventoryScreen from '@/screens/SeedInventoryScreen';
 
 export type RootTabParamList = {
   MapTab: undefined;
@@ -18,6 +19,7 @@ export type RootTabParamList = {
 export type MapStackParamList = {
   Map: undefined;
   PlantCard: { plantId: string };
+  SeedInventory: undefined;
 };
 
 export type AssistantStackParamList = {
@@ -39,6 +41,7 @@ const MapStackNavigator = (): React.JSX.Element => (
   <MapStack.Navigator screenOptions={{ headerShown: false }}>
     <MapStack.Screen name="Map" component={MapScreen} />
     <MapStack.Screen name="PlantCard" component={PlantCardScreen} />
+    <MapStack.Screen name="SeedInventory" component={SeedInventoryScreen} />
   </MapStack.Navigator>
 );
 

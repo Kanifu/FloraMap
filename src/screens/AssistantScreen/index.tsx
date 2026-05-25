@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useGardenStore } from '@/store/gardenStore';
 import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
+import { getDailyTip } from '@/services/ProactiveTipService';
 
 interface Message {
   id: string;
@@ -86,10 +87,18 @@ const AssistantScreen = (): React.JSX.Element => {
   const [isLoading, setIsLoading] = useState(false);
   const [addedPlantKeys, setAddedPlantKeys] = useState<Set<string>>(new Set());
   const [addedTaskKeys, setAddedTaskKeys] = useState<Set<string>>(new Set());
+  const [dailyTip, setDailyTip] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
 
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
+
+  useEffect(() => {
+    getDailyTip(garden).then((tip) => {
+      if (tip) setDailyTip(tip);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const addPlant = useGardenStore((s) => s.addPlant);
   const addGardenTask = useGardenStore((s) => s.addGardenTask);
 
@@ -347,6 +356,14 @@ const AssistantScreen = (): React.JSX.Element => {
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messageList}
+        ListHeaderComponent={
+          dailyTip ? (
+            <View style={styles.tipCard}>
+              <Text style={styles.tipTitle}>💡 Tip van de dag</Text>
+              <Text style={styles.tipBody}>{dailyTip}</Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🌱</Text>
@@ -547,6 +564,11 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: { backgroundColor: '#ccc' },
   sendButtonText: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  tipCard: {
+    backgroundColor: '#d8f3dc', borderRadius: 12, padding: 12, marginBottom: 12,
+  },
+  tipTitle: { fontWeight: '600', color: '#2d6a4f', marginBottom: 4, fontSize: 14 },
+  tipBody: { color: '#1b4332', lineHeight: 20, fontSize: 14 },
 });
 
 export default AssistantScreen;
