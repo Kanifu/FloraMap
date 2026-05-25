@@ -201,14 +201,14 @@ const arcPath = (x1: number, y1: number, x2: number, y2: number): string => {
 // ── Boundary config ───────────────────────────────────────────────────────────
 
 const BOUNDARY_CONFIG: Record<BoundaryType, { fill: string; stroke: string; emoji: string; isLine: boolean }> = {
-  fence:  { fill: 'none',      stroke: '#8d6e63', emoji: '🪵', isLine: true  },
-  wall:   { fill: 'none',      stroke: '#9e9e9e', emoji: '🧱', isLine: true  },
-  hedge:  { fill: 'none',      stroke: '#388e3c', emoji: '🌿', isLine: true  },
-  forest: { fill: '#2e7d3222', stroke: '#2e7d32', emoji: '🌳', isLine: false },
-  lawn:   { fill: '#81c78422', stroke: '#52b788', emoji: '🌾', isLine: false },
-  patio:  { fill: '#bdbdbd22', stroke: '#9e9e9e', emoji: '🪨', isLine: false },
-  pond:   { fill: '#64b5f622', stroke: '#1565c0', emoji: '🌊', isLine: false },
-  path:   { fill: '#bcaaa422', stroke: '#8d6e63', emoji: '🪵', isLine: false },
+  fence:  { fill: 'none',      stroke: '#795548', emoji: '🪵', isLine: true  },
+  wall:   { fill: 'none',      stroke: '#757575', emoji: '🧱', isLine: true  },
+  hedge:  { fill: '#388e3c',   stroke: '#2e7d32', emoji: '🌿', isLine: false },
+  forest: { fill: '#2e7d32',   stroke: '#1b5e20', emoji: '🌳', isLine: false },
+  lawn:   { fill: '#66bb6a',   stroke: '#43a047', emoji: '🌾', isLine: false },
+  patio:  { fill: '#bdbdbd',   stroke: '#9e9e9e', emoji: '🪨', isLine: false },
+  pond:   { fill: '#42a5f5',   stroke: '#1565c0', emoji: '💧', isLine: false },
+  path:   { fill: '#bcaaa4',   stroke: '#8d6e63', emoji: '🪨', isLine: false },
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -226,6 +226,7 @@ interface GardenMapProps {
   showCompanionOverlay?: boolean;
   thirstyPlantIds?: string[];    // plants with overdue water tasks (#23)
   boundaries?: GardenBoundary[];
+  showNames?: boolean;           // default true
 }
 
 const LONG_PRESS_MS = 300;
@@ -243,6 +244,7 @@ export const GardenMap = ({
   showCompanionOverlay = false,
   thirstyPlantIds = [],
   boundaries = [],
+  showNames = true,
 }: GardenMapProps): React.JSX.Element => {
 
   // ── Fast long-press via manual timer ────────────────────────────────────────
@@ -297,69 +299,167 @@ export const GardenMap = ({
         {/* ── Boundaries ────────────────────────────────────────────────────── */}
         {boundaries.map((b) => {
           const cfg = BOUNDARY_CONFIG[b.type];
+
           if (cfg.isLine) {
-            // Lijn-boundaries: dikke lijn van (x1,y1) naar (x2,y2)
             const lx1 = (b.x1 ?? 0) * SCALE;
             const ly1 = (b.y1 ?? 0) * SCALE;
             const lx2 = (b.x2 ?? 0) * SCALE;
             const ly2 = (b.y2 ?? 0) * SCALE;
+            const dx = lx2 - lx1;
+            const dy = ly2 - ly1;
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            // perpendicular unit vector
+            const px = -dy / len;
+            const py = dx / len;
+            const tickSpacing = 18;
+            const numTicks = Math.floor(len / tickSpacing);
+            const tickLen = b.type === 'fence' ? 8 : 5;
+            const ticks = Array.from({ length: numTicks + 1 }, (_, i) => {
+              const t = i / Math.max(1, numTicks);
+              const tx = lx1 + dx * t;
+              const ty = ly1 + dy * t;
+              return { tx, ty };
+            });
+
             return (
               <G key={b.id}>
-                <Line
-                  x1={lx1} y1={ly1}
-                  x2={lx2} y2={ly2}
-                  stroke={cfg.stroke} strokeWidth={6}
-                  strokeLinecap="round"
-                  opacity={0.8}
-                />
-                <SvgText
-                  x={(lx1 + lx2) / 2} y={(ly1 + ly2) / 2 + 6}
-                  textAnchor="middle" fontSize={14}
-                  opacity={0.9}>
-                  {cfg.emoji}
-                </SvgText>
-              </G>
-            );
-          } else {
-            // Vlak-boundaries: rechthoek met fill + stroke
-            const bLeft  = (b.x ?? 0) * SCALE;
-            const bTop   = (b.y ?? 0) * SCALE;
-            const bW     = (b.width  ?? 1) * SCALE;
-            const bH     = (b.height ?? 1) * SCALE;
-            const bCx    = bLeft + bW / 2;
-            const bCy    = bTop  + bH / 2;
-            const eCols  = Math.max(1, Math.floor(bW / EMOJI_STEP));
-            const eRows  = Math.max(1, Math.floor(bH / EMOJI_STEP));
-            const eOffX  = (bW - eCols * EMOJI_STEP) / 2 + EMOJI_STEP / 2;
-            const eOffY  = (bH - eRows * EMOJI_STEP) / 2 + EMOJI_STEP / 2;
-            return (
-              <G key={b.id}>
-                <Rect
-                  x={bLeft} y={bTop} width={bW} height={bH}
-                  fill={cfg.fill} stroke={cfg.stroke} strokeWidth={1.5}
-                  strokeDasharray="6,4" opacity={0.45} rx={8}
-                />
-                {Array.from({ length: eRows * eCols }, (_, i) => {
-                  const row = Math.floor(i / eCols);
-                  const col = i % eCols;
-                  return (
-                    <SvgText
-                      key={i}
-                      x={bLeft + eOffX + col * EMOJI_STEP}
-                      y={bTop  + eOffY + row * EMOJI_STEP + 6}
-                      textAnchor="middle" fontSize={16}
-                      opacity={0.45}>
-                      {cfg.emoji}
-                    </SvgText>
-                  );
-                })}
-                <SvgText x={bCx} y={bCy + 5} textAnchor="middle" fontSize={10}
-                  fill={cfg.stroke} fontWeight="700" opacity={0.8}>
-                  {b.type}
-                </SvgText>
+                {/* Main line */}
+                <Line x1={lx1} y1={ly1} x2={lx2} y2={ly2}
+                  stroke={cfg.stroke} strokeWidth={b.type === 'wall' ? 8 : 5}
+                  strokeLinecap="round" opacity={0.9} />
+                {/* Fence posts / wall joints */}
+                {b.type === 'fence' && ticks.map(({ tx, ty }, i) => (
+                  <Line key={i}
+                    x1={tx + px * tickLen} y1={ty + py * tickLen}
+                    x2={tx - px * tickLen} y2={ty - py * tickLen}
+                    stroke={cfg.stroke} strokeWidth={3}
+                    strokeLinecap="round" opacity={0.85} />
+                ))}
+                {b.type === 'wall' && ticks.map(({ tx, ty }, i) => (
+                  <Rect key={i}
+                    x={tx - 4} y={ty - 4} width={8} height={8}
+                    fill={cfg.stroke} opacity={0.6} />
+                ))}
               </G>
             );
           }
+
+          // Area boundaries — solid fills with distinctive patterns
+          const bLeft = (b.x ?? 0) * SCALE;
+          const bTop  = (b.y ?? 0) * SCALE;
+          const bW    = (b.width  ?? 1) * SCALE;
+          const bH    = (b.height ?? 1) * SCALE;
+
+          if (b.type === 'lawn' || b.type === 'forest') {
+            return (
+              <G key={b.id}>
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill={cfg.fill} stroke={cfg.stroke}
+                  strokeWidth={1.5} opacity={0.55} rx={4} />
+              </G>
+            );
+          }
+
+          if (b.type === 'hedge') {
+            const bumpSpacing = 16;
+            const numBumps = Math.floor(bW / bumpSpacing);
+            return (
+              <G key={b.id}>
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill={cfg.fill} stroke={cfg.stroke}
+                  strokeWidth={1.5} opacity={0.6} rx={6} />
+                {Array.from({ length: numBumps }, (_, i) => (
+                  <Circle key={i}
+                    cx={bLeft + i * bumpSpacing + bumpSpacing / 2}
+                    cy={bTop + 4}
+                    r={bumpSpacing / 2 - 1}
+                    fill={cfg.stroke} opacity={0.4} />
+                ))}
+              </G>
+            );
+          }
+
+          if (b.type === 'patio') {
+            const tileSize = 20;
+            const vLines = Math.floor(bW / tileSize) - 1;
+            const hLines = Math.floor(bH / tileSize) - 1;
+            return (
+              <G key={b.id}>
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill={cfg.fill} stroke={cfg.stroke}
+                  strokeWidth={1.5} opacity={0.55} rx={4} />
+                {Array.from({ length: vLines }, (_, i) => (
+                  <Line key={`v${i}`}
+                    x1={bLeft + (i + 1) * tileSize} y1={bTop}
+                    x2={bLeft + (i + 1) * tileSize} y2={bTop + bH}
+                    stroke={cfg.stroke} strokeWidth={0.8} opacity={0.4} />
+                ))}
+                {Array.from({ length: hLines }, (_, i) => (
+                  <Line key={`h${i}`}
+                    x1={bLeft} y1={bTop + (i + 1) * tileSize}
+                    x2={bLeft + bW} y2={bTop + (i + 1) * tileSize}
+                    stroke={cfg.stroke} strokeWidth={0.8} opacity={0.4} />
+                ))}
+              </G>
+            );
+          }
+
+          if (b.type === 'path') {
+            const cW = 22; const cH = 14; const gap = 3;
+            const cols = Math.floor(bW / (cW + gap));
+            const rows = Math.floor(bH / (cH + gap));
+            const offX = (bW - cols * (cW + gap)) / 2;
+            const offY = (bH - rows * (cH + gap)) / 2;
+            return (
+              <G key={b.id}>
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill={cfg.fill} stroke={cfg.stroke}
+                  strokeWidth={1.5} opacity={0.55} rx={4} />
+                {Array.from({ length: rows * cols }, (_, i) => {
+                  const row = Math.floor(i / cols);
+                  const col = i % cols;
+                  const rowOffset = row % 2 === 0 ? 0 : (cW + gap) / 2;
+                  return (
+                    <Rect key={i}
+                      x={bLeft + offX + col * (cW + gap) + rowOffset}
+                      y={bTop  + offY + row * (cH + gap)}
+                      width={cW} height={cH}
+                      fill="none" stroke={cfg.stroke}
+                      strokeWidth={0.8} opacity={0.4} rx={2} />
+                  );
+                })}
+              </G>
+            );
+          }
+
+          if (b.type === 'pond') {
+            const numWaves = Math.floor(bH / 14);
+            return (
+              <G key={b.id}>
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill={cfg.fill} stroke={cfg.stroke}
+                  strokeWidth={1.5} opacity={0.55} rx={bH / 2} />
+                {Array.from({ length: numWaves }, (_, i) => {
+                  const wy = bTop + (i + 1) * 14;
+                  if (wy > bTop + bH - 8) return null;
+                  return (
+                    <Path key={i}
+                      d={`M ${bLeft + 6} ${wy} Q ${bLeft + bW * 0.25} ${wy - 5} ${bLeft + bW * 0.5} ${wy} Q ${bLeft + bW * 0.75} ${wy + 5} ${bLeft + bW - 6} ${wy}`}
+                      stroke="#1565c0" strokeWidth={1.2} fill="none" opacity={0.35} />
+                  );
+                })}
+              </G>
+            );
+          }
+
+          // Fallback
+          return (
+            <G key={b.id}>
+              <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                fill={cfg.fill} stroke={cfg.stroke}
+                strokeWidth={1.5} opacity={0.5} rx={4} />
+            </G>
+          );
         })}
 
         {/* ── Companion overlay ─────────────────────────────────────────────── */}
@@ -407,8 +507,9 @@ export const GardenMap = ({
             // Emoji tiling
             const cols    = Math.max(1, Math.floor(zW / EMOJI_STEP));
             const rows    = Math.max(1, Math.floor(zH / EMOJI_STEP));
-            const offX    = (zW - cols * EMOJI_STEP) / 2 + EMOJI_STEP / 2;
-            const offY    = (zH - rows * EMOJI_STEP) / 2 + EMOJI_STEP / 2;
+            const padding = 4;
+            const offX    = Math.max(padding, (zW - cols * EMOJI_STEP) / 2 + EMOJI_STEP / 2);
+            const offY    = Math.max(padding, (zH - rows * EMOJI_STEP) / 2 + EMOJI_STEP / 2);
             const tileEmojis = Array.from({ length: rows * cols }, (_, i) => {
               const row = Math.floor(i / cols);
               const col = i % cols;
@@ -439,22 +540,26 @@ export const GardenMap = ({
                 {tileEmojis.map(({ key, ex, ey }) => (
                   <SvgText key={key} x={ex} y={ey + 6}
                     textAnchor="middle" fontSize={EMOJI_STEP * 0.55}
-                    opacity={isMoving ? 0.15 : 0.65}>
+                    opacity={isMoving ? 0.15 : 0.78}>
                     {emoji}
                   </SvgText>
                 ))}
 
                 {/* Label pill */}
-                <Rect
-                  x={cx - pillW / 2} y={cy - pillH / 2}
-                  width={pillW} height={pillH}
-                  fill="rgba(255,255,255,0.88)" rx={pillH / 2} />
-                <SvgText x={cx} y={cy + labelFontSize * 0.35}
-                  textAnchor="middle" fontSize={labelFontSize}
-                  fill="#1b4332" fontWeight="700"
-                  opacity={isMoving ? 0.4 : 1}>
-                  {label}
-                </SvgText>
+                {showNames && (
+                  <>
+                    <Rect
+                      x={cx - pillW / 2} y={cy - pillH / 2}
+                      width={pillW} height={pillH}
+                      fill="rgba(255,255,255,0.88)" rx={pillH / 2} />
+                    <SvgText x={cx} y={cy + labelFontSize * 0.35}
+                      textAnchor="middle" fontSize={labelFontSize}
+                      fill="#1b4332" fontWeight="700"
+                      opacity={isMoving ? 0.4 : 1}>
+                      {label}
+                    </SvgText>
+                  </>
+                )}
 
                 {/* Transparent touch target */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH} fill="transparent" rx={10}
@@ -492,11 +597,13 @@ export const GardenMap = ({
                 {emoji}
               </SvgText>
               {/* Plant name */}
-              <SvgText x={cx} y={cy + 27} textAnchor="middle"
-                fontSize={8.5} fill="#1b4332" fontWeight="700"
-                opacity={isMoving ? 0.4 : 1}>
-                {name}
-              </SvgText>
+              {showNames && (
+                <SvgText x={cx} y={cy + 27} textAnchor="middle"
+                  fontSize={8.5} fill="#1b4332" fontWeight="700"
+                  opacity={isMoving ? 0.4 : 1}>
+                  {name}
+                </SvgText>
+              )}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={22} fill="transparent"
                 onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}

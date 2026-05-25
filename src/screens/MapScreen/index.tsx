@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Alert,
   TouchableOpacity, Modal, TextInput, KeyboardAvoidingView,
@@ -18,6 +18,8 @@ import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
 import { findOvercrowdedPlants } from '@/utils/plantSpacing';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -216,6 +218,12 @@ const MapScreen = (): React.JSX.Element => {
   const removeBoundary = useGardenStore((s) => s.removeBoundary);
   const rotationHistory = useGardenStore((s) => s.rotationHistory);
 
+  const [showNames,           setShowNames]           = useState(true);
+  const [mapScale,            setMapScale]            = useState(1.0);
+  const baseScale = useRef(1.0);
+  const MIN_SCALE = 0.5;
+  const MAX_SCALE = 3.0;
+
   const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
   const [firstPoint,          setFirstPoint]          = useState<{ x: number; y: number } | null>(null);
@@ -302,6 +310,15 @@ const MapScreen = (): React.JSX.Element => {
     good: companionPairs.filter((p) => p.relation === 'good').length,
     bad:  companionPairs.filter((p) => p.relation === 'bad').length,
   }), [companionPairs]);
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, baseScale.current * e.scale));
+      setMapScale(next);
+    })
+    .onEnd((e) => {
+      baseScale.current = Math.min(MAX_SCALE, Math.max(MIN_SCALE, baseScale.current * e.scale));
+    });
 
   const cancelDraw = useCallback(() => {
     setDrawStep(null); setFirstPoint(null); setDrawTarget(null);
@@ -587,6 +604,11 @@ const MapScreen = (): React.JSX.Element => {
             <Text style={styles.companionBtnText}>🌿</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            style={[styles.companionBtn, !showNames && styles.companionBtnActive]}
+            onPress={() => setShowNames((v) => !v)}>
+            <Text style={styles.companionBtnText}>{showNames ? '🏷️' : '👁️'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.deleteBtn}
             onPress={() => Alert.alert(
               'Tuin verwijderen',
@@ -651,27 +673,40 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Map */}
       <View style={styles.mapWrapper}>
-        <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
-          <ScrollView bounces={false}>
-            <GardenMap
-              garden={currentGarden}
-              onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
-              onPlantLongPress={(p) => setMenuPlant(p)}
-              viewMode="2d"
-              isInteractive={isInteractive}
-              highlightPoint={
-                boundaryDrawStep === 'second' ? boundaryFirstPoint :
-                drawStep === 'second' ? firstPoint : null
-              }
-              movingPlantId={movingPlant?.id}
-              onMapPress={handleMapPress}
-              companionPairs={companionPairs}
-              showCompanionOverlay={showCompanionOverlay}
-              thirstyPlantIds={thirstyPlantIds}
-              boundaries={currentGarden.boundaries ?? []}
-            />
+        <GestureDetector gesture={pinchGesture}>
+          <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
+            <ScrollView bounces={false}>
+              <View style={{ transform: [{ scale: mapScale }], width: MAP_WIDTH, height: MAP_HEIGHT }}>
+                <GardenMap
+                  garden={currentGarden}
+                  onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
+                  onPlantLongPress={(p) => setMenuPlant(p)}
+                  viewMode="2d"
+                  isInteractive={isInteractive}
+                  highlightPoint={
+                    boundaryDrawStep === 'second' ? boundaryFirstPoint :
+                    drawStep === 'second' ? firstPoint : null
+                  }
+                  movingPlantId={movingPlant?.id}
+                  onMapPress={handleMapPress}
+                  companionPairs={companionPairs}
+                  showCompanionOverlay={showCompanionOverlay}
+                  thirstyPlantIds={thirstyPlantIds}
+                  boundaries={currentGarden.boundaries ?? []}
+                  showNames={showNames}
+                />
+              </View>
+            </ScrollView>
           </ScrollView>
-        </ScrollView>
+        </GestureDetector>
+
+        {mapScale !== 1.0 && (
+          <TouchableOpacity
+            style={styles.zoomIndicator}
+            onPress={() => { setMapScale(1.0); baseScale.current = 1.0; }}>
+            <Text style={styles.zoomIndicatorText}>🔍 {Math.round(mapScale * 100)}%</Text>
+          </TouchableOpacity>
+        )}
 
         {!isInteractive && (
           <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
@@ -1081,6 +1116,12 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   diseaseResultText: { fontSize: 15, color: '#1b4332', lineHeight: 23 },
+  zoomIndicator: {
+    position: 'absolute', bottom: 16, left: 12,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  zoomIndicatorText: { color: '#fff', fontSize: 11, fontWeight: '600' },
 });
 
 const menuStyles = StyleSheet.create({

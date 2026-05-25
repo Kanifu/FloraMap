@@ -549,7 +549,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
   }, [garden]);
 
   // ── Streak / badge row ────────────────────────────────────────────────────
-  const showStats = gardenStats.currentStreak > 0 || gardenStats.badges.length > 0;
   const earnedBadges = gardenStats.badges;
 
   return (
@@ -570,19 +569,24 @@ const MaintenanceScreen = (): React.JSX.Element => {
         </View>
       </View>
 
-      {/* Streak & badges row */}
-      {showStats && (
-        <View style={styles.streakRow}>
-          {gardenStats.currentStreak > 0 && (
+      {/* Streak & badges row — always visible */}
+      <View style={styles.streakRow}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}>
+          {gardenStats.currentStreak > 0 ? (
             <Text style={styles.streakText}>🔥 {gardenStats.currentStreak} dagen streak</Text>
+          ) : (
+            <Text style={[styles.streakText, { color: '#52b788' }]}>🌱 Begin je streak — rond een taak af!</Text>
           )}
-          {earnedBadges.length > 0 && (
-            <Text style={styles.badgeEmojis}>
-              {earnedBadges.map((b) => b.emoji).join('  ')}
-            </Text>
+          {gardenStats.totalTasksCompleted > 0 && (
+            <Text style={{ fontSize: 11, color: '#2d6a4f' }}>{gardenStats.totalTasksCompleted} taken ✓</Text>
           )}
         </View>
-      )}
+        {earnedBadges.length > 0 ? (
+          <Text style={styles.badgeEmojis}>{earnedBadges.map((b) => b.emoji).join('  ')}</Text>
+        ) : (
+          <Text style={{ fontSize: 11, color: '#aaa' }}>🏆 Badges: —</Text>
+        )}
+      </View>
 
       {/* Rain banner */}
       {weather.rainExpected && (
@@ -1016,7 +1020,7 @@ const styles = StyleSheet.create({
   // Streak row
   streakRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: '#f0faf4', paddingHorizontal: 16, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
   },
   streakText: { fontSize: 13, fontWeight: '700', color: '#1b4332' },
