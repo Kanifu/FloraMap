@@ -18,7 +18,8 @@ import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
 import { findOvercrowdedPlants } from '@/utils/plantSpacing';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { PinchGestureHandler, State } from 'react-native-gesture-handler';
+import type { HandlerStateChangeEvent, GestureEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
@@ -39,10 +40,10 @@ const newId = () => `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`
 const newBoundaryId = () => `boundary-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const BOUNDARY_TYPES: { type: BoundaryType; emoji: string; label: string; isLine: boolean }[] = [
-  { type: 'fence',  emoji: '🪵', label: 'Schutting', isLine: true },
-  { type: 'wall',   emoji: '🧱', label: 'Muur',      isLine: true },
-  { type: 'hedge',  emoji: '🌿', label: 'Haag',      isLine: true },
-  { type: 'path',   emoji: '🪨', label: 'Looppad',   isLine: true },
+  { type: 'fence',  emoji: '🪵', label: 'Schutting', isLine: true  },
+  { type: 'wall',   emoji: '🧱', label: 'Muur',      isLine: true  },
+  { type: 'hedge',  emoji: '🌿', label: 'Haag',      isLine: false },  // was true
+  { type: 'path',   emoji: '🪨', label: 'Looppad',   isLine: false },  // was true
   { type: 'forest', emoji: '🌳', label: 'Bebossing',  isLine: false },
   { type: 'lawn',   emoji: '🌾', label: 'Gras',      isLine: false },
   { type: 'patio',  emoji: '🪨', label: 'Terras',    isLine: false },
@@ -220,7 +221,8 @@ const MapScreen = (): React.JSX.Element => {
 
   const [showNames,           setShowNames]           = useState(true);
   const [mapScale,            setMapScale]            = useState(1.0);
-  const baseScale = useRef(1.0);
+  const lastMapScale = useRef(1.0);
+  const pinchRef = useRef<PinchGestureHandler>(null);
   const MIN_SCALE = 0.5;
   const MAX_SCALE = 3.0;
 
@@ -244,6 +246,7 @@ const MapScreen = (): React.JSX.Element => {
   const [pendingBoundaryIsLine, setPendingBoundaryIsLine] = useState(false);
   const [boundaryDrawStep,    setBoundaryDrawStep]    = useState<DrawStep | null>(null);
   const [boundaryFirstPoint,  setBoundaryFirstPoint]  = useState<{ x: number; y: number } | null>(null);
+  const [selectedBoundaryId,  setSelectedBoundaryId]  = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -255,6 +258,25 @@ const MapScreen = (): React.JSX.Element => {
     setShowOnboarding(false);
     AsyncStorage.setItem(ONBOARDED_KEY, '1');
   }, []);
+
+  const handleBoundaryPress = useCallback((id: string) => {
+    setSelectedBoundaryId(id);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedBoundaryId) return;
+    const boundary = garden?.boundaries?.find((b) => b.id === selectedBoundaryId);
+    if (!boundary) { setSelectedBoundaryId(null); return; }
+    const typeLabel = BOUNDARY_TYPES.find((t) => t.type === boundary.type)?.label ?? boundary.type;
+    Alert.alert(
+      `${typeLabel}`,
+      'Wat wil je doen met deze grens?',
+      [
+        { text: '🗑️ Verwijderen', style: 'destructive', onPress: () => { removeBoundary(selectedBoundaryId); setSelectedBoundaryId(null); } },
+        { text: 'Annuleren', style: 'cancel', onPress: () => setSelectedBoundaryId(null) },
+      ],
+    );
+  }, [selectedBoundaryId]);
 
   // ── new-plant modal state ─────────────────────────────────────────────────
   const [showModal,      setShowModal]      = useState(false);
@@ -311,14 +333,17 @@ const MapScreen = (): React.JSX.Element => {
     bad:  companionPairs.filter((p) => p.relation === 'bad').length,
   }), [companionPairs]);
 
-  const pinchGesture = Gesture.Pinch()
-    .onUpdate((e) => {
-      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, baseScale.current * e.scale));
-      setMapScale(next);
-    })
-    .onEnd((e) => {
-      baseScale.current = Math.min(MAX_SCALE, Math.max(MIN_SCALE, baseScale.current * e.scale));
-    });
+  const onPinchGestureEvent = useCallback((event: GestureEvent<PinchGestureHandlerEventPayload>) => {
+    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, lastMapScale.current * event.nativeEvent.scale));
+    setMapScale(next);
+  }, []);
+
+  const onPinchStateChange = useCallback((event: HandlerStateChangeEvent<PinchGestureHandlerEventPayload>) => {
+    if (event.nativeEvent.state === State.END) {
+      lastMapScale.current = Math.min(MAX_SCALE, Math.max(MIN_SCALE, lastMapScale.current * event.nativeEvent.scale));
+      setMapScale(lastMapScale.current);
+    }
+  }, []);
 
   const cancelDraw = useCallback(() => {
     setDrawStep(null); setFirstPoint(null); setDrawTarget(null);
@@ -673,38 +698,41 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Map */}
       <View style={styles.mapWrapper}>
-        <GestureDetector gesture={pinchGesture}>
+        <PinchGestureHandler
+          ref={pinchRef}
+          onGestureEvent={onPinchGestureEvent}
+          onHandlerStateChange={onPinchStateChange}>
           <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
             <ScrollView bounces={false}>
-              <View style={{ transform: [{ scale: mapScale }], width: MAP_WIDTH, height: MAP_HEIGHT }}>
-                <GardenMap
-                  garden={currentGarden}
-                  onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
-                  onPlantLongPress={(p) => setMenuPlant(p)}
-                  viewMode="2d"
-                  isInteractive={isInteractive}
-                  highlightPoint={
-                    boundaryDrawStep === 'second' ? boundaryFirstPoint :
-                    drawStep === 'second' ? firstPoint : null
-                  }
-                  movingPlantId={movingPlant?.id}
-                  onMapPress={handleMapPress}
-                  companionPairs={companionPairs}
-                  showCompanionOverlay={showCompanionOverlay}
-                  thirstyPlantIds={thirstyPlantIds}
-                  boundaries={currentGarden.boundaries ?? []}
-                  showNames={showNames}
-                />
-              </View>
+              <GardenMap
+                garden={currentGarden}
+                onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
+                onPlantLongPress={(p) => setMenuPlant(p)}
+                viewMode="2d"
+                isInteractive={isInteractive}
+                highlightPoint={
+                  boundaryDrawStep === 'second' ? boundaryFirstPoint :
+                  drawStep === 'second' ? firstPoint : null
+                }
+                movingPlantId={movingPlant?.id}
+                onMapPress={handleMapPress}
+                companionPairs={companionPairs}
+                showCompanionOverlay={showCompanionOverlay}
+                thirstyPlantIds={thirstyPlantIds}
+                boundaries={currentGarden.boundaries ?? []}
+                showNames={showNames}
+                renderScale={mapScale}
+                onBoundaryPress={handleBoundaryPress}
+              />
             </ScrollView>
           </ScrollView>
-        </GestureDetector>
+        </PinchGestureHandler>
 
         {mapScale !== 1.0 && (
           <TouchableOpacity
             style={styles.zoomIndicator}
-            onPress={() => { setMapScale(1.0); baseScale.current = 1.0; }}>
-            <Text style={styles.zoomIndicatorText}>🔍 {Math.round(mapScale * 100)}%</Text>
+            onPress={() => { setMapScale(1.0); lastMapScale.current = 1.0; }}>
+            <Text style={styles.zoomIndicatorText}>🔍 {Math.round(mapScale * 100)}%  ✕</Text>
           </TouchableOpacity>
         )}
 

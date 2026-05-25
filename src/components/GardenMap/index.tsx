@@ -5,11 +5,11 @@ import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary, Bounda
 import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM  = 30;
-export const SCALE    = 40;
-export const GRID_COLS = 25;
-export const GRID_ROWS = 25;
-export const MAP_WIDTH  = GRID_COLS * SCALE;
-export const MAP_HEIGHT = GRID_ROWS * SCALE;
+export const SCALE    = 30;
+export const GRID_COLS = 36;
+export const GRID_ROWS = 36;
+export const MAP_WIDTH  = GRID_COLS * SCALE;   // = 1080
+export const MAP_HEIGHT = GRID_ROWS * SCALE;   // = 1080
 
 // ── Plant emoji lookup — 100+ soorten ────────────────────────────────────────
 
@@ -227,10 +227,12 @@ interface GardenMapProps {
   thirstyPlantIds?: string[];    // plants with overdue water tasks (#23)
   boundaries?: GardenBoundary[];
   showNames?: boolean;           // default true
+  onBoundaryPress?: (boundaryId: string) => void;
+  renderScale?: number;
 }
 
 const LONG_PRESS_MS = 300;
-const EMOJI_STEP    = 38;   // px between emoji centres in zone grid
+const EMOJI_STEP    = 28;   // px between emoji centres in zone grid
 
 export const GardenMap = ({
   garden,
@@ -245,6 +247,8 @@ export const GardenMap = ({
   thirstyPlantIds = [],
   boundaries = [],
   showNames = true,
+  onBoundaryPress,
+  renderScale = 1,
 }: GardenMapProps): React.JSX.Element => {
 
   // ── Fast long-press via manual timer ────────────────────────────────────────
@@ -275,8 +279,10 @@ export const GardenMap = ({
   const thirstySet = new Set(thirstyPlantIds);
 
   return (
-    <Pressable onPress={isInteractive ? handleBgTap : undefined} style={styles.pressable}>
-      <Svg width={MAP_WIDTH} height={MAP_HEIGHT}>
+    <Pressable onPress={isInteractive ? handleBgTap : undefined}
+      style={{ width: MAP_WIDTH * renderScale, height: MAP_HEIGHT * renderScale }}>
+      <Svg width={MAP_WIDTH * renderScale} height={MAP_HEIGHT * renderScale}
+        viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}>
 
         {/* Background */}
         <Rect x={0} y={0} width={MAP_WIDTH} height={MAP_HEIGHT} fill="#eaf4ec" />
@@ -340,6 +346,13 @@ export const GardenMap = ({
                     x={tx - 4} y={ty - 4} width={8} height={8}
                     fill={cfg.stroke} opacity={0.6} />
                 ))}
+                {/* Transparent touch target for line boundary */}
+                <Line
+                  x1={lx1} y1={ly1} x2={lx2} y2={ly2}
+                  stroke="transparent" strokeWidth={24}
+                  strokeLinecap="round"
+                  onPress={() => onBoundaryPress?.(b.id)}
+                />
               </G>
             );
           }
@@ -356,6 +369,8 @@ export const GardenMap = ({
                 <Rect x={bLeft} y={bTop} width={bW} height={bH}
                   fill={cfg.fill} stroke={cfg.stroke}
                   strokeWidth={1.5} opacity={0.55} rx={4} />
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill="transparent" onPress={() => onBoundaryPress?.(b.id)} />
               </G>
             );
           }
@@ -375,6 +390,8 @@ export const GardenMap = ({
                     r={bumpSpacing / 2 - 1}
                     fill={cfg.stroke} opacity={0.4} />
                 ))}
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill="transparent" onPress={() => onBoundaryPress?.(b.id)} />
               </G>
             );
           }
@@ -400,6 +417,8 @@ export const GardenMap = ({
                     x2={bLeft + bW} y2={bTop + (i + 1) * tileSize}
                     stroke={cfg.stroke} strokeWidth={0.8} opacity={0.4} />
                 ))}
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill="transparent" onPress={() => onBoundaryPress?.(b.id)} />
               </G>
             );
           }
@@ -428,6 +447,8 @@ export const GardenMap = ({
                       strokeWidth={0.8} opacity={0.4} rx={2} />
                   );
                 })}
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill="transparent" onPress={() => onBoundaryPress?.(b.id)} />
               </G>
             );
           }
@@ -448,6 +469,8 @@ export const GardenMap = ({
                       stroke="#1565c0" strokeWidth={1.2} fill="none" opacity={0.35} />
                   );
                 })}
+                <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                  fill="transparent" onPress={() => onBoundaryPress?.(b.id)} />
               </G>
             );
           }
@@ -458,6 +481,8 @@ export const GardenMap = ({
               <Rect x={bLeft} y={bTop} width={bW} height={bH}
                 fill={cfg.fill} stroke={cfg.stroke}
                 strokeWidth={1.5} opacity={0.5} rx={4} />
+              <Rect x={bLeft} y={bTop} width={bW} height={bH}
+                fill="transparent" onPress={() => onBoundaryPress?.(b.id)} />
             </G>
           );
         })}
@@ -582,30 +607,30 @@ export const GardenMap = ({
             <G key={plant.id}>
               {/* Water-thirsty ring */}
               {isThirsty && (
-                <Circle cx={cx} cy={cy} r={20}
+                <Circle cx={cx} cy={cy} r={15}
                   fill="none" stroke="#3a86ff" strokeWidth={2.5}
                   strokeDasharray="5,3" opacity={0.8} />
               )}
               {/* Moving indicator ring */}
               {isMoving && (
-                <Circle cx={cx} cy={cy} r={22}
+                <Circle cx={cx} cy={cy} r={17}
                   fill="none" stroke="#ffb703" strokeWidth={2.5} opacity={0.7} />
               )}
               {/* Emoji — bigger, no background circle */}
-              <SvgText x={cx} y={cy + 10} textAnchor="middle"
-                fontSize={26} opacity={alpha}>
+              <SvgText x={cx} y={cy + 8} textAnchor="middle"
+                fontSize={20} opacity={alpha}>
                 {emoji}
               </SvgText>
               {/* Plant name */}
               {showNames && (
-                <SvgText x={cx} y={cy + 27} textAnchor="middle"
-                  fontSize={8.5} fill="#1b4332" fontWeight="700"
+                <SvgText x={cx} y={cy + 20} textAnchor="middle"
+                  fontSize={7.5} fill="#1b4332" fontWeight="700"
                   opacity={isMoving ? 0.4 : 1}>
                   {name}
                 </SvgText>
               )}
               {/* Transparent touch target */}
-              <Circle cx={cx} cy={cy} r={22} fill="transparent"
+              <Circle cx={cx} cy={cy} r={17} fill="transparent"
                 onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
                 onPressOut={!isInteractive ? cancelLP : undefined}
                 onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
@@ -630,5 +655,5 @@ export const GardenMap = ({
 };
 
 const styles = StyleSheet.create({
-  pressable: { width: MAP_WIDTH, height: MAP_HEIGHT },
+  pressable: { width: MAP_WIDTH, height: MAP_HEIGHT },  // fallback, overridden by renderScale inline style
 });
