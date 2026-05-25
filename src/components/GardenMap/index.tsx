@@ -269,10 +269,13 @@ export const GardenMap = ({
   };
 
   // ── Background tap (place/move mode) ────────────────────────────────────────
+  // locationX/Y is in Pressable screen-pixels; divide by renderScale to get viewBox pixels
   const handleBgTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
     if (!onMapPress) return;
-    const gridX = Math.max(1, Math.min(Math.round(e.nativeEvent.locationX / SCALE), GRID_COLS));
-    const gridY = Math.max(1, Math.min(Math.round(e.nativeEvent.locationY / SCALE), GRID_ROWS));
+    const vx = e.nativeEvent.locationX / renderScale;
+    const vy = e.nativeEvent.locationY / renderScale;
+    const gridX = Math.max(1, Math.min(Math.round(vx / SCALE), GRID_COLS));
+    const gridY = Math.max(1, Math.min(Math.round(vy / SCALE), GRID_ROWS));
     onMapPress(gridX, gridY);
   };
 
@@ -487,11 +490,14 @@ export const GardenMap = ({
           );
         })}
 
-        {/* ── Companion overlay ─────────────────────────────────────────────── */}
+        {/* ── Companion overlay (only pairs within 4 cells / ~120cm) ───────── */}
         {showCompanionOverlay && companionPairs.map((pair, idx) => {
           const pA = garden.plants.find((p) => p.id === pair.plantIdA);
           const pB = garden.plants.find((p) => p.id === pair.plantIdB);
           if (!pA || !pB) return null;
+          // Only show companion arcs for actual neighbours (≤ 4 grid cells apart)
+          const cellDist = Math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2);
+          if (cellDist > 4) return null;
           const x1 = plantCx(pA); const y1 = plantCy(pA);
           const x2 = plantCx(pB); const y2 = plantCy(pB);
           const col = pair.relation === 'good' ? '#2d6a4f' : '#e63946';
@@ -561,11 +567,12 @@ export const GardenMap = ({
                   strokeDasharray={isThirsty ? '6,4' : '4,3'}
                   opacity={isMoving ? 0.25 : 0.45} rx={10} />
 
-                {/* Tiled emoji pattern — more opaque since no fill behind them */}
+                {/* Tiled emoji pattern — dummy first to prevent react-native-svg first-element opacity artefact */}
+                <SvgText key="__dummy" x={-9999} y={-9999} opacity={0}>{emoji}</SvgText>
                 {tileEmojis.map(({ key, ex, ey }) => (
                   <SvgText key={key} x={ex} y={ey + 6}
                     textAnchor="middle" fontSize={EMOJI_STEP * 0.55}
-                    opacity={isMoving ? 0.15 : 0.78}>
+                    opacity={isMoving ? 0.15 : 0.85}>
                     {emoji}
                   </SvgText>
                 ))}

@@ -91,6 +91,7 @@ export const scheduleDailyMaintenanceNotification = async (
       sound: true,
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
       hour: 8,
       minute: 0,
       repeats: true,
@@ -158,7 +159,7 @@ export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
         body: `❄️ Vorstmelding: ${Math.round(minTemp)}°C verwacht — dek gevoelige planten af!`,
         sound: true,
       },
-      trigger: { date: tonight20 },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: tonight20 },
     });
   }
 
@@ -175,7 +176,7 @@ export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
         body: `🌡️ Hittegolf: ${todayMax}°C vandaag — geef extra water en bescherm gevoelige planten!`,
         sound: true,
       },
-      trigger: { date: today14 },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: today14 },
     });
   }
 
@@ -191,7 +192,7 @@ export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
         body: `🌪️ Zware wind verwacht (${todayWind} km/h) — zet balkon- en kasplanten naar binnen!`,
         sound: true,
       },
-      trigger: { date: inOneHour },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: inOneHour },
     });
   }
 };
