@@ -14,6 +14,7 @@ import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { PlantQuickSheet } from '@/components/PlantQuickSheet';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
@@ -234,6 +235,7 @@ const MapScreen = (): React.JSX.Element => {
   const [forceShowMap,        setForceShowMap]        = useState(false);
   const [showOnboarding,      setShowOnboarding]      = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
+  const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
 
   // Plant search state
   const [showPlantSearch,     setShowPlantSearch]     = useState(false);
@@ -312,15 +314,39 @@ const MapScreen = (): React.JSX.Element => {
       acc + p.maintenanceTasks.filter((t) => !t.completedDate && t.dueDate < now).length, 0);
   }, [garden]);
 
-  // Plants with overdue water tasks → shown on map as water indicator (#23)
-  const thirstyPlantIds = useMemo<string[]>(() => {
-    if (!garden) return [];
-    const now = new Date().toISOString();
-    return garden.plants
-      .filter((p) => p.maintenanceTasks.some(
-        (t) => t.type === 'water' && !t.completedDate && t.dueDate < now,
-      ))
-      .map((p) => p.id);
+  const plantStatuses = useMemo((): Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'> => {
+    const result: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'> = {};
+    if (!garden) return result;
+    const now = new Date();
+    const nowStr = now.toISOString();
+    const todayStr = nowStr.slice(0, 10);
+    const in3Days = new Date(now);
+    in3Days.setDate(in3Days.getDate() + 3);
+    const in3DaysStr = in3Days.toISOString().slice(0, 10);
+
+    for (const plant of garden.plants) {
+      let status: 'overdue' | 'soon' | 'water' | 'done_today' | 'ok' = 'ok';
+      let completedToday = false;
+
+      for (const task of plant.maintenanceTasks) {
+        if (task.completedDate) {
+          if (task.completedDate.slice(0, 10) === todayStr) completedToday = true;
+          continue;
+        }
+        const dateStr = task.dueDate.slice(0, 10);
+        if (dateStr < todayStr) {
+          // Overdue — water gets special 'water' status, others get 'overdue'
+          if (task.type === 'water' && status !== 'overdue') status = 'water';
+          else status = 'overdue';
+        } else if (dateStr <= in3DaysStr && status === 'ok') {
+          status = 'soon';
+        }
+      }
+
+      if (completedToday && status === 'ok') status = 'done_today';
+      result[plant.id] = status;
+    }
+    return result;
   }, [garden]);
 
   const companionPairs = useMemo<CompanionPair[]>(() => {
@@ -687,14 +713,26 @@ const MapScreen = (): React.JSX.Element => {
         </View>
       )}
 
-      {/* Water banner (#23) */}
-      {!isInteractive && thirstyPlantIds.length > 0 && (
-        <View style={styles.waterBanner}>
-          <Text style={styles.waterBannerText}>
-            💧 {thirstyPlantIds.length} {thirstyPlantIds.length === 1 ? 'plant heeft' : 'planten hebben'} water nodig
-          </Text>
-        </View>
-      )}
+      {/* Status summary bar */}
+      {!isInteractive && (() => {
+        const overdueCount = Object.values(plantStatuses).filter(s => s === 'overdue' || s === 'water').length;
+        const soonCount = Object.values(plantStatuses).filter(s => s === 'soon').length;
+        if (overdueCount === 0 && soonCount === 0) return null;
+        return (
+          <View style={styles.statusBar}>
+            {overdueCount > 0 && (
+              <Text style={styles.statusBarUrgent}>
+                🔴 {overdueCount} {overdueCount === 1 ? 'plant' : 'planten'} — achterstallig
+              </Text>
+            )}
+            {soonCount > 0 && (
+              <Text style={styles.statusBarSoon}>
+                🟠 {soonCount} {soonCount === 1 ? 'plant' : 'planten'} — binnenkort
+              </Text>
+            )}
+          </View>
+        );
+      })()}
 
       {/* Map */}
       <View style={styles.mapWrapper}>
@@ -706,7 +744,7 @@ const MapScreen = (): React.JSX.Element => {
             <ScrollView bounces={false}>
               <GardenMap
                 garden={currentGarden}
-                onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
+                onPlantPress={(p) => setQuickSheetPlant(p)}
                 onPlantLongPress={(p) => setMenuPlant(p)}
                 viewMode="2d"
                 isInteractive={isInteractive}
@@ -718,7 +756,7 @@ const MapScreen = (): React.JSX.Element => {
                 onMapPress={handleMapPress}
                 companionPairs={companionPairs}
                 showCompanionOverlay={showCompanionOverlay}
-                thirstyPlantIds={thirstyPlantIds}
+                plantStatuses={plantStatuses}
                 boundaries={currentGarden.boundaries ?? []}
                 showNames={showNames}
                 renderScale={mapScale}
@@ -773,6 +811,15 @@ const MapScreen = (): React.JSX.Element => {
         onDelete={handleDelete}
         onChangeColor={(p, color) => updatePlant({ ...p, color })}
         onSaveNote={(p, notes) => updatePlant({ ...p, notes: notes.trim() || undefined })}
+      />
+
+      {/* Plant quick sheet */}
+      <PlantQuickSheet
+        plant={quickSheetPlant}
+        visible={!!quickSheetPlant}
+        onClose={() => setQuickSheetPlant(null)}
+        onDetails={(plantId) => navigation.navigate('PlantCard', { plantId })}
+        weatherRainExpected={false}
       />
 
       {/* Plant search modal */}
@@ -1012,11 +1059,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
   },
   companionBtnText: { fontSize: 20 },
-  waterBanner: {
-    backgroundColor: '#e0f0ff', paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#90c8f0',
+  statusBar: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    backgroundColor: '#fffbeb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
   },
-  waterBannerText: { fontSize: 13, fontWeight: '600', color: '#0a558c' },
+  statusBarUrgent: { fontSize: 12, color: '#c1121f', fontWeight: '600' },
+  statusBarSoon: { fontSize: 12, color: '#92400e', fontWeight: '600' },
   companionLegend: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
     paddingHorizontal: 16, paddingVertical: 8,

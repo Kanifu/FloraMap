@@ -87,8 +87,8 @@ export const AppNavigator = (): React.JSX.Element => (
         name="MaintenanceTab"
         component={MaintenanceStackNavigator}
         options={{
-          tabBarLabel: 'Onderhoud',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🔔</Text>,
+          tabBarLabel: 'Mijn tuin',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🌻</Text>,
         }}
       />
     </Tab.Navigator>

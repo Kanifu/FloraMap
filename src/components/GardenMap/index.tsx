@@ -224,7 +224,7 @@ interface GardenMapProps {
   onMapPress?: (gridX: number, gridY: number) => void;
   companionPairs?: CompanionPair[];
   showCompanionOverlay?: boolean;
-  thirstyPlantIds?: string[];    // plants with overdue water tasks (#23)
+  plantStatuses?: Record<string, 'overdue' | 'soon' | 'done_today' | 'water' | 'ok'>;
   boundaries?: GardenBoundary[];
   showNames?: boolean;           // default true
   onBoundaryPress?: (boundaryId: string) => void;
@@ -244,12 +244,14 @@ export const GardenMap = ({
   onMapPress,
   companionPairs = [],
   showCompanionOverlay = false,
-  thirstyPlantIds = [],
+  plantStatuses,
   boundaries = [],
   showNames = true,
   onBoundaryPress,
   renderScale = 1,
 }: GardenMapProps): React.JSX.Element => {
+
+  const statusMap = plantStatuses ?? {};
 
   // ── Fast long-press via manual timer ────────────────────────────────────────
   const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -278,8 +280,6 @@ export const GardenMap = ({
     const gridY = Math.max(1, Math.min(Math.round(vy / SCALE), GRID_ROWS));
     onMapPress(gridX, gridY);
   };
-
-  const thirstySet = new Set(thirstyPlantIds);
 
   return (
     <Pressable onPress={isInteractive ? handleBgTap : undefined}
@@ -518,7 +518,6 @@ export const GardenMap = ({
         {/* ── Plants & zones ────────────────────────────────────────────────── */}
         {garden.plants.map((plant) => {
           const isMoving  = plant.id === movingPlantId;
-          const isThirsty = thirstySet.has(plant.id);
           const w = plant.width  ?? 1;
           const h = plant.height ?? 1;
           const isZone = w > 1 || h > 1;
@@ -560,12 +559,29 @@ export const GardenMap = ({
               <G key={plant.id}>
                 {/* Fully transparent background — zones defined by emoji tiling only */}
                 {/* Subtle dashed border for zone boundary (no fill) */}
-                <Rect x={zLeft} y={zTop} width={zW} height={zH}
-                  fill="none"
-                  stroke={isThirsty ? '#3a86ff' : color}
-                  strokeWidth={isThirsty ? 2.5 : 1.5}
-                  strokeDasharray={isThirsty ? '6,4' : '4,3'}
-                  opacity={isMoving ? 0.25 : 0.45} rx={10} />
+                {(() => {
+                  const zoneStatus = statusMap[plant.id];
+                  return (
+                    <Rect x={zLeft} y={zTop} width={zW} height={zH}
+                      fill="none"
+                      stroke={
+                        zoneStatus === 'overdue' ? '#e63946' :
+                        zoneStatus === 'water'   ? '#3a86ff' :
+                        zoneStatus === 'soon'    ? '#fb8500' :
+                        zoneStatus === 'done_today' ? '#2d6a4f' :
+                        color
+                      }
+                      strokeWidth={
+                        zoneStatus === 'overdue' || zoneStatus === 'water' ? 2.5 :
+                        zoneStatus === 'soon' ? 2 : 1.5
+                      }
+                      strokeDasharray={
+                        zoneStatus === 'overdue' ? undefined :
+                        zoneStatus === 'soon' || zoneStatus === 'water' ? '6,4' : '4,3'
+                      }
+                      opacity={isMoving ? 0.25 : 0.55} rx={10} />
+                  );
+                })()}
 
                 {/* Tiled emoji pattern — dummy first to prevent react-native-svg first-element opacity artefact */}
                 <SvgText key="__dummy" x={-9999} y={-9999} opacity={0}>{emoji}</SvgText>
@@ -612,11 +628,17 @@ export const GardenMap = ({
 
           return (
             <G key={plant.id}>
-              {/* Water-thirsty ring */}
-              {isThirsty && (
-                <Circle cx={cx} cy={cy} r={15}
-                  fill="none" stroke="#3a86ff" strokeWidth={2.5}
-                  strokeDasharray="5,3" opacity={0.8} />
+              {/* Status ring */}
+              {(statusMap[plant.id] === 'overdue' || statusMap[plant.id] === 'water') && (
+                <Circle cx={cx} cy={cy} r={18}
+                  fill="none" stroke={statusMap[plant.id] === 'water' ? '#3a86ff' : '#e63946'}
+                  strokeWidth={2.5} strokeDasharray={statusMap[plant.id] === 'water' ? '5,3' : undefined}
+                  opacity={0.9} />
+              )}
+              {statusMap[plant.id] === 'soon' && (
+                <Circle cx={cx} cy={cy} r={18}
+                  fill="none" stroke="#fb8500" strokeWidth={2}
+                  strokeDasharray="4,3" opacity={0.8} />
               )}
               {/* Moving indicator ring */}
               {isMoving && (
@@ -635,6 +657,13 @@ export const GardenMap = ({
                   opacity={isMoving ? 0.4 : 1}>
                   {name}
                 </SvgText>
+              )}
+              {/* Done-today badge */}
+              {statusMap[plant.id] === 'done_today' && (
+                <G>
+                  <Circle cx={cx + 11} cy={cy - 11} r={7} fill="#2d6a4f" opacity={0.95} />
+                  <SvgText x={cx + 11} y={cy - 7} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="700">✓</SvgText>
+                </G>
               )}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={17} fill="transparent"
