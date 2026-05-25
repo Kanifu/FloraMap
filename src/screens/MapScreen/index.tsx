@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Alert,
   TouchableOpacity, Modal, TextInput, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator,
+  Platform, ScrollView, ActivityIndicator, Pressable,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -228,12 +228,29 @@ const MapScreen = (): React.JSX.Element => {
   const [scanning,       setScanning]       = useState(false);
   const [plantsToPlace,  setPlantsToPlace]  = useState<IdentifiedPlant[]>([]);
 
+  // ── correction sheet state ────────────────────────────────────────────────
+  const [showCorrectionSheet, setShowCorrectionSheet] = useState(false);
+  const [correctionName,      setCorrectionName]      = useState('');
+  const [correctionSpecies,   setCorrectionSpecies]   = useState('');
+
   const ensureGarden = useCallback(() => {
     if (garden) return garden;
     const g = { id: `garden-${Date.now()}`, userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
     setGarden(g);
     return g;
   }, [garden, setGarden]);
+
+  // Show correction sheet whenever plantsToPlace gets new entries
+  useEffect(() => {
+    if (plantsToPlace.length > 0) {
+      const next = plantsToPlace[0];
+      setCorrectionName(next.commonName);
+      setCorrectionSpecies(next.species ?? '');
+      setShowCorrectionSheet(true);
+    } else {
+      setShowCorrectionSheet(false);
+    }
+  }, [plantsToPlace]);
 
   const isInteractive = !!movingPlant || !!drawStep || plantsToPlace.length > 0;
   const showMap = !!(garden && garden.plants.length > 0) || plantsToPlace.length > 0 || forceShowMap;
@@ -291,8 +308,13 @@ const MapScreen = (): React.JSX.Element => {
   const handleMapPress = useCallback((x: number, y: number) => {
     if (plantsToPlace.length > 0) {
       const [next, ...rest] = plantsToPlace;
+      const corrected: IdentifiedPlant = {
+        ...next,
+        commonName: correctionName.trim() || next.commonName,
+        species: correctionSpecies.trim() || (next.species ?? ''),
+      };
       const g = ensureGarden();
-      addPlant(makePlantFromScan(next, g.id, x, y));
+      addPlant(makePlantFromScan(corrected, g.id, x, y));
       setPlantsToPlace(rest);
       return;
     }
@@ -315,7 +337,7 @@ const MapScreen = (): React.JSX.Element => {
         setShowModal(true);
       }
     }
-  }, [plantsToPlace, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant, ensureGarden]);
+  }, [plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant, ensureGarden]);
 
   const handleDelete = useCallback((plant: Plant) => {
     Alert.alert('Verwijderen', `${plant.commonName} uit je tuin verwijderen?`, [
@@ -535,6 +557,57 @@ const MapScreen = (): React.JSX.Element => {
         onChangeColor={(p, color) => updatePlant({ ...p, color })}
         onSaveNote={(p, notes) => updatePlant({ ...p, notes: notes.trim() || undefined })}
       />
+
+      {/* Plant correction sheet */}
+      {showCorrectionSheet && plantsToPlace.length > 0 && (
+        <Modal
+          visible={showCorrectionSheet}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCorrectionSheet(false)}>
+          <Pressable
+            style={corrStyles.backdrop}
+            onPress={() => setShowCorrectionSheet(false)}>
+            <Pressable style={corrStyles.sheet} onPress={() => {}}>
+              <View style={corrStyles.handle} />
+              <Text style={corrStyles.title}>🔍 Plant herkend</Text>
+              {(plantsToPlace[0].confidence ?? 1) < 0.85 && (
+                <Text style={corrStyles.lowConf}>
+                  ⚠️ Lage zekerheid ({Math.round((plantsToPlace[0].confidence ?? 0.7) * 100)}%) — controleer de naam
+                </Text>
+              )}
+              <Text style={corrStyles.label}>Naam</Text>
+              <TextInput
+                style={corrStyles.input}
+                value={correctionName}
+                onChangeText={setCorrectionName}
+                placeholder="Naam van de plant"
+                placeholderTextColor="#aaa"
+              />
+              <Text style={corrStyles.label}>Soort (optioneel)</Text>
+              <TextInput
+                style={corrStyles.input}
+                value={correctionSpecies}
+                onChangeText={setCorrectionSpecies}
+                placeholder="Latijnse naam"
+                placeholderTextColor="#aaa"
+              />
+              <TouchableOpacity
+                style={corrStyles.confirmBtn}
+                onPress={() => setShowCorrectionSheet(false)}>
+                <Text style={corrStyles.confirmText}>
+                  ✓ Tik nu op de kaart om te plaatsen
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={corrStyles.skipBtn}
+                onPress={() => { setPlantsToPlace((q) => q.slice(1)); setShowCorrectionSheet(false); }}>
+                <Text style={corrStyles.skipText}>Overslaan</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
 
       {/* New plant/zone modal */}
       <Modal visible={showModal} transparent animationType="slide">
@@ -794,6 +867,20 @@ const menuStyles = StyleSheet.create({
     borderWidth: 1, borderColor: '#b7e4c7',
   },
   cancelText: { fontSize: 16, color: '#2d6a4f', fontWeight: '700' },
+});
+
+const corrStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, maxHeight: '70%' },
+  handle: { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  title: { fontSize: 18, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+  lowConf: { fontSize: 12, color: '#e85d04', marginBottom: 12, backgroundColor: '#fff3e0', padding: 8, borderRadius: 8 },
+  label: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 8, marginBottom: 4 },
+  input: { borderWidth: 1, borderColor: '#b7e4c7', borderRadius: 10, padding: 10, fontSize: 15, color: '#1b4332', backgroundColor: '#f8fdf9' },
+  confirmBtn: { marginTop: 16, backgroundColor: '#2d6a4f', borderRadius: 12, padding: 14, alignItems: 'center' },
+  confirmText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  skipBtn: { marginTop: 8, alignItems: 'center', padding: 8 },
+  skipText: { color: '#888', fontSize: 13 },
 });
 
 export default MapScreen;
