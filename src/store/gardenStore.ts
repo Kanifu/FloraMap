@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, GardenBoundary, GardenStats, BADGE_DEFINITIONS } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, GardenBoundary, GardenStats, BADGE_DEFINITIONS, HarvestEntry, RotationRecord } from '@/models';
 
 const DEFAULT_STATS: GardenStats = {
   currentStreak: 0,
@@ -16,6 +16,7 @@ interface GardenState {
   isScanning: boolean;
   pendingDiffProposals: DiffProposal[];
   gardenStats: GardenStats;
+  rotationHistory: RotationRecord[];
 }
 
 interface GardenActions {
@@ -33,6 +34,8 @@ interface GardenActions {
   addBoundary: (boundary: GardenBoundary) => void;
   removeBoundary: (boundaryId: string) => void;
   recordTaskCompletion: () => void;
+  recordHarvest: (plantId: string, entry: HarvestEntry) => void;
+  addRotationRecord: (record: RotationRecord) => void;
 }
 
 export const useGardenStore = create<GardenState & GardenActions>()(
@@ -42,6 +45,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       isScanning: false,
       pendingDiffProposals: [],
       gardenStats: DEFAULT_STATS,
+      rotationHistory: [],
 
       setGarden: (garden) => set({ garden }),
 
@@ -72,12 +76,19 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       removePlant: (plantId) => {
         const { garden } = get();
         if (!garden) return;
-        set({
-          garden: {
-            ...garden,
-            plants: garden.plants.filter((p) => p.id !== plantId),
-          },
-        });
+        const removedPlant = garden.plants.find((p) => p.id === plantId);
+        const updatedGarden = { ...garden, plants: garden.plants.filter((p) => p.id !== plantId) };
+        if (removedPlant?.plantFamily) {
+          set({
+            garden: updatedGarden,
+            rotationHistory: [
+              ...get().rotationHistory,
+              { plantFamily: removedPlant.plantFamily, x: removedPlant.x, y: removedPlant.y, removedDate: new Date().toISOString() },
+            ],
+          });
+        } else {
+          set({ garden: updatedGarden });
+        }
       },
 
       completeMaintenanceTask: (plantId, taskId) => {
@@ -231,11 +242,24 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           },
         });
       },
+
+      recordHarvest: (plantId, entry) => set((s) => ({
+        garden: s.garden ? {
+          ...s.garden,
+          plants: s.garden.plants.map((p) =>
+            p.id === plantId ? { ...p, harvestLog: [...(p.harvestLog ?? []), entry] } : p
+          ),
+        } : null,
+      })),
+
+      addRotationRecord: (record) => set((s) => ({
+        rotationHistory: [...s.rotationHistory, record],
+      })),
     }),
     {
       name: 'garden-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ garden: state.garden, gardenStats: state.gardenStats }),
+      partialize: (state) => ({ garden: state.garden, gardenStats: state.gardenStats, rotationHistory: state.rotationHistory }),
     },
   ),
 );

@@ -44,6 +44,20 @@ export interface PhotoLogEntry {
   note?: string;
 }
 
+export interface HarvestEntry {
+  id: string;
+  date: string;           // ISO 8601
+  amountGrams?: number;
+  notes?: string;
+}
+
+export interface RotationRecord {
+  plantFamily: string;
+  x: number;
+  y: number;
+  removedDate: string;
+}
+
 export interface Plant {
   id: string;
   gardenId: string;
@@ -65,9 +79,11 @@ export interface Plant {
   imageUri?: string;
   careTips?: string[];
   harvestMonths?: number[]; // 0-indexed months when harvest is expected (0=Jan, 5=Jun)
+  plantFamily?: string;    // voor gewasrotatie
   notes?: string;
   addedVia?: PlantAddedVia;
   photoLog?: PhotoLogEntry[];
+  harvestLog?: HarvestEntry[];
 }
 
 export type GardenTaskUrgency = 'high' | 'medium' | 'low';

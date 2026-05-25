@@ -24,6 +24,7 @@ export interface IdentifiedPlant {
   waterIntervalDays?: number;     // how often to water (days)
   fertilizeIntervalDays?: number; // how often to fertilize (days)
   harvestMonths?: number[];       // 0-indexed months (0=Jan, 5=Jun)
+  plantFamily?: string;           // for crop rotation checks
 }
 
 export interface AssistantTask {

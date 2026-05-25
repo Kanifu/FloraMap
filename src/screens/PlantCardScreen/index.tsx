@@ -8,8 +8,9 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { MaintenanceTaskType, PhotoLogEntry } from '@/models';
+import { MaintenanceTaskType, PhotoLogEntry, HarvestEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
+import { plantDatabase } from '@/data/plantDatabase';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
@@ -38,6 +39,16 @@ const LIGHT_LABELS: Record<string, string> = {
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
+const ROTATION_SUCCESSORS: Record<string, string[]> = {
+  'Nachtschade':   ['Vlinderbloem', 'Composiet', 'Gras'],
+  'Cucurbit':      ['Nachtschade', 'Kruisbloemige'],
+  'Kruisbloemige': ['Cucurbit', 'Composiet', 'Ui familie'],
+  'Composiet':     ['Nachtschade', 'Cucurbit'],
+  'Vlinderbloem':  ['Nachtschade', 'Kruisbloemige', 'Cucurbit'],
+  'Ui familie':    ['Cucurbit', 'Composiet'],
+  'Gras':          ['Vlinderbloem', 'Nachtschade'],
+};
+
 const PlantCardScreen = (): React.JSX.Element => {
   const route      = useRoute<PlantCardRouteProp>();
   const navigation = useNavigation<PlantCardNavProp>();
@@ -46,6 +57,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   const garden                  = useGardenStore((s) => s.garden);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
+  const recordHarvest           = useGardenStore((s) => s.recordHarvest);
 
   const plant = garden?.plants.find((p) => p.id === plantId);
   const now   = new Date().toISOString();
@@ -57,6 +69,12 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [editNotes,    setEditNotes]    = useState('');
   const [editWater,    setEditWater]    = useState('');
   const [showHistory,  setShowHistory]  = useState(false);
+
+  // ── harvest diary state ────────────────────────────────────────────────────
+  const [showHarvestForm, setShowHarvestForm] = useState(false);
+  const [harvestAmount,   setHarvestAmount]   = useState('');
+  const [harvestNote,     setHarvestNote]     = useState('');
+  const [harvestToast,    setHarvestToast]    = useState(false);
 
   const startEdit = () => {
     if (!plant) return;
@@ -130,6 +148,24 @@ const PlantCardScreen = (): React.JSX.Element => {
     ]);
   };
 
+  // ── harvest diary ─────────────────────────────────────────────────────────
+  const handleSaveHarvest = () => {
+    if (!plant) return;
+    const parsed = parseFloat(harvestAmount.replace(',', '.'));
+    const entry: HarvestEntry = {
+      id: newId(),
+      date: new Date().toISOString(),
+      amountGrams: isNaN(parsed) || harvestAmount.trim() === '' ? undefined : parsed,
+      notes: harvestNote.trim() || undefined,
+    };
+    recordHarvest(plant.id, entry);
+    setHarvestAmount('');
+    setHarvestNote('');
+    setShowHarvestForm(false);
+    setHarvestToast(true);
+    setTimeout(() => setHarvestToast(false), 2500);
+  };
+
   // ── tasks ──────────────────────────────────────────────────────────────────
   const { activeTasks, completedTasks } = useMemo(() => {
     if (!plant) return { activeTasks: [], completedTasks: [] };
@@ -140,6 +176,25 @@ const PlantCardScreen = (): React.JSX.Element => {
         .sort((a, b) => (b.completedDate ?? '').localeCompare(a.completedDate ?? '')),
     };
   }, [plant]);
+
+  // ── successor crops ────────────────────────────────────────────────────────
+  const currentMonth = new Date().getMonth();
+  const successorSuggestions = useMemo(() => {
+    if (!plant?.plantFamily) return [];
+    const successorFamilies = ROTATION_SUCCESSORS[plant.plantFamily];
+    if (!successorFamilies) return [];
+    return plantDatabase
+      .filter((p) => p.plantFamily && successorFamilies.includes(p.plantFamily))
+      .slice(0, 3);
+  }, [plant]);
+
+  const showSuccessors = useMemo(() => {
+    if (!plant?.plantFamily) return false;
+    if (!ROTATION_SUCCESSORS[plant.plantFamily]) return false;
+    const hasHarvest = (plant.harvestLog ?? []).length > 0;
+    const hasRecentHarvestMonth = (plant.harvestMonths ?? []).some((m) => m <= currentMonth);
+    return hasHarvest || hasRecentHarvestMonth;
+  }, [plant, currentMonth]);
 
   // ── not found ──────────────────────────────────────────────────────────────
   if (!plant) {
@@ -366,6 +421,103 @@ const PlantCardScreen = (): React.JSX.Element => {
             )}
           </View>
 
+          {/* ── Harvest diary ── */}
+          <View style={s.section}>
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionTitle}>🍓 Oogstdagboek</Text>
+              <TouchableOpacity
+                style={s.addPhotoBtn}
+                onPress={() => setShowHarvestForm((v) => !v)}>
+                <Text style={s.addPhotoBtnText}>
+                  {showHarvestForm ? '▲ Verbergen' : '🍓 Oogst registreren'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Harvest form */}
+            {showHarvestForm && (
+              <View style={s.harvestForm}>
+                <TextInput
+                  style={s.input}
+                  value={harvestAmount}
+                  onChangeText={setHarvestAmount}
+                  placeholder="Hoeveelheid in gram (optioneel)"
+                  placeholderTextColor="#aaa"
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  style={[s.input, s.inputMulti]}
+                  value={harvestNote}
+                  onChangeText={setHarvestNote}
+                  placeholder="Notitie (optioneel)"
+                  placeholderTextColor="#aaa"
+                  multiline
+                  numberOfLines={2}
+                />
+                <TouchableOpacity style={s.doneBtn} onPress={handleSaveHarvest}>
+                  <Text style={s.doneBtnText}>Opslaan</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Toast */}
+            {harvestToast && (
+              <View style={s.harvestToast}>
+                <Text style={s.harvestToastText}>✓ Oogst geregistreerd</Text>
+              </View>
+            )}
+
+            {/* Harvest total */}
+            {(plant.harvestLog ?? []).length > 0 && (() => {
+              const total = (plant.harvestLog ?? []).reduce(
+                (sum, e) => sum + (e.amountGrams ?? 0), 0,
+              );
+              return total > 0 ? (
+                <View style={s.harvestTotalRow}>
+                  <Text style={s.harvestTotalText}>Totaal: {total} gram</Text>
+                </View>
+              ) : null;
+            })()}
+
+            {/* Harvest history */}
+            {(plant.harvestLog ?? []).length === 0 ? (
+              <Text style={s.emptyText}>Nog geen oogsten geregistreerd</Text>
+            ) : (
+              [...(plant.harvestLog ?? [])].reverse().map((entry) => (
+                <View key={entry.id} style={s.harvestRow}>
+                  <View style={s.taskBody}>
+                    <Text style={s.taskLabel}>
+                      {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {entry.amountGrams != null ? `  ·  ${entry.amountGrams} gram` : ''}
+                    </Text>
+                    {entry.notes ? <Text style={s.taskNote}>{entry.notes}</Text> : null}
+                  </View>
+                  <Text style={s.checkMark}>🍓</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* ── Successor crops ── */}
+          {showSuccessors && successorSuggestions.length > 0 && (
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🔄 Opvolgteelt na {plant.commonName}</Text>
+              <View style={s.successorList}>
+                {successorSuggestions.map((p) => (
+                  <View key={p.species} style={s.successorCard}>
+                    <Text style={s.successorEmoji}>{p.emoji}</Text>
+                    <View style={s.taskBody}>
+                      <Text style={s.taskLabel}>{p.commonName}</Text>
+                      {p.sowMonths?.includes(currentMonth) && (
+                        <Text style={s.successorSeason}>Past goed in dit seizoen</Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -471,6 +623,32 @@ const s = StyleSheet.create({
   photoDate: { fontSize: 11, color: '#6b705c', textAlign: 'center' },
   photoHint: { fontSize: 11, color: '#aaa', fontStyle: 'italic' },
   emptyText: { fontSize: 14, color: '#aaa', fontStyle: 'italic', lineHeight: 20 },
+  harvestForm: { gap: 10, backgroundColor: '#f8f9fa', borderRadius: 14, padding: 14 },
+  harvestToast: {
+    backgroundColor: '#d8f3dc', borderRadius: 10, padding: 10, alignItems: 'center',
+    borderWidth: 1, borderColor: '#b7e4c7',
+  },
+  harvestToastText: { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
+  harvestTotalRow: {
+    backgroundColor: '#f1f8f3', borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: '#b7e4c7',
+  },
+  harvestTotalText: { fontSize: 14, fontWeight: '700', color: '#2d6a4f' },
+  harvestRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#f8f9fa', borderRadius: 10,
+    borderWidth: 1, borderColor: '#e9ecef',
+    padding: 12, gap: 10,
+  },
+  successorList: { gap: 8 },
+  successorCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#f1f8f3', borderRadius: 12,
+    borderWidth: 1, borderColor: '#b7e4c7',
+    padding: 12, gap: 10,
+  },
+  successorEmoji: { fontSize: 24 },
+  successorSeason: { fontSize: 12, color: '#2d6a4f', fontWeight: '600', marginTop: 2 },
 });
 
 export default PlantCardScreen;

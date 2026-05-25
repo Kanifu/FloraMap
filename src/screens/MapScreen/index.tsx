@@ -16,6 +16,7 @@ import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } f
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
+import { checkCropRotation } from '@/utils/cropRotation';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -86,6 +87,7 @@ const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: num
     identificationConfidence: identified.confidence,
     careTips: identified.careTips ?? [],
     harvestMonths: identified.harvestMonths,
+    plantFamily: identified.plantFamily,
     addedVia: 'scan',
   };
 };
@@ -211,6 +213,7 @@ const MapScreen = (): React.JSX.Element => {
   const clearGarden  = useGardenStore((s) => s.clearGarden);
   const addBoundary  = useGardenStore((s) => s.addBoundary);
   const removeBoundary = useGardenStore((s) => s.removeBoundary);
+  const rotationHistory = useGardenStore((s) => s.rotationHistory);
 
   const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
@@ -255,6 +258,11 @@ const MapScreen = (): React.JSX.Element => {
   // ── scan state ────────────────────────────────────────────────────────────
   const [scanning,       setScanning]       = useState(false);
   const [plantsToPlace,  setPlantsToPlace]  = useState<IdentifiedPlant[]>([]);
+
+  // ── disease scan state ────────────────────────────────────────────────────
+  const [diseaseScanning,   setDiseaseScanning]   = useState(false);
+  const [showDiseaseResult, setShowDiseaseResult] = useState(false);
+  const [diseaseText,       setDiseaseText]       = useState('');
 
   const ensureGarden = useCallback(() => {
     if (garden) return garden;
@@ -347,7 +355,13 @@ const MapScreen = (): React.JSX.Element => {
     if (plantsToPlace.length > 0) {
       const [next, ...rest] = plantsToPlace;
       const g = ensureGarden();
-      addPlant(makePlantFromScan(next, g.id, x, y));
+      const newPlant = makePlantFromScan(next, g.id, x, y);
+      addPlant(newPlant);
+      // Crop rotation check
+      const rotationWarning = checkCropRotation(newPlant, g.plants, rotationHistory);
+      if (rotationWarning) {
+        Alert.alert('Gewasrotatie', rotationWarning, [{ text: 'Begrepen' }]);
+      }
       setPlantsToPlace(rest);
       return;
     }
@@ -429,9 +443,10 @@ const MapScreen = (): React.JSX.Element => {
 
   const handleScanPress = () => {
     Alert.alert('Plant toevoegen', 'Kies een methode', [
-      { text: '📷 Camera',   onPress: () => handleScan(false) },
-      { text: '🖼️ Galerij',  onPress: () => handleScan(true) },
-      { text: '🔍 Database', onPress: () => { setPlantSearchQuery(''); setShowPlantSearch(true); } },
+      { text: '📷 Camera',    onPress: () => handleScan(false) },
+      { text: '🖼️ Galerij',   onPress: () => handleScan(true) },
+      { text: '🔍 Database',  onPress: () => { setPlantSearchQuery(''); setShowPlantSearch(true); } },
+      { text: '🐛 Ziekte scan', onPress: () => handleDiseaseScan() },
       { text: 'Annuleren', style: 'cancel' },
     ]);
   };
@@ -467,12 +482,39 @@ const MapScreen = (): React.JSX.Element => {
       waterIntervalDays: profile.waterIntervalDays,
       fertilizeIntervalDays: profile.fertilizeIntervalDays,
       harvestMonths: profile.harvestMonths,
+      plantFamily: profile.plantFamily,
     };
     setPlantsToPlace([ip]);
     setShowPlantSearch(false);
     ensureGarden();
     setForceShowMap(true);
   }, [ensureGarden]);
+
+  // ── disease scan ──────────────────────────────────────────────────────────
+  const handleDiseaseScan = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een ziektescan uit te voeren.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.85 });
+    if (result.canceled || !result.assets[0]) return;
+    setDiseaseScanning(true);
+    try {
+      const response = await gardenAssistantService.chat(
+        'Analyseer deze plant op ziektes, plagen en gebreken. Geef een diagnose en behandeladvies.',
+        result.assets[0].uri,
+        [],
+        [],
+      );
+      setDiseaseText(response.text);
+      setShowDiseaseResult(true);
+    } catch (e) {
+      Alert.alert('Ziektescan mislukt', e instanceof Error ? e.message : 'Onbekende fout.');
+    } finally {
+      setDiseaseScanning(false);
+    }
+  };
 
   // ── boundary picker ───────────────────────────────────────────────────────
   const handleSelectBoundaryType = useCallback((bt: { type: BoundaryType; isLine: boolean }) => {
@@ -728,6 +770,31 @@ const MapScreen = (): React.JSX.Element => {
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Disease scan loading overlay */}
+      {diseaseScanning && (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#2d6a4f" />
+            <Text style={styles.loadingText}>Ziektescan bezig…</Text>
+          </View>
+        </Modal>
+      )}
+
+      {/* Disease scan result modal */}
+      <Modal visible={showDiseaseResult} transparent animationType="slide" onRequestClose={() => setShowDiseaseResult(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { maxHeight: '80%' }]}>
+            <Text style={styles.modalTitle}>🐛 Ziekte & plaag diagnose</Text>
+            <ScrollView style={{ flex: 1 }}>
+              <Text style={styles.diseaseResultText}>{diseaseText}</Text>
+            </ScrollView>
+            <TouchableOpacity style={[styles.modalConfirmBtn, { marginTop: 8 }]} onPress={() => setShowDiseaseResult(false)}>
+              <Text style={styles.modalConfirmText}>Sluiten</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       {/* New plant/zone modal */}
@@ -990,6 +1057,12 @@ const styles = StyleSheet.create({
   },
   modalConfirmBtnDisabled: { backgroundColor: '#ccc' },
   modalConfirmText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  loadingOverlay: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)', gap: 16,
+  },
+  loadingText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  diseaseResultText: { fontSize: 15, color: '#1b4332', lineHeight: 23 },
 });
 
 const menuStyles = StyleSheet.create({
