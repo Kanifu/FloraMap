@@ -1,66 +1,230 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-
-const STEPS = [
-  {
-    emoji: '🌱',
-    title: 'Welkom bij FloraMap',
-    body: 'Plan en beheer je tuin op één plek. Voeg planten toe en houd bij wanneer ze water, snoei of mest nodig hebben.',
-  },
-  {
-    emoji: '📸',
-    title: 'Voeg je eerste plant toe',
-    body: 'Scan een foto met de camera of voeg planten handmatig toe — ook zaden, zaailingen en stekken.',
-  },
-  {
-    emoji: '✅',
-    title: 'Houd onderhoud bij',
-    body: 'FloraMap herinnert je dagelijks aan watergeven, snoeien en bemesten. Vink taken af — de volgende herhaling wordt automatisch ingepland.',
-  },
-];
+import {
+  Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
+} from 'react-native';
+import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Props {
   visible: boolean;
   onDone: () => void;
 }
 
+type GardenType = 'moestuin' | 'siertuin' | 'balkon' | 'kruidentuin' | 'fruitbomen';
+type Experience = 'beginner' | 'gevorderd' | 'expert';
+
+const GARDEN_TYPES: { key: GardenType; emoji: string; label: string }[] = [
+  { key: 'moestuin',    emoji: '🥬', label: 'Moestuin' },
+  { key: 'siertuin',   emoji: '🌸', label: 'Siertuin' },
+  { key: 'balkon',     emoji: '🪴', label: 'Balkon' },
+  { key: 'kruidentuin',emoji: '🌿', label: 'Kruidentuin' },
+  { key: 'fruitbomen', emoji: '🌳', label: 'Fruitbomen' },
+];
+
+const EXPERIENCE_OPTIONS: { key: Experience; emoji: string; label: string }[] = [
+  { key: 'beginner',  emoji: '🌱', label: 'Beginner' },
+  { key: 'gevorderd', emoji: '🌿', label: 'Gevorderd' },
+  { key: 'expert',    emoji: '🌳', label: 'Expert' },
+];
+
 export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   const [step, setStep] = useState(0);
-  const isLast = step === STEPS.length - 1;
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<GardenType[]>([]);
+  const [experience, setExperience] = useState<Experience | null>(null);
 
-  const handleNext = () => {
+  const totalSteps = 5;
+  const isLast = step === totalSteps - 1;
+
+  const handleLocationRequest = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        setLocationGranted(true);
+        await AsyncStorage.setItem('floramap_location_granted', '1');
+      }
+    } catch {
+      // locatie is optioneel — stil doorgaan
+    }
+    setStep(2);
+  };
+
+  const toggleGardenType = (type: GardenType) => {
+    setSelectedTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+  };
+
+  const handleNext = async () => {
+    if (step === 1) {
+      // Stap 2 navigatie via locationRequest of skip
+      await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
+      setStep(2);
+      return;
+    }
+    if (step === 2) {
+      await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
+      setStep(3);
+      return;
+    }
+    if (step === 3) {
+      if (experience) {
+        await AsyncStorage.setItem('floramap_experience', experience);
+      }
+      setStep(4);
+      return;
+    }
     if (isLast) {
       setStep(0);
       onDone();
-    } else {
-      setStep((n) => n + 1);
+      return;
     }
+    setStep((n) => n + 1);
+  };
+
+  const handleBack = () => {
+    if (step > 0) setStep((n) => n - 1);
+  };
+
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
+          <>
+            <Text style={s.emoji}>🌿</Text>
+            <Text style={s.title}>Welkom bij FloraMap</Text>
+            <Text style={s.body}>
+              Plan en beheer je tuin op één plek. Voeg planten toe en houd bij wanneer ze water, snoei of mest nodig hebben.
+            </Text>
+          </>
+        );
+
+      case 1:
+        return (
+          <>
+            <Text style={s.emoji}>📍</Text>
+            <Text style={s.title}>Locatie</Text>
+            <Text style={s.body}>
+              Waar is jouw tuin? FloraMap gebruikt je locatie voor weersdata en zaaikalenders.
+            </Text>
+            {!locationGranted ? (
+              <TouchableOpacity style={s.locationBtn} onPress={handleLocationRequest} activeOpacity={0.85}>
+                <Text style={s.locationBtnText}>📍 Locatie toestaan</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={s.locationGranted}>
+                <Text style={s.locationGrantedText}>✅ Locatie toegestaan</Text>
+              </View>
+            )}
+            <TouchableOpacity style={s.skipLink} onPress={() => setStep(2)}>
+              <Text style={s.skipLinkText}>Overslaan →</Text>
+            </TouchableOpacity>
+          </>
+        );
+
+      case 2:
+        return (
+          <>
+            <Text style={s.emoji}>🏡</Text>
+            <Text style={s.title}>Tuintype</Text>
+            <Text style={s.body}>Wat voor tuin heb je? Je kunt meerdere types kiezen.</Text>
+            <View style={s.typeGrid}>
+              {GARDEN_TYPES.map(({ key, emoji, label }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[s.typeBtn, selectedTypes.includes(key) && s.typeBtnActive]}
+                  onPress={() => toggleGardenType(key)}
+                  activeOpacity={0.8}>
+                  <Text style={s.typeBtnEmoji}>{emoji}</Text>
+                  <Text style={[s.typeBtnLabel, selectedTypes.includes(key) && s.typeBtnLabelActive]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        );
+
+      case 3:
+        return (
+          <>
+            <Text style={s.emoji}>🌱</Text>
+            <Text style={s.title}>Ervaring</Text>
+            <Text style={s.body}>Hoe ervaren ben je als tuinier?</Text>
+            <View style={s.expRow}>
+              {EXPERIENCE_OPTIONS.map(({ key, emoji, label }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[s.expBtn, experience === key && s.expBtnActive]}
+                  onPress={() => setExperience(key)}
+                  activeOpacity={0.8}>
+                  <Text style={s.expEmoji}>{emoji}</Text>
+                  <Text style={[s.expLabel, experience === key && s.expLabelActive]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        );
+
+      case 4:
+        return (
+          <>
+            <Text style={s.emoji}>🎉</Text>
+            <Text style={s.title}>Alles ingesteld!</Text>
+            <Text style={s.body}>
+              Voeg je eerste plant toe om te beginnen.
+            </Text>
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const getNextLabel = (): string => {
+    if (step === 1) return locationGranted ? 'Volgende' : 'Overslaan';
+    if (isLast) return '🌿 Beginnen';
+    return 'Volgende';
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
       <View style={s.overlay}>
-        <View style={s.card}>
-          <Text style={s.emoji}>{STEPS[step].emoji}</Text>
-          <Text style={s.title}>{STEPS[step].title}</Text>
-          <Text style={s.body}>{STEPS[step].body}</Text>
+        <ScrollView
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}>
+          <View style={s.card}>
+            {renderStep()}
 
-          <View style={s.dots}>
-            {STEPS.map((_, i) => (
-              <View key={i} style={[s.dot, i === step && s.dotActive]} />
-            ))}
+            <View style={s.dots}>
+              {Array.from({ length: totalSteps }, (_, i) => (
+                <View key={i} style={[s.dot, i === step && s.dotActive]} />
+              ))}
+            </View>
+
+            {step !== 1 && (
+              <TouchableOpacity style={s.btn} onPress={handleNext} activeOpacity={0.85}>
+                <Text style={s.btnText}>{getNextLabel()}</Text>
+              </TouchableOpacity>
+            )}
+
+            {step === 1 && locationGranted && (
+              <TouchableOpacity style={s.btn} onPress={() => setStep(2)} activeOpacity={0.85}>
+                <Text style={s.btnText}>Volgende</Text>
+              </TouchableOpacity>
+            )}
+
+            {step > 0 && (
+              <TouchableOpacity onPress={handleBack} style={s.backLink}>
+                <Text style={s.backLinkText}>← Terug</Text>
+              </TouchableOpacity>
+            )}
           </View>
-
-          <TouchableOpacity style={s.btn} onPress={handleNext} activeOpacity={0.85}>
-            <Text style={s.btnText}>{isLast ? 'Beginnen 🌿' : 'Volgende'}</Text>
-          </TouchableOpacity>
-
-          {step > 0 && (
-            <TouchableOpacity onPress={() => setStep((n) => n - 1)} style={s.backLink}>
-              <Text style={s.backLinkText}>← Terug</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -70,6 +234,10 @@ const s = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'flex-end',
   },
   card: {
@@ -93,9 +261,9 @@ const s = StyleSheet.create({
     lineHeight: 23,
     textAlign: 'center',
     color: '#6b705c',
-    marginBottom: 28,
+    marginBottom: 20,
   },
-  dots: { flexDirection: 'row', gap: 7, marginBottom: 28 },
+  dots: { flexDirection: 'row', gap: 7, marginBottom: 28, marginTop: 16 },
   dot: {
     width: 7,
     height: 7,
@@ -114,4 +282,71 @@ const s = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   backLink: { marginTop: 14, padding: 8 },
   backLinkText: { color: '#aaa', fontSize: 14 },
+  // Locatie stap
+  locationBtn: {
+    backgroundColor: '#2d6a4f',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  locationBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  locationGranted: {
+    backgroundColor: '#d8f3dc',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  locationGrantedText: { color: '#2d6a4f', fontSize: 15, fontWeight: '600' },
+  skipLink: { padding: 8 },
+  skipLinkText: { color: '#aaa', fontSize: 14 },
+  // Tuintype stap
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 8,
+  },
+  typeBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#e9ecef',
+    backgroundColor: '#f8f9fa',
+    minWidth: 90,
+  },
+  typeBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
+  typeBtnEmoji: { fontSize: 24, marginBottom: 4 },
+  typeBtnLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600' },
+  typeBtnLabelActive: { color: '#2d6a4f' },
+  // Ervaring stap
+  expRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginBottom: 8,
+  },
+  expBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#e9ecef',
+    backgroundColor: '#f8f9fa',
+    gap: 6,
+  },
+  expBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
+  expEmoji: { fontSize: 24 },
+  expLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600' },
+  expLabelActive: { color: '#2d6a4f' },
 });
