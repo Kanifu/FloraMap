@@ -1,7 +1,7 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
-  ScrollView, Pressable,
+  ScrollView, Pressable, TextInput,
 } from 'react-native';
 import { Plant, MaintenanceTaskType } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
@@ -26,12 +26,34 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
 export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRainExpected }: Props): React.JSX.Element | null => {
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
+  const updatePlant             = useGardenStore((s) => s.updatePlant);
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName,      setEditName]      = useState('');
+  const [editSpecies,   setEditSpecies]   = useState('');
 
   const handleComplete = useCallback((taskId: string) => {
     if (!plant) return;
     completeMaintenanceTask(plant.id, taskId);
     recordTaskCompletion();
   }, [plant, completeMaintenanceTask, recordTaskCompletion]);
+
+  const handleStartEdit = useCallback(() => {
+    if (!plant) return;
+    setEditName(plant.commonName);
+    setEditSpecies(plant.species ?? '');
+    setIsEditingName(true);
+  }, [plant]);
+
+  const handleSaveEdit = useCallback(() => {
+    if (!plant) return;
+    updatePlant({ ...plant, commonName: editName.trim() || plant.commonName, species: editSpecies.trim() || plant.species });
+    setIsEditingName(false);
+  }, [plant, editName, editSpecies, updatePlant]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditingName(false);
+  }, []);
 
   if (!plant) return null;
 
@@ -58,16 +80,48 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
 
           {/* Plant header */}
           <View style={s.plantHeader}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={s.plantName}>{plant.commonName}</Text>
               {plant.species ? <Text style={s.plantSpecies}>{plant.species}</Text> : null}
             </View>
-            {lastDoneToday && (
-              <View style={s.doneTodayBadge}>
-                <Text style={s.doneTodayText}>✓ Al gedaan vandaag</Text>
-              </View>
-            )}
+            <View style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              {lastDoneToday && (
+                <View style={s.doneTodayBadge}>
+                  <Text style={s.doneTodayText}>✓ Al gedaan vandaag</Text>
+                </View>
+              )}
+              <TouchableOpacity style={s.editRowBtn} onPress={handleStartEdit} activeOpacity={0.7}>
+                <Text style={s.editRowBtnText}>✏️ Naam corrigeren</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {/* Inline name/species edit section */}
+          {isEditingName && (
+            <View style={s.editSection}>
+              <TextInput
+                style={s.editInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Naam van de plant"
+                placeholderTextColor="#aaa"
+                autoFocus
+              />
+              <TextInput
+                style={s.editInput}
+                value={editSpecies}
+                onChangeText={setEditSpecies}
+                placeholder="Latijnse naam (optioneel)"
+                placeholderTextColor="#aaa"
+              />
+              <TouchableOpacity style={s.editSaveBtn} onPress={handleSaveEdit} activeOpacity={0.8}>
+                <Text style={s.editSaveBtnText}>Opslaan</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.editCancelBtn} onPress={handleCancelEdit} activeOpacity={0.7}>
+                <Text style={s.editCancelText}>Annuleren</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Active tasks */}
           <ScrollView style={s.taskList} bounces={false}>
@@ -103,6 +157,19 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 );
               })
             )}
+
+            {/* Care tips section */}
+            {plant.careTips && plant.careTips.length > 0 && (
+              <View style={s.tipsSection}>
+                <Text style={s.tipsSectionTitle}>🌿 Verzorgingstips</Text>
+                {plant.careTips.slice(0, 2).map((tip, i) => (
+                  <Text key={i} style={s.tipRow}>· {tip}</Text>
+                ))}
+                {plant.careTips.length > 2 && (
+                  <Text style={s.moreTips}>+ {plant.careTips.length - 2} meer in details</Text>
+                )}
+              </View>
+            )}
           </ScrollView>
 
           {/* Details button */}
@@ -110,8 +177,11 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
             style={s.detailsBtn}
             onPress={() => { onClose(); onDetails(plant.id); }}
             activeOpacity={0.8}>
-            <Text style={s.detailsBtnText}>📋 Details, foto's & oogstdagboek →</Text>
+            <Text style={s.detailsBtnText}>📋 Volledig plantenpaspoort →</Text>
           </TouchableOpacity>
+
+          {/* Long-press hint */}
+          <Text style={s.hintText}>💡 Houd vast om te verplaatsen of verwijderen</Text>
         </Pressable>
       </Pressable>
     </Modal>
@@ -129,7 +199,7 @@ const s = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 32,
-    maxHeight: '60%',
+    maxHeight: '70%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.12,
@@ -159,6 +229,34 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
   },
   doneTodayText: { fontSize: 12, color: '#2d6a4f', fontWeight: '600' },
+  editSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#f8fdf9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e8f5e9',
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: '#b7e4c7',
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 14,
+    color: '#1b4332',
+    marginBottom: 6,
+    backgroundColor: '#fff',
+  },
+  editSaveBtn: {
+    backgroundColor: '#2d6a4f',
+    borderRadius: 8,
+    padding: 8,
+    alignItems: 'center',
+  },
+  editSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  editCancelBtn: { alignItems: 'center', padding: 4 },
+  editCancelText: { color: '#888', fontSize: 12 },
+  editRowBtn: { flexDirection: 'row', alignItems: 'center', paddingBottom: 4 },
+  editRowBtnText: { fontSize: 11, color: '#888' },
   taskList: { paddingHorizontal: 16, paddingTop: 8 },
   emptyTasks: { alignItems: 'center', paddingVertical: 20 },
   emptyTasksText: { fontSize: 15, color: '#52b788' },
@@ -187,15 +285,20 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   taskBtnCheckText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  tipsSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 4 },
+  tipsSectionTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', marginBottom: 4 },
+  tipRow: { fontSize: 12, color: '#555', lineHeight: 18, marginLeft: 4 },
+  moreTips: { fontSize: 11, color: '#888', marginTop: 2, fontStyle: 'italic' },
   detailsBtn: {
     marginHorizontal: 16,
     marginTop: 12,
-    backgroundColor: '#f0faf4',
+    backgroundColor: '#2d6a4f',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#b7e4c7',
+    borderColor: '#2d6a4f',
   },
-  detailsBtnText: { fontSize: 14, color: '#2d6a4f', fontWeight: '600' },
+  detailsBtnText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+  hintText: { textAlign: 'center', fontSize: 10, color: '#bbb', marginTop: 6, paddingBottom: 4 },
 });
