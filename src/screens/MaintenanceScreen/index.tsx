@@ -14,10 +14,11 @@ import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
 import { getCachedLocation } from '@/utils/location';
-import { checkAndScheduleFrostAlert } from '@/services/NotificationService';
+import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } from '@/services/NotificationService';
+import { plantDatabase } from '@/data/plantDatabase';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
-type Tab = 'taken' | 'planning' | 'geschiedenis';
+type Tab = 'taken' | 'planning' | 'zaai' | 'geschiedenis';
 
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Begieten',
@@ -299,18 +300,43 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const completeGardenTask = useGardenStore((s) => s.completeGardenTask);
+  const recordTaskCompletion = useGardenStore((s) => s.recordTaskCompletion);
+  const gardenStats = useGardenStore((s) => s.gardenStats);
   const [weather, setWeather]               = useState<WeatherData>(EMPTY_WEATHER);
   const [activeTab, setActiveTab]           = useState<Tab>('taken');
   const [exporting, setExporting]           = useState(false);
   const [showAllTasks, setShowAllTasks]     = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Track badge count to detect new badges
+  const prevBadgeCountRef = useRef(gardenStats.badges.length);
+
   const currentMonth = new Date().getMonth();
 
   useEffect(() => {
-    fetchWeather().then(setWeather);
-    checkAndScheduleFrostAlert().catch(() => {}); // stil falen als geen locatie/permissie
+    fetchWeather().then((w) => {
+      setWeather(w);
+      scheduleDailyMaintenanceNotification(garden, {
+        rainExpected: w.rainExpected,
+        droughtDays: w.droughtDays,
+        tempMax: w.tempMax,
+      }).catch(() => {});
+      checkAndScheduleWeatherAlerts().catch(() => {}); // stil falen als geen locatie/permissie
+    });
   }, []);
+
+  // Show toast when a new badge is earned
+  useEffect(() => {
+    const currentCount = gardenStats.badges.length;
+    if (currentCount > prevBadgeCountRef.current) {
+      const newBadge = gardenStats.badges[gardenStats.badges.length - 1];
+      if (newBadge) {
+        setToast(`${newBadge.emoji} Badge verdiend: ${newBadge.name}!`);
+        setTimeout(() => setToast(null), 4000);
+      }
+    }
+    prevBadgeCountRef.current = currentCount;
+  }, [gardenStats.badges]);
 
   const harvestAlerts = useMemo(() => {
     if (!garden) return [];
@@ -318,8 +344,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
   }, [garden, currentMonth]);
 
   // ── Taken tab data ────────────────────────────────────────────────────────
-  // Droogte: watertaken die binnen 3 dagen gepland staan worden naar voren gehaald
-  // Regen: watertaken worden juist aangeduid als "over te slaan"
   const sections = useMemo((): Section[] => {
     if (!garden) return [];
     const now = new Date();
@@ -328,7 +352,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
     in3Days.setDate(in3Days.getDate() + 3);
     const in3DaysStr = in3Days.toISOString();
 
-    // Droogte: minimaal 3 droge dagen + warm genoeg
     const isActiveDrought = weather.droughtDays >= 3 && weather.tempMax >= 20;
 
     const flatTasks: FlatTask[] = [];
@@ -337,7 +360,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
         if (task.completedDate) continue;
         const isOverdue = task.dueDate < nowStr;
         const isRecurring = !!task.intervalDays;
-        // Naar voren halen: watertaak die binnen 3 dagen gepland staat + droogte actief
         const isBroughtForward =
           !isOverdue &&
           task.type === 'water' &&
@@ -347,7 +369,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
       }
     }
     flatTasks.sort((a, b) => {
-      // Droogtetaken bovenaan in de "vandaag" bucket
       if (a.isBroughtForward && !b.isBroughtForward) return -1;
       if (!a.isBroughtForward && b.isBroughtForward) return 1;
       return a.task.dueDate.localeCompare(b.task.dueDate);
@@ -355,7 +376,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
     return groupTasks(flatTasks, now);
   }, [garden, weather.droughtDays, weather.tempMax]);
 
-  // ── Planning tab data (next 30 days, grouped by date) ────────────────────
+  // ── Planning tab data ─────────────────────────────────────────────────────
   const planningGroups = useMemo(() => {
     if (!garden) return [];
     const now = new Date();
@@ -408,12 +429,18 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const plant = garden?.plants.find((p) => p.id === plantId);
     const task  = plant?.maintenanceTasks.find((t) => t.id === taskId);
     completeMaintenanceTask(plantId, taskId);
+    recordTaskCompletion();
     if (task?.intervalDays) {
       const msg = `✓ ${TASK_LABELS[task.type]} klaar · volgende beurt over ${task.intervalDays} dagen`;
       setToast(msg);
       setTimeout(() => setToast(null), 3000);
     }
-  }, [completeMaintenanceTask, garden]);
+  }, [completeMaintenanceTask, recordTaskCompletion, garden]);
+
+  const handleGardenTaskComplete = useCallback((taskId: string) => {
+    completeGardenTask(taskId);
+    recordTaskCompletion();
+  }, [completeGardenTask, recordTaskCompletion]);
 
   const handleNavigate = useCallback((plantId: string) => {
     navigation.navigate('PlantCard', { plantId });
@@ -503,10 +530,27 @@ const MaintenanceScreen = (): React.JSX.Element => {
         <Text style={styles.sectionHeaderText}>Tuin taken</Text>
       </View>
       {activeGardenTasks.map((t) => (
-        <GardenTaskItem key={t.id} task={t} onComplete={completeGardenTask} />
+        <GardenTaskItem key={t.id} task={t} onComplete={handleGardenTaskComplete} />
       ))}
     </View>
   ) : null;
+
+  // ── Zaai tab data ─────────────────────────────────────────────────────────
+  const sowingThisMonth = useMemo(
+    () => plantDatabase.filter((p) => p.sowMonths?.includes(currentMonth)),
+    [currentMonth],
+  );
+
+  const gardenHarvestMonths = useMemo(() => {
+    if (!garden) return [] as { name: string; months: number[] }[];
+    return garden.plants
+      .filter((p) => p.harvestMonths && p.harvestMonths.length > 0)
+      .map((p) => ({ name: p.commonName, months: p.harvestMonths! }));
+  }, [garden]);
+
+  // ── Streak / badge row ────────────────────────────────────────────────────
+  const showStats = gardenStats.currentStreak > 0 || gardenStats.badges.length > 0;
+  const earnedBadges = gardenStats.badges;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -525,6 +569,20 @@ const MaintenanceScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Streak & badges row */}
+      {showStats && (
+        <View style={styles.streakRow}>
+          {gardenStats.currentStreak > 0 && (
+            <Text style={styles.streakText}>🔥 {gardenStats.currentStreak} dagen streak</Text>
+          )}
+          {earnedBadges.length > 0 && (
+            <Text style={styles.badgeEmojis}>
+              {earnedBadges.map((b) => b.emoji).join('  ')}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* Rain banner */}
       {weather.rainExpected && (
@@ -546,13 +604,19 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
-        {(['taken', 'planning', 'geschiedenis'] as Tab[]).map((tab) => (
+        {(['taken', 'planning', 'zaai', 'geschiedenis'] as Tab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
             onPress={() => setActiveTab(tab)}>
             <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab === 'taken' ? 'Taken' : tab === 'planning' ? 'Planning' : 'Geschiedenis'}
+              {tab === 'taken'
+                ? 'Taken'
+                : tab === 'planning'
+                ? 'Planning'
+                : tab === 'zaai'
+                ? 'Zaaikal.'
+                : 'Log'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -666,6 +730,69 @@ const MaintenanceScreen = (): React.JSX.Element => {
         )
       )}
 
+      {/* ── Zaaikalender tab ── */}
+      {activeTab === 'zaai' && (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          {/* Dit seizoen card */}
+          <View style={styles.zaaiSeizoenCard}>
+            <Text style={styles.zaaiSeizoenTitle}>🗓️ Dit seizoen — {MONTH_NAMES[currentMonth]}</Text>
+            {sowingThisMonth.length === 0 ? (
+              <Text style={styles.zaaiEmptyText}>Geen zaaiadvies voor deze maand</Text>
+            ) : (
+              sowingThisMonth.map((p) => (
+                <Text key={p.species} style={styles.zaaiSeizoenItem}>
+                  {p.emoji} {p.commonName} — zaaien nu
+                </Text>
+              ))
+            )}
+          </View>
+
+          {/* 12-month grid */}
+          {MONTH_NAMES.map((monthName, monthIdx) => {
+            const isCurrentMonth = monthIdx === currentMonth;
+            const sowPlants = plantDatabase.filter((p) => p.sowMonths?.includes(monthIdx));
+            const harvestPlants = gardenHarvestMonths.filter((p) => p.months.includes(monthIdx));
+            if (sowPlants.length === 0 && harvestPlants.length === 0) {
+              return (
+                <View
+                  key={monthIdx}
+                  style={[styles.zaaiMonthCard, isCurrentMonth && styles.zaaiMonthCardCurrent]}>
+                  <Text style={[styles.zaaiMonthName, isCurrentMonth && styles.zaaiMonthNameCurrent]}>
+                    {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                  </Text>
+                  <Text style={styles.zaaiEmptyText}>Geen activiteit</Text>
+                </View>
+              );
+            }
+            return (
+              <View
+                key={monthIdx}
+                style={[styles.zaaiMonthCard, isCurrentMonth && styles.zaaiMonthCardCurrent]}>
+                <Text style={[styles.zaaiMonthName, isCurrentMonth && styles.zaaiMonthNameCurrent]}>
+                  {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                </Text>
+                {sowPlants.length > 0 && (
+                  <View style={styles.zaaiRow}>
+                    <Text style={styles.zaaiRowLabel}>🌱 Zaaien:</Text>
+                    <Text style={styles.zaaiRowValue}>
+                      {sowPlants.map((p) => `${p.emoji} ${p.commonName}`).join(', ')}
+                    </Text>
+                  </View>
+                )}
+                {harvestPlants.length > 0 && (
+                  <View style={styles.zaaiRow}>
+                    <Text style={styles.zaaiRowLabel}>🍓 Oogsten:</Text>
+                    <Text style={styles.zaaiRowValue}>
+                      {harvestPlants.map((p) => p.name).join(', ')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+
       {/* ── Geschiedenis tab ── */}
       {activeTab === 'geschiedenis' && (
         historyGroups.length === 0 ? (
@@ -707,7 +834,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
         )
       )}
 
-      {/* Toast voor herhalende taken */}
+      {/* Toast voor herhalende taken / badges */}
       {toast !== null && (
         <View style={styles.toast} pointerEvents="none">
           <Text style={styles.toastText}>{toast}</Text>
@@ -728,6 +855,14 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', gap: 4 },
   headerIconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerIconText: { fontSize: 22 },
+  // Streak row
+  streakRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
+  },
+  streakText: { fontSize: 13, fontWeight: '700', color: '#1b4332' },
+  badgeEmojis: { fontSize: 16, letterSpacing: 2 },
   rainBanner: {
     backgroundColor: '#cce5ff', paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: '#b8d4f0',
@@ -751,7 +886,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
   tabBtnActive: { borderBottomColor: '#2d6a4f' },
-  tabLabel: { fontSize: 14, fontWeight: '600', color: '#aaa' },
+  tabLabel: { fontSize: 12, fontWeight: '600', color: '#aaa' },
   tabLabelActive: { color: '#2d6a4f' },
   listContent: { padding: 12, gap: 4, paddingBottom: 32 },
   emptyScroll: { flexGrow: 1, padding: 12 },
@@ -860,6 +995,28 @@ const styles = StyleSheet.create({
     padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 8,
   },
   showMoreText: { fontSize: 14, fontWeight: '600', color: '#2d6a4f' },
+  // Zaaikalender tab
+  zaaiSeizoenCard: {
+    backgroundColor: '#d8f3dc', borderRadius: 12, borderWidth: 1, borderColor: '#74c69d',
+    padding: 14, gap: 6, marginBottom: 16,
+  },
+  zaaiSeizoenTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+  zaaiSeizoenItem: { fontSize: 14, color: '#1b4332', lineHeight: 22 },
+  zaaiMonthCard: {
+    backgroundColor: '#f8f9fa', borderRadius: 10, borderWidth: 1, borderColor: '#e9ecef',
+    padding: 12, marginBottom: 8, gap: 4,
+  },
+  zaaiMonthCardCurrent: {
+    borderColor: '#40916c', backgroundColor: '#f1f8f3',
+  },
+  zaaiMonthName: {
+    fontSize: 14, fontWeight: '700', color: '#6b705c', marginBottom: 4,
+  },
+  zaaiMonthNameCurrent: { color: '#1b4332' },
+  zaaiRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' },
+  zaaiRowLabel: { fontSize: 13, fontWeight: '600', color: '#2d6a4f', minWidth: 80 },
+  zaaiRowValue: { fontSize: 13, color: '#1b4332', flex: 1, flexWrap: 'wrap' },
+  zaaiEmptyText: { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
   // Toast
   toast: {
     position: 'absolute', bottom: 24, left: 16, right: 16,

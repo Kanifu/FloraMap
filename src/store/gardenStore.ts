@@ -1,12 +1,21 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, GardenBoundary } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, GardenBoundary, GardenStats, BADGE_DEFINITIONS } from '@/models';
+
+const DEFAULT_STATS: GardenStats = {
+  currentStreak: 0,
+  longestStreak: 0,
+  totalTasksCompleted: 0,
+  lastCompletionDate: undefined,
+  badges: [],
+};
 
 interface GardenState {
   garden: Garden | null;
   isScanning: boolean;
   pendingDiffProposals: DiffProposal[];
+  gardenStats: GardenStats;
 }
 
 interface GardenActions {
@@ -23,6 +32,7 @@ interface GardenActions {
   setScanning: (isScanning: boolean) => void;
   addBoundary: (boundary: GardenBoundary) => void;
   removeBoundary: (boundaryId: string) => void;
+  recordTaskCompletion: () => void;
 }
 
 export const useGardenStore = create<GardenState & GardenActions>()(
@@ -31,6 +41,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       garden: null,
       isScanning: false,
       pendingDiffProposals: [],
+      gardenStats: DEFAULT_STATS,
 
       setGarden: (garden) => set({ garden }),
 
@@ -171,11 +182,60 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       removeBoundary: (id) => set((s) => ({
         garden: s.garden ? { ...s.garden, boundaries: (s.garden.boundaries ?? []).filter(b => b.id !== id) } : null,
       })),
+
+      recordTaskCompletion: () => {
+        const now = new Date();
+        const todayStr = now.toISOString().slice(0, 10);
+        const stats = get().gardenStats;
+
+        // Already counted today
+        if (stats.lastCompletionDate === todayStr) return;
+
+        // Check if yesterday to continue streak
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        const newStreak = stats.lastCompletionDate === yesterdayStr
+          ? stats.currentStreak + 1
+          : 1;
+
+        const newTotal = stats.totalTasksCompleted + 1;
+        const newLongest = Math.max(stats.longestStreak, newStreak);
+
+        // Check badge criteria
+        const badgeCriteria: Record<string, boolean> = {
+          first_task: newTotal >= 1,
+          streak_3:   newStreak >= 3,
+          streak_7:   newStreak >= 7,
+          streak_30:  newStreak >= 30,
+          tasks_10:   newTotal >= 10,
+          tasks_50:   newTotal >= 50,
+          tasks_100:  newTotal >= 100,
+        };
+
+        const existingBadgeIds = new Set(stats.badges.map((b) => b.id));
+        const newBadges = [...stats.badges];
+        for (const def of BADGE_DEFINITIONS) {
+          if (!existingBadgeIds.has(def.id) && badgeCriteria[def.id]) {
+            newBadges.push({ ...def, unlockedAt: now.toISOString() });
+          }
+        }
+
+        set({
+          gardenStats: {
+            currentStreak: newStreak,
+            longestStreak: newLongest,
+            totalTasksCompleted: newTotal,
+            lastCompletionDate: todayStr,
+            badges: newBadges,
+          },
+        });
+      },
     }),
     {
       name: 'garden-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ garden: state.garden }),
+      partialize: (state) => ({ garden: state.garden, gardenStats: state.gardenStats }),
     },
   ),
 );
