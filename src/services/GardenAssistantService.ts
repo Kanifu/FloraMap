@@ -72,12 +72,16 @@ export const createInitialTasksForPlant = (
 
 export class GardenAssistantService {
 
-  private buildSystemPrompt(gardenPlants: string[]): string {
+  private buildSystemPrompt(gardenPlants: string[], hasImage: boolean): string {
     const plantList =
       gardenPlants.length > 0 ? gardenPlants.join('; ') : 'nog geen planten';
 
-    return `Je bent FloraMap, een beknopte tuinassistent. Antwoord altijd in de taal van de gebruiker.
-Geef korte, directe antwoorden — maximaal 3-4 zinnen tenzij meer detail echt nodig is.
+    const lengthInstruction = hasImage
+      ? 'Bij foto-analyse: geef een volledige analyse. Stuur altijd de complete PLANTS: en TASKS: regels mee — sla deze nooit af.'
+      : 'Geef korte, directe antwoorden — maximaal 3-4 zinnen tenzij meer detail echt nodig is.';
+
+    return `Je bent FloraMap, een tuinassistent. Antwoord altijd in de taal van de gebruiker.
+${lengthInstruction}
 
 Huidige tuin (naam, soort, positie op raster):
 ${plantList}
@@ -145,18 +149,22 @@ Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van t
     }
     contents.push({ role: 'user', parts: currentParts });
 
+    // Foto-analyse heeft meer tokens nodig: PLANTS+TASKS JSON + uitleg kan 2000+ tokens zijn.
+    // Text-chat is doorgaans <500 tokens. Gemini 2.5 Flash ondersteunt tot 65 536 output tokens.
+    const maxOutputTokens = imageUri ? 8192 : 4096;
+
     const { url, headers } = geminiEndpoint(GEMINI_PATH);
     const response = await fetchWithRetry(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         system_instruction: {
-          parts: [{ text: this.buildSystemPrompt(gardenPlants) }],
+          parts: [{ text: this.buildSystemPrompt(gardenPlants, !!imageUri) }],
         },
         contents,
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 2048,
+          maxOutputTokens,
         },
       }),
     });
@@ -172,8 +180,12 @@ Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van t
     const candidate = data.candidates?.[0];
     const finishReason: string = candidate?.finishReason ?? '';
     const rawText: string = candidate?.content?.parts?.[0]?.text ?? 'Geen antwoord ontvangen.';
+
+    // Onderscheid: bij foto-analyse is afkappen een technisch probleem, niet de schuld van de vraag.
     const fullText = finishReason === 'MAX_TOKENS'
-      ? rawText + '\n\n_(Antwoord afgekapt — stel een kortere vraag voor meer detail.)_'
+      ? rawText + (imageUri
+          ? '\n\n_(Analyse onvolledig — probeer een foto met minder planten of een betere belichting.)_'
+          : '\n\n_(Antwoord afgekapt — stel je vraag in kleinere stukjes.)_')
       : rawText;
 
     // Scan all lines for structured markers, then strip them from display text

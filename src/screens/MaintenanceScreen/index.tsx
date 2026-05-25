@@ -64,13 +64,15 @@ interface WeatherData {
   tempMax: number;
   tempMin: number;
   isDry: boolean;
+  droughtDays: number;   // consecutive days ahead with <2mm rain
   weatherEmoji: string;
   dailyForecast: DailyForecast[];
 }
 
 const EMPTY_WEATHER: WeatherData = {
   loaded: false, rainExpected: false, rainMm: 0,
-  tempMax: 0, tempMin: 0, isDry: false, weatherEmoji: '🌡️', dailyForecast: [],
+  tempMax: 0, tempMin: 0, isDry: false, droughtDays: 0,
+  weatherEmoji: '🌡️', dailyForecast: [],
 };
 
 const weatherCodeToEmoji = (code: number): string => {
@@ -118,6 +120,13 @@ const fetchWeather = async (): Promise<WeatherData> => {
     const todayMin  = Math.round(minTemps[0] ?? 0);
     const next3Rain = (rainSums.slice(0, 3) as number[]).reduce((s, v) => s + v, 0);
 
+    // Aantal opeenvolgende droge dagen (< 2mm) vooruit
+    const droughtDays = (() => {
+      let count = 0;
+      for (const r of rainSums) { if ((r ?? 0) < 2) count++; else break; }
+      return count;
+    })();
+
     return {
       loaded: true,
       rainExpected: totalMm > 4,
@@ -125,6 +134,7 @@ const fetchWeather = async (): Promise<WeatherData> => {
       tempMax: todayMax,
       tempMin: todayMin,
       isDry: next3Rain < 2 && todayMax >= 20,
+      droughtDays,
       weatherEmoji: weatherCodeToEmoji(wCodes[0] ?? 0),
       dailyForecast,
     };
@@ -138,6 +148,7 @@ interface FlatTask {
   plant: Plant;
   isOverdue: boolean;
   isRecurring: boolean;
+  isBroughtForward: boolean;  // water task moved forward due to drought
 }
 
 interface Section { title: string; data: FlatTask[]; }
@@ -154,7 +165,8 @@ const groupTasks = (flatTasks: FlatTask[], now: Date): Section[] => {
   const later: FlatTask[] = [];
   for (const ft of flatTasks) {
     const dueDateStr = startOfDay(ft.task.dueDate);
-    if (dueDateStr <= todayStr) today.push(ft);
+    // Droogtetaken worden al in de "vandaag"-bucket geplaatst, ook als ze later gepland staan
+    if (dueDateStr <= todayStr || ft.isBroughtForward) today.push(ft);
     else if (dueDateStr <= weekEndStr) thisWeek.push(ft);
     else later.push(ft);
   }
@@ -181,12 +193,14 @@ interface TaskItemProps {
   onComplete: (plantId: string, taskId: string) => void;
   onNavigate: (plantId: string) => void;
   rainExpected: boolean;
+  droughtDays: number;
 }
 
-const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected }: TaskItemProps): React.JSX.Element => {
-  const { task, plant, isOverdue, isRecurring } = flatTask;
+const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays }: TaskItemProps): React.JSX.Element => {
+  const { task, plant, isOverdue, isRecurring, isBroughtForward } = flatTask;
   const swipeableRef = useRef<Swipeable>(null);
-  const isWateringInRain = task.type === 'water' && rainExpected;
+  const isWateringInRain    = task.type === 'water' && rainExpected;
+  const isWateringInDrought = task.type === 'water' && isBroughtForward;
 
   const handleComplete = () => {
     swipeableRef.current?.close();
@@ -209,15 +223,20 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected }: TaskItemPr
       <TouchableOpacity
         style={[
           styles.taskRow,
-          isOverdue && !isWateringInRain && styles.taskRowOverdue,
-          isWateringInRain && styles.taskRowSkip,
+          isOverdue && !isWateringInRain && !isWateringInDrought && styles.taskRowOverdue,
+          isWateringInRain    && styles.taskRowSkip,
+          isWateringInDrought && styles.taskRowDrought,
         ]}
         onPress={() => onNavigate(plant.id)}
         activeOpacity={0.7}>
         <Text style={styles.taskIcon}>{TASK_ICONS[task.type]}</Text>
         <View style={styles.taskBody}>
           <View style={styles.taskNameRow}>
-            <Text style={[styles.taskPlantName, isOverdue && !isWateringInRain && styles.textOverdue]}>
+            <Text style={[
+              styles.taskPlantName,
+              isOverdue && !isWateringInRain && !isWateringInDrought && styles.textOverdue,
+              isWateringInDrought && styles.textDrought,
+            ]}>
               {plant.commonName}
             </Text>
             {isRecurring && <Text style={styles.recurringBadge}>↺ herhalend</Text>}
@@ -226,12 +245,18 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected }: TaskItemPr
           {task.notes ? <Text style={styles.taskNotes}>{task.notes}</Text> : null}
           {isWateringInRain
             ? <Text style={styles.skipText}>🌧️ Regen verwacht — begieten overslaan?</Text>
+            : isWateringInDrought
+            ? <Text style={styles.droughtText}>🔥 {droughtDays} droge dagen — nu begieten aanbevolen</Text>
             : <Text style={[styles.taskDue, isOverdue && styles.textOverdue]}>
                 {relativeDueLabel(task.dueDate)}
               </Text>}
         </View>
         <TouchableOpacity
-          style={[styles.klaarButton, isWateringInRain && styles.klaarButtonMuted]}
+          style={[
+            styles.klaarButton,
+            isWateringInRain && styles.klaarButtonMuted,
+            isWateringInDrought && styles.klaarButtonDrought,
+          ]}
           onPress={handleComplete}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.klaarButtonText}>✓</Text>
@@ -289,20 +314,42 @@ const MaintenanceScreen = (): React.JSX.Element => {
   }, [garden, currentMonth]);
 
   // ── Taken tab data ────────────────────────────────────────────────────────
+  // Droogte: watertaken die binnen 3 dagen gepland staan worden naar voren gehaald
+  // Regen: watertaken worden juist aangeduid als "over te slaan"
   const sections = useMemo((): Section[] => {
     if (!garden) return [];
     const now = new Date();
     const nowStr = now.toISOString();
+    const in3Days = new Date(now);
+    in3Days.setDate(in3Days.getDate() + 3);
+    const in3DaysStr = in3Days.toISOString();
+
+    // Droogte: minimaal 3 droge dagen + warm genoeg
+    const isActiveDrought = weather.droughtDays >= 3 && weather.tempMax >= 20;
+
     const flatTasks: FlatTask[] = [];
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
         if (task.completedDate) continue;
-        flatTasks.push({ task, plant, isOverdue: task.dueDate < nowStr, isRecurring: !!task.intervalDays });
+        const isOverdue = task.dueDate < nowStr;
+        const isRecurring = !!task.intervalDays;
+        // Naar voren halen: watertaak die binnen 3 dagen gepland staat + droogte actief
+        const isBroughtForward =
+          !isOverdue &&
+          task.type === 'water' &&
+          isActiveDrought &&
+          task.dueDate <= in3DaysStr;
+        flatTasks.push({ task, plant, isOverdue, isRecurring, isBroughtForward });
       }
     }
-    flatTasks.sort((a, b) => a.task.dueDate.localeCompare(b.task.dueDate));
+    flatTasks.sort((a, b) => {
+      // Droogtetaken bovenaan in de "vandaag" bucket
+      if (a.isBroughtForward && !b.isBroughtForward) return -1;
+      if (!a.isBroughtForward && b.isBroughtForward) return 1;
+      return a.task.dueDate.localeCompare(b.task.dueDate);
+    });
     return groupTasks(flatTasks, now);
-  }, [garden]);
+  }, [garden, weather.droughtDays, weather.tempMax]);
 
   // ── Planning tab data (next 30 days, grouped by date) ────────────────────
   const planningGroups = useMemo(() => {
@@ -320,7 +367,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
         if (task.completedDate) continue;
         const dateKey = task.dueDate.slice(0, 10);
         if (dateKey > limitStr) continue;
-        const entry: FlatTask = { task, plant, isOverdue: task.dueDate < nowStr, isRecurring: !!task.intervalDays };
+        const entry: FlatTask = { task, plant, isOverdue: task.dueDate < nowStr, isRecurring: !!task.intervalDays, isBroughtForward: false };
         const existing = map.get(dateKey) ?? [];
         existing.push(entry);
         map.set(dateKey, existing);
@@ -484,6 +531,15 @@ const MaintenanceScreen = (): React.JSX.Element => {
         </View>
       )}
 
+      {/* Drought banner */}
+      {!weather.rainExpected && weather.droughtDays >= 3 && weather.tempMax >= 20 && (
+        <View style={styles.droughtBanner}>
+          <Text style={styles.droughtBannerText}>
+            🔥 {weather.droughtDays} droge dagen · {weather.tempMax}° — watertaken naar voren gehaald
+          </Text>
+        </View>
+      )}
+
       {/* Tab bar */}
       <View style={styles.tabBar}>
         {(['taken', 'planning', 'geschiedenis'] as Tab[]).map((tab) => (
@@ -551,6 +607,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
                   onComplete={handleComplete}
                   onNavigate={handleNavigate}
                   rainExpected={weather.rainExpected}
+                  droughtDays={weather.droughtDays}
                 />
               )}
             />
@@ -672,6 +729,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#b8d4f0',
   },
   rainBannerText: { fontSize: 13, color: '#0d3a6e', fontWeight: '600' },
+  droughtBanner: {
+    backgroundColor: '#fff3cd', paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#f4a261',
+  },
+  droughtBannerText: { fontSize: 13, color: '#7c3d00', fontWeight: '600' },
+  taskRowDrought: { borderColor: '#f4a261', backgroundColor: '#fff9f0' },
+  textDrought: { color: '#c05600' },
+  droughtText: { fontSize: 12, color: '#c05600', fontWeight: '600', fontStyle: 'italic' },
+  klaarButtonDrought: { backgroundColor: '#e76f00' },
   tabBar: {
     flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
     backgroundColor: '#fff',
