@@ -287,17 +287,17 @@ export const GardenMap = ({
       <Svg width={MAP_WIDTH * renderScale} height={MAP_HEIGHT * renderScale}
         viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}>
 
-        {/* Background */}
-        <Rect x={0} y={0} width={MAP_WIDTH} height={MAP_HEIGHT} fill="#eaf4ec" />
+        {/* Background — dark moestuin soil */}
+        <Rect x={0} y={0} width={MAP_WIDTH} height={MAP_HEIGHT} fill="#1c1108" />
 
-        {/* Grid lines */}
+        {/* Grid lines — subtle light on dark soil */}
         {Array.from({ length: GRID_COLS + 1 }, (_, i) => (
           <Rect key={`v${i}`} x={i * SCALE} y={0} width={0.5} height={MAP_HEIGHT}
-            fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
+            fill="#ffffff" opacity={isInteractive ? 0.18 : 0.08} />
         ))}
         {Array.from({ length: GRID_ROWS + 1 }, (_, i) => (
           <Rect key={`h${i}`} x={0} y={i * SCALE} width={MAP_WIDTH} height={0.5}
-            fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
+            fill="#ffffff" opacity={isInteractive ? 0.18 : 0.08} />
         ))}
 
         {/* Garden polygons */}
@@ -650,11 +650,11 @@ export const GardenMap = ({
                 fontSize={20} opacity={alpha}>
                 {emoji}
               </SvgText>
-              {/* Plant name */}
+              {/* Plant name — light on dark soil */}
               {showNames && (
                 <SvgText x={cx} y={cy + 20} textAnchor="middle"
-                  fontSize={7.5} fill="#1b4332" fontWeight="700"
-                  opacity={isMoving ? 0.4 : 1}>
+                  fontSize={7.5} fill="#e8f5e9" fontWeight="700"
+                  opacity={isMoving ? 0.4 : 0.92}>
                   {name}
                 </SvgText>
               )}

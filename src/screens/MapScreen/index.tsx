@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   View, Text, StyleSheet, SafeAreaView, Alert,
   TouchableOpacity, Modal, TextInput, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator, FlatList, Pressable,
+  Platform, ScrollView, ActivityIndicator, FlatList, Pressable, Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,8 +20,9 @@ import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
 import { findOvercrowdedPlants } from '@/utils/plantSpacing';
 import { PinchGestureHandler, State } from 'react-native-gesture-handler';
-import type { HandlerStateChangeEvent, GestureEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
+import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
+import { useWeather } from '@/hooks/useWeather';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -210,6 +211,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
 
 const MapScreen = (): React.JSX.Element => {
   const navigation = useNavigation<MapNavProp>();
+  const weather    = useWeather();
   const garden      = useGardenStore((s) => s.garden);
   const setGarden   = useGardenStore((s) => s.setGarden);
   const removePlant  = useGardenStore((s) => s.removePlant);
@@ -224,6 +226,8 @@ const MapScreen = (): React.JSX.Element => {
   const [mapScale,            setMapScale]            = useState(1.0);
   const lastMapScale = useRef(1.0);
   const pinchRef = useRef<PinchGestureHandler>(null);
+  // Animated value for smooth native-driver zoom preview during gesture
+  const animPinchScale = useRef(new Animated.Value(1)).current;
   const MIN_SCALE = 0.5;
   const MAX_SCALE = 3.0;
 
@@ -376,17 +380,22 @@ const MapScreen = (): React.JSX.Element => {
     bad:  companionPairs.filter((p) => p.relation === 'bad').length,
   }), [companionPairs]);
 
-  const onPinchGestureEvent = useCallback((event: GestureEvent<PinchGestureHandlerEventPayload>) => {
-    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, lastMapScale.current * event.nativeEvent.scale));
-    setMapScale(next);
-  }, []);
+  // Animated.event maps gesture scale directly to animPinchScale via native driver (no JS re-renders during pinch)
+  const onPinchGestureEvent = Animated.event(
+    [{ nativeEvent: { scale: animPinchScale } }],
+    { useNativeDriver: true },
+  );
 
   const onPinchStateChange = useCallback((event: HandlerStateChangeEvent<PinchGestureHandlerEventPayload>) => {
-    if (event.nativeEvent.state === State.END) {
-      lastMapScale.current = Math.min(MAX_SCALE, Math.max(MIN_SCALE, lastMapScale.current * event.nativeEvent.scale));
-      setMapScale(lastMapScale.current);
+    if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
+      // Commit the new scale — SVG re-renders once at the final zoom level
+      const finalScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, lastMapScale.current * event.nativeEvent.scale));
+      lastMapScale.current = finalScale;
+      setMapScale(finalScale);
+      // Reset animated value to 1 so the SVG renders at its new renderScale without double-scaling
+      animPinchScale.setValue(1);
     }
-  }, []);
+  }, [animPinchScale]);
 
   const cancelDraw = useCallback(() => {
     setDrawStep(null); setFirstPoint(null); setDrawTarget(null);
@@ -736,26 +745,45 @@ const MapScreen = (): React.JSX.Element => {
         </View>
       )}
 
-      {/* Status summary bar */}
-      {!isInteractive && (() => {
-        const overdueCount = Object.values(plantStatuses).filter(s => s === 'overdue' || s === 'water').length;
-        const soonCount = Object.values(plantStatuses).filter(s => s === 'soon').length;
-        if (overdueCount === 0 && soonCount === 0) return null;
-        return (
-          <View style={styles.statusBar}>
-            {overdueCount > 0 && (
-              <Text style={styles.statusBarUrgent}>
-                🔴 {overdueCount} {overdueCount === 1 ? 'plant' : 'planten'} — achterstallig
+      {/* Dashboard bar: weather + task status */}
+      {!isInteractive && (
+        <View style={styles.dashBar}>
+          {/* Weather pill */}
+          {weather.loaded && (
+            <View style={styles.dashWeather}>
+              <Text style={styles.dashWeatherText}>
+                {weather.weatherEmoji} {weather.tempMax}°C
+                {weather.rainExpected ? '  🌧️' : ''}
+                {weather.droughtDays >= 3 ? `  🔥 ${weather.droughtDays}d droog` : ''}
               </Text>
-            )}
-            {soonCount > 0 && (
-              <Text style={styles.statusBarSoon}>
-                🟠 {soonCount} {soonCount === 1 ? 'plant' : 'planten'} — binnenkort
-              </Text>
-            )}
-          </View>
-        );
-      })()}
+            </View>
+          )}
+          {/* Task status pills */}
+          {(() => {
+            const overdueCount = Object.values(plantStatuses).filter(s => s === 'overdue' || s === 'water').length;
+            const soonCount = Object.values(plantStatuses).filter(s => s === 'soon').length;
+            return (
+              <>
+                {overdueCount > 0 && (
+                  <View style={styles.dashPillRed}>
+                    <Text style={styles.dashPillText}>⚠️ {overdueCount} te laat</Text>
+                  </View>
+                )}
+                {soonCount > 0 && (
+                  <View style={styles.dashPillOrange}>
+                    <Text style={styles.dashPillText}>🕐 {soonCount} binnenkort</Text>
+                  </View>
+                )}
+                {overdueCount === 0 && soonCount === 0 && garden && garden.plants.length > 0 && (
+                  <View style={styles.dashPillGreen}>
+                    <Text style={styles.dashPillText}>✓ Alles in orde</Text>
+                  </View>
+                )}
+              </>
+            );
+          })()}
+        </View>
+      )}
 
       {/* Map */}
       <View style={styles.mapWrapper}>
@@ -763,6 +791,7 @@ const MapScreen = (): React.JSX.Element => {
           ref={pinchRef}
           onGestureEvent={onPinchGestureEvent}
           onHandlerStateChange={onPinchStateChange}>
+          <Animated.View style={{ transform: [{ scale: animPinchScale }] }}>
           <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
             <ScrollView bounces={false}>
               <GardenMap
@@ -787,6 +816,7 @@ const MapScreen = (): React.JSX.Element => {
               />
             </ScrollView>
           </ScrollView>
+          </Animated.View>
         </PinchGestureHandler>
 
         {mapScale !== 1.0 && (
@@ -800,6 +830,16 @@ const MapScreen = (): React.JSX.Element => {
         {!isInteractive && (
           <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
             <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Assistant FAB — quick access to chat without leaving map */}
+        {!isInteractive && fabMode === 'idle' && (
+          <TouchableOpacity
+            style={styles.assistantFab}
+            onPress={() => navigation.getParent()?.navigate('AssistantTab')}
+            activeOpacity={0.85}>
+            <Text style={styles.assistantFabText}>💬</Text>
           </TouchableOpacity>
         )}
 
@@ -842,7 +882,7 @@ const MapScreen = (): React.JSX.Element => {
         visible={!!quickSheetPlant}
         onClose={() => setQuickSheetPlant(null)}
         onDetails={(plantId) => navigation.navigate('PlantCard', { plantId })}
-        weatherRainExpected={false}
+        weatherRainExpected={weather.rainExpected}
       />
 
       {/* Plant correction sheet — shown after scan, before placement */}
@@ -1129,17 +1169,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
   },
   companionBtnText: { fontSize: 20 },
-  statusBar: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    backgroundColor: '#fffbeb',
-    borderBottomWidth: 1,
-    borderBottomColor: '#fde68a',
-  },
+  // Legacy statusBar (unused, kept for safety)
+  statusBar: { flexDirection: 'row', gap: 12, paddingHorizontal: 14, paddingVertical: 7 },
   statusBarUrgent: { fontSize: 12, color: '#c1121f', fontWeight: '600' },
   statusBarSoon: { fontSize: 12, color: '#92400e', fontWeight: '600' },
+  // Dashboard bar
+  dashBar: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 7,
+    backgroundColor: '#111a10',
+    borderBottomWidth: 1, borderBottomColor: '#2a3a28',
+  },
+  dashWeather: {
+    backgroundColor: '#1e2d1c', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderWidth: 1, borderColor: '#3d5c38',
+  },
+  dashWeatherText: { fontSize: 12, color: '#b7e4c7', fontWeight: '600' },
+  dashPillRed: {
+    backgroundColor: '#3d1515', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderWidth: 1, borderColor: '#7a2020',
+  },
+  dashPillOrange: {
+    backgroundColor: '#3d2a10', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderWidth: 1, borderColor: '#7a5010',
+  },
+  dashPillGreen: {
+    backgroundColor: '#1a3020', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderWidth: 1, borderColor: '#2d6a4f',
+  },
+  dashPillText: { fontSize: 11, color: '#e8f5e9', fontWeight: '600' },
   companionLegend: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
     paddingHorizontal: 16, paddingVertical: 8,
@@ -1179,6 +1241,15 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
+  assistantFab: {
+    position: 'absolute', bottom: 82, right: 20,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#1b4332', alignItems: 'center', justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3,
+    borderWidth: 1, borderColor: '#2d6a4f',
+  },
+  assistantFabText: { fontSize: 20 },
   fabMenu: {
     position: 'absolute', bottom: 80, right: 16,
     backgroundColor: '#fff', borderRadius: 14,

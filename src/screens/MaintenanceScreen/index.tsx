@@ -13,9 +13,9 @@ import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask } from '@/model
 import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
-import { getCachedLocation } from '@/utils/location';
 import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } from '@/services/NotificationService';
 import { plantDatabase } from '@/data/plantDatabase';
+import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/useWeather';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'zaai' | 'stats' | 'geschiedenis';
@@ -58,92 +58,7 @@ const SEASONAL_TIPS: Record<number, string> = {
   11: '❄️ December: Rust voor de tuin. Maak gereedschap schoon en plan volgend jaar.',
 };
 
-interface DailyForecast { date: string; rainMm: number; tempMax: number; emoji: string; }
-interface WeatherData {
-  loaded: boolean;
-  rainExpected: boolean;
-  rainMm: number;
-  tempMax: number;
-  tempMin: number;
-  isDry: boolean;
-  droughtDays: number;   // consecutive days ahead with <2mm rain
-  weatherEmoji: string;
-  dailyForecast: DailyForecast[];
-}
-
-const EMPTY_WEATHER: WeatherData = {
-  loaded: false, rainExpected: false, rainMm: 0,
-  tempMax: 0, tempMin: 0, isDry: false, droughtDays: 0,
-  weatherEmoji: '🌡️', dailyForecast: [],
-};
-
-const weatherCodeToEmoji = (code: number): string => {
-  if (code === 0) return '☀️';
-  if (code <= 3)  return '⛅';
-  if (code <= 48) return '🌫️';
-  if (code <= 67) return '🌧️';
-  if (code <= 77) return '❄️';
-  if (code <= 82) return '🌦️';
-  if (code <= 86) return '🌨️';
-  return '⛈️';
-};
-
-const fetchWeather = async (): Promise<WeatherData> => {
-  try {
-    const loc = await getCachedLocation();
-    const url =
-      `https://api.open-meteo.com/v1/forecast` +
-      `?latitude=${loc.latitude}&longitude=${loc.longitude}` +
-      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode` +
-      `&hourly=precipitation&forecast_days=7&timezone=auto`;
-    const res = await fetch(url);
-    if (!res.ok) return { ...EMPTY_WEATHER, loaded: true };
-    const data = await res.json();
-
-    const hourlyPrecip: number[] = data.hourly?.precipitation ?? [];
-    const totalMm = Math.round(
-      hourlyPrecip.slice(0, 48).reduce((s: number, v: number) => s + v, 0) * 10,
-    ) / 10;
-
-    const dates: string[]    = data.daily?.time ?? [];
-    const maxTemps: number[] = data.daily?.temperature_2m_max ?? [];
-    const minTemps: number[] = data.daily?.temperature_2m_min ?? [];
-    const rainSums: number[] = data.daily?.precipitation_sum ?? [];
-    const wCodes: number[]   = data.daily?.weathercode ?? [];
-
-    const dailyForecast: DailyForecast[] = dates.map((date, i) => ({
-      date,
-      rainMm: Math.round((rainSums[i] ?? 0) * 10) / 10,
-      tempMax: Math.round(maxTemps[i] ?? 0),
-      emoji: weatherCodeToEmoji(wCodes[i] ?? 0),
-    }));
-
-    const todayMax  = Math.round(maxTemps[0] ?? 0);
-    const todayMin  = Math.round(minTemps[0] ?? 0);
-    const next3Rain = (rainSums.slice(0, 3) as number[]).reduce((s, v) => s + v, 0);
-
-    // Aantal opeenvolgende droge dagen (< 2mm) vooruit
-    const droughtDays = (() => {
-      let count = 0;
-      for (const r of rainSums) { if ((r ?? 0) < 2) count++; else break; }
-      return count;
-    })();
-
-    return {
-      loaded: true,
-      rainExpected: totalMm > 4,
-      rainMm: totalMm,
-      tempMax: todayMax,
-      tempMin: todayMin,
-      isDry: next3Rain < 2 && todayMax >= 20,
-      droughtDays,
-      weatherEmoji: weatherCodeToEmoji(wCodes[0] ?? 0),
-      dailyForecast,
-    };
-  } catch {
-    return { ...EMPTY_WEATHER, loaded: true };
-  }
-};
+// WeatherData types and fetching are in @/hooks/useWeather
 
 interface FlatTask {
   task: MaintenanceTask;
@@ -302,7 +217,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const completeGardenTask = useGardenStore((s) => s.completeGardenTask);
   const recordTaskCompletion = useGardenStore((s) => s.recordTaskCompletion);
   const gardenStats = useGardenStore((s) => s.gardenStats);
-  const [weather, setWeather]               = useState<WeatherData>(EMPTY_WEATHER);
+  const weather                              = useWeather();
   const [activeTab, setActiveTab]           = useState<Tab>('taken');
   const [exporting, setExporting]           = useState(false);
   const [showAllTasks, setShowAllTasks]     = useState(false);
@@ -313,17 +228,16 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   const currentMonth = new Date().getMonth();
 
+  // Schedule notifications when weather loads
   useEffect(() => {
-    fetchWeather().then((w) => {
-      setWeather(w);
-      scheduleDailyMaintenanceNotification(garden, {
-        rainExpected: w.rainExpected,
-        droughtDays: w.droughtDays,
-        tempMax: w.tempMax,
-      }).catch(() => {});
-      checkAndScheduleWeatherAlerts().catch(() => {}); // stil falen als geen locatie/permissie
-    });
-  }, []);
+    if (!weather.loaded) return;
+    scheduleDailyMaintenanceNotification(garden, {
+      rainExpected: weather.rainExpected,
+      droughtDays: weather.droughtDays,
+      tempMax: weather.tempMax,
+    }).catch(() => {});
+    checkAndScheduleWeatherAlerts().catch(() => {});
+  }, [weather.loaded]);
 
   // Show toast when a new badge is earned
   useEffect(() => {
