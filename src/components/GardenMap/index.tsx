@@ -162,6 +162,30 @@ const getPlantEmoji = (name: string, species: string): string => {
   return '🌱';
 };
 
+// ── Plant category color — soft background circle on dark soil ────────────────
+// Colors are semi-transparent so soil shows through a little
+const getPlantBgColor = (name: string, family?: string): string => {
+  const hay = `${name} ${family ?? ''}`.toLowerCase();
+  // Fruit (red/pink)
+  if (/tomaat|aardbei|framboos|braam|rode bes|kers|appel|pruim|peer|druif|watermeloen|meloen/.test(hay)) return 'rgba(220,50,50,0.55)';
+  // Root veg (orange/amber)
+  if (/wortel|pastinaak|biet|knolselderij|radijs|schorseneer|koolraap|prei|ui|sjalot|knoflook/.test(hay)) return 'rgba(230,120,20,0.55)';
+  // Fruit veg (yellow/gold)
+  if (/komkommer|courgette|pompoen|augurk|mais|paprika|peper/.test(hay)) return 'rgba(210,160,0,0.55)';
+  // Legumes (purple/violet)
+  if (/erwt|boon|tuinboon|pronkboon|snijboon/.test(hay)) return 'rgba(130,70,180,0.55)';
+  // Leafy greens (medium green)
+  if (/sla|spinazie|snijbiet|mangold|boerenkool|kool|rucola|veldsla|andijvie|witlof|pak choi/.test(hay)) return 'rgba(50,150,70,0.55)';
+  // Herbs (teal/mint)
+  if (/basilicum|munt|dille|koriander|peterselie|bieslook|tijm|rozemarijn|salie|oregano|lavas|dragon|kervel|bonenkruid/.test(hay)) return 'rgba(30,160,140,0.55)';
+  // Flowers (pink/rose)
+  if (/zonnebloem|goudsbloem|nasturtium|lavendel|dahlia|roos|cosmea|afrikaantje|phacelia|borage/.test(hay)) return 'rgba(200,80,150,0.55)';
+  // Brassica (blue-green)
+  if (/broccoli|bloemkool|spruitjes|kool|brassica/.test(hay) || /brassicaceae/.test(hay)) return 'rgba(60,130,110,0.55)';
+  // Default — earthy green
+  return 'rgba(80,140,80,0.50)';
+};
+
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
 const POLYGON_COLORS: Record<GardenPolygonType, string> = {
@@ -619,16 +643,20 @@ export const GardenMap = ({
             );
           }
 
-          // ── Single plant — emoji only, no circle ───────────────────────────
-          const cx   = plant.x * SCALE;
-          const cy   = plant.y * SCALE;
-          const name = plant.commonName.length > 11
+          // ── Single plant — color-coded circle + emoji ─────────────────────
+          const cx      = plant.x * SCALE;
+          const cy      = plant.y * SCALE;
+          const name    = plant.commonName.length > 11
             ? plant.commonName.slice(0, 10) + '…'
             : plant.commonName;
+          const bgColor = getPlantBgColor(plant.commonName, plant.plantFamily);
 
           return (
             <G key={plant.id}>
-              {/* Status ring */}
+              {/* Category background circle */}
+              <Circle cx={cx} cy={cy} r={14} fill={bgColor} opacity={isMoving ? 0.3 : 1} />
+
+              {/* Status ring — outside the bg circle */}
               {(statusMap[plant.id] === 'overdue' || statusMap[plant.id] === 'water') && (
                 <Circle cx={cx} cy={cy} r={18}
                   fill="none" stroke={statusMap[plant.id] === 'water' ? '#3a86ff' : '#e63946'}
@@ -645,9 +673,9 @@ export const GardenMap = ({
                 <Circle cx={cx} cy={cy} r={17}
                   fill="none" stroke="#ffb703" strokeWidth={2.5} opacity={0.7} />
               )}
-              {/* Emoji — bigger, no background circle */}
+              {/* Emoji — centered on circle */}
               <SvgText x={cx} y={cy + 8} textAnchor="middle"
-                fontSize={20} opacity={alpha}>
+                fontSize={18} opacity={alpha}>
                 {emoji}
               </SvgText>
               {/* Plant name — light on dark soil */}

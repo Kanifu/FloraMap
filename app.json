@@ -7,7 +7,7 @@
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
     "extra": {
-      "buildLabel": "7.0",
+      "buildLabel": "7.1",
       "buildDate": "26 mei 2026",
       "eas": {
         "projectId": "30354417-a06c-409c-aa8b-2f1bcdae0928"
@@ -34,7 +34,7 @@
     },
     "android": {
       "package": "com.floramap.app",
-      "versionCode": 20,
+      "versionCode": 21,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
