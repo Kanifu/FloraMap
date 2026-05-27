@@ -175,7 +175,7 @@ export const GardenMap = ({
           if (!pA || !pB) return null;
           const x1 = plantCx(pA); const y1 = plantCy(pA);
           const x2 = plantCx(pB); const y2 = plantCy(pB);
-          const col = pair.relation === 'good' ? '#2d6a4f' : '#e63946';
+          const col = pair.relation === 'good' ? theme.primary : theme.danger;
           const mx = (x1 + x2) / 2; const my = (y1 + y2) / 2;
           return (
             <G key={`cp-${idx}`}>
@@ -197,7 +197,7 @@ export const GardenMap = ({
           const w = plant.width  ?? 1;
           const h = plant.height ?? 1;
           const isZone = w > 1 || h > 1;
-          const color  = plant.color ?? '#2d6a4f';
+          const color  = plant.color ?? theme.primary;
           const emoji  = getPlantEmoji(plant.commonName, plant.species);
           const alpha  = isMoving ? 0.35 : 1;
 
@@ -242,7 +242,7 @@ export const GardenMap = ({
                 {/* Water-thirsty dashed border */}
                 {isThirsty && (
                   <Rect x={zLeft} y={zTop} width={zW} height={zH}
-                    fill="none" stroke="#3a86ff" strokeWidth={2.5}
+                    fill="none" stroke={theme.info} strokeWidth={2.5}
                     strokeDasharray="6,4" opacity={0.75} rx={10} />
                 )}
 
@@ -262,7 +262,7 @@ export const GardenMap = ({
                   fill="rgba(255,255,255,0.88)" rx={pillH / 2} />
                 <SvgText x={cx} y={cy + labelFontSize * 0.35}
                   textAnchor="middle" fontSize={labelFontSize}
-                  fill="#1b4332" fontWeight="700"
+                  fill={theme.primaryDark} fontWeight="700"
                   opacity={isMoving ? 0.4 : 1}>
                   {label}
                 </SvgText>
@@ -289,13 +289,13 @@ export const GardenMap = ({
               {/* Water-thirsty ring */}
               {isThirsty && (
                 <Circle cx={cx} cy={cy} r={20}
-                  fill="none" stroke="#3a86ff" strokeWidth={2.5}
+                  fill="none" stroke={theme.info} strokeWidth={2.5}
                   strokeDasharray="5,3" opacity={0.8} />
               )}
               {/* Moving indicator ring */}
               {isMoving && (
                 <Circle cx={cx} cy={cy} r={22}
-                  fill="none" stroke="#ffb703" strokeWidth={2.5} opacity={0.7} />
+                  fill="none" stroke={theme.warning} strokeWidth={2.5} opacity={0.7} />
               )}
               {/* Emoji — bigger, no background circle */}
               <SvgText x={cx} y={cy + 10} textAnchor="middle"
@@ -304,7 +304,7 @@ export const GardenMap = ({
               </SvgText>
               {/* Plant name */}
               <SvgText x={cx} y={cy + 27} textAnchor="middle"
-                fontSize={8.5} fill="#1b4332" fontWeight="700"
+                fontSize={8.5} fill={theme.primaryDark} fontWeight="700"
                 opacity={isMoving ? 0.4 : 1}>
                 {name}
               </SvgText>
@@ -322,9 +322,9 @@ export const GardenMap = ({
         {highlightPoint && (
           <G>
             <Rect x={rx(highlightPoint.x)} y={ry(highlightPoint.y)}
-              width={SCALE} height={SCALE} fill="#2d6a4f" opacity={0.22} rx={6} />
+              width={SCALE} height={SCALE} fill={theme.primary} opacity={0.22} rx={6} />
             <Circle cx={highlightPoint.x * SCALE} cy={highlightPoint.y * SCALE}
-              r={7} fill="#2d6a4f" opacity={0.9} />
+              r={7} fill={theme.primary} opacity={0.9} />
           </G>
         )}
 
