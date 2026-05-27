@@ -480,7 +480,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
-            <Text style={styles.headerIconText}>📣</Text>
+            <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
             <Text style={styles.headerIconText}>ℹ️</Text>

@@ -10,6 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -66,6 +67,7 @@ const AboutScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
   const [importing, setImporting] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -140,8 +142,11 @@ const AboutScreen = (): React.JSX.Element => {
           <Text style={styles.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Over FloraMap</Text>
-        <View style={styles.backBtn} />
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.backBtn}>
+          <Text style={styles.backText}>🐛</Text>
+        </TouchableOpacity>
       </View>
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* App identity */}

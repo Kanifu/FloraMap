@@ -7,11 +7,22 @@ const GEMINI_PATH = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const fetchWithRetry = async (url: string, init: RequestInit, retries = 3): Promise<Response> => {
+const fetchWithRetry = async (url: string, init: RequestInit, retries = 3, timeoutMs = 30000): Promise<Response> => {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(url, init);
-    if (res.status !== 503 || attempt === retries) return res;
-    await sleep(1000 * Math.pow(2, attempt));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      clearTimeout(timer);
+      if (res.status !== 503 || attempt === retries) return res;
+      await sleep(1000 * Math.pow(2, attempt));
+    } catch (err: unknown) {
+      clearTimeout(timer);
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('Scan duurde te lang (>30 s). Probeer een foto met minder planten of een betere verbinding.');
+      }
+      throw err;
+    }
   }
   throw new Error('Gemini niet beschikbaar na meerdere pogingen.');
 };
@@ -92,7 +103,7 @@ Je kunt advies geven over:
 - Waar nieuwe planten het beste passen (zon, schaduw, ruimte, buren)
 - Verzorging, ziektes en seizoenstips
 
-Als je een of meer planten herkent in een foto, scan elke plant voor 2-3 concrete verzorgingstips en voeg toe (één regel, geen markdown):
+Als je een of meer planten herkent in een foto, identificeer maximaal 3 planten (de meest duidelijk zichtbare). Scan elke plant voor 2-3 concrete verzorgingstips en voeg toe (één regel, geen markdown):
 PLANTS:[{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.92,"careTips":["tip1","tip2"],"waterIntervalDays":2,"fertilizeIntervalDays":14,"harvestMonths":[5,6]}]
 
 Veld uitleg:

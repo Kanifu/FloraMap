@@ -351,7 +351,7 @@ const AssistantScreen = (): React.JSX.Element => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🌿 Tuin Assistent</Text>
         <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
-          <Text style={styles.feedbackBtnText}>📣</Text>
+          <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />

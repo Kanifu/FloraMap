@@ -15,6 +15,7 @@ import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, Bou
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
+import { FeedbackModal } from '@/components/FeedbackModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
@@ -240,6 +241,8 @@ const MapScreen = (): React.JSX.Element => {
   const [showOnboarding,      setShowOnboarding]      = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
+
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // Correction sheet state (for scan-identified plants before placing)
   const [showCorrectionSheet, setShowCorrectionSheet] = useState(false);
@@ -660,6 +663,9 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
             {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
           </TouchableOpacity>
+          <TouchableOpacity style={styles.companionBtn} onPress={() => setShowFeedback(true)}>
+            <Text style={styles.companionBtnText}>🐛</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
             onPress={() => setShowCompanionOverlay((v) => !v)}>
@@ -770,7 +776,7 @@ const MapScreen = (): React.JSX.Element => {
           ref={pinchRef}
           onGestureEvent={onPinchGestureEvent}
           onHandlerStateChange={onPinchStateChange}>
-          <Animated.View style={{ transform: [{ scale: animPinchScale }] }}>
+          <Animated.View style={{ flex: 1, transform: [{ scale: animPinchScale }] }}>
           <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
             <ScrollView bounces={false}>
               <GardenMap
@@ -1114,6 +1120,9 @@ const MapScreen = (): React.JSX.Element => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Bug report modal */}
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
     </SafeAreaView>
   );
 };
