@@ -17,6 +17,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 interface Message {
   id: string;
@@ -88,6 +89,7 @@ const AssistantScreen = (): React.JSX.Element => {
   const [addedPlantKeys, setAddedPlantKeys] = useState<Set<string>>(new Set());
   const [addedTaskKeys, setAddedTaskKeys] = useState<Set<string>>(new Set());
   const [dailyTip, setDailyTip] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   const garden = useGardenStore((s) => s.garden);
@@ -348,7 +350,11 @@ const AssistantScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🌿 Tuin Assistent</Text>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+          <Text style={styles.feedbackBtnText}>📣</Text>
+        </TouchableOpacity>
       </View>
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
 
       <FlatList
         ref={listRef}
@@ -430,8 +436,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
+  feedbackBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  feedbackBtnText: { fontSize: 22 },
   messageList: { padding: 16, gap: 12, flexGrow: 1 },
   messageRow: { gap: 6 },
   userRow: { alignItems: 'flex-end' },

@@ -11,7 +11,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType } from '@/models';
+import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
@@ -236,7 +236,7 @@ const MapScreen = (): React.JSX.Element => {
   const [firstPoint,          setFirstPoint]          = useState<{ x: number; y: number } | null>(null);
   const [drawTarget,          setDrawTarget]          = useState<Plant | null>(null);
   const [menuPlant,           setMenuPlant]           = useState<Plant | null>(null);
-  const [forceShowMap,        setForceShowMap]        = useState(false);
+  // forceShowMap removed — map is always visible (empty state is an overlay)
   const [showOnboarding,      setShowOnboarding]      = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
@@ -318,15 +318,16 @@ const MapScreen = (): React.JSX.Element => {
   const [showDiseaseResult, setShowDiseaseResult] = useState(false);
   const [diseaseText,       setDiseaseText]       = useState('');
 
-  const ensureGarden = useCallback(() => {
-    if (garden) return garden;
-    const g = { id: `garden-${Date.now()}`, userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
+  const ensureGarden = useCallback((): Garden => {
+    const current = useGardenStore.getState().garden;
+    if (current) return current;
+    const g: Garden = { id: `garden-${Date.now()}`, userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
     setGarden(g);
     return g;
-  }, [garden, setGarden]);
+  }, [setGarden]);
 
   const isInteractive = !!movingPlant || !!drawStep || plantsToPlace.length > 0 || !!boundaryDrawStep;
-  const showMap = !!(garden && garden.plants.length > 0) || plantsToPlace.length > 0 || forceShowMap;
+  const isEmpty = !garden || garden.plants.length === 0;
 
   const pendingTaskCount = useMemo(() => {
     if (!garden) return 0;
@@ -530,7 +531,7 @@ const MapScreen = (): React.JSX.Element => {
       identificationConfidence: 1,
     });
     setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null);
-    setForceShowMap(false);
+    
   };
 
   // ── scan ──────────────────────────────────────────────────────────────────
@@ -567,7 +568,7 @@ const MapScreen = (): React.JSX.Element => {
 
   const startManualAdd = () => {
     ensureGarden();
-    setForceShowMap(true);
+    
     setDrawStep('first');
   };
 
@@ -601,7 +602,7 @@ const MapScreen = (): React.JSX.Element => {
     setPlantsToPlace([ip]);
     setShowPlantSearch(false);
     ensureGarden();
-    setForceShowMap(true);
+    
   }, [ensureGarden]);
 
   // ── disease scan ──────────────────────────────────────────────────────────
@@ -636,31 +637,9 @@ const MapScreen = (): React.JSX.Element => {
     setPendingBoundaryType(bt.type);
     setPendingBoundaryIsLine(bt.isLine);
     ensureGarden();
-    setForceShowMap(true);
+    
     setBoundaryDrawStep('first');
   }, [ensureGarden]);
-
-  // ── empty state ───────────────────────────────────────────────────────────
-  if (!showMap) {
-    return (
-      <SafeAreaView style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🌳</Text>
-        <Text style={styles.emptyTitle}>Je tuin is nog leeg</Text>
-        <Text style={styles.emptySubtitle}>
-          Scan een foto om planten te herkennen, of voeg ze handmatig toe.
-        </Text>
-        <TouchableOpacity style={styles.emptyScanBtn} onPress={handleScanPress} disabled={scanning}>
-          {scanning
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.emptyScanBtnText}>📷 Scan planten</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.emptyManualBtn} onPress={startManualAdd}>
-          <Text style={styles.emptyManualBtnText}>✏️ Handmatig toevoegen</Text>
-        </TouchableOpacity>
-        <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
-      </SafeAreaView>
-    );
-  }
 
   const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
 
@@ -698,7 +677,7 @@ const MapScreen = (): React.JSX.Element => {
               'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
               [
                 { text: 'Annuleren', style: 'cancel' },
-                { text: 'Verwijderen', style: 'destructive', onPress: () => { clearGarden(); setForceShowMap(false); } },
+                { text: 'Verwijderen', style: 'destructive', onPress: () => { clearGarden();  } },
               ],
             )}>
             <Text style={styles.deleteBtnText}>🗑️</Text>
@@ -846,7 +825,7 @@ const MapScreen = (): React.JSX.Element => {
         {/* FAB menu */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setForceShowMap(true); setDrawStep('first'); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden();  setDrawStep('first'); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>🌱</Text>
               <Text style={styles.fabMenuLabel}>Plant/zone toevoegen</Text>
             </TouchableOpacity>
@@ -864,6 +843,27 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Onboarding */}
       <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
+
+      {/* Empty-state overlay — shown on top of the map grid, disappears once first plant added */}
+      {isEmpty && !isInteractive && (
+        <View style={styles.emptyOverlay} pointerEvents="box-none">
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardIcon}>🌱</Text>
+            <Text style={styles.emptyCardTitle}>Je tuin is nog leeg</Text>
+            <Text style={styles.emptyCardSubtitle}>
+              Scan een foto om planten te herkennen, of voeg ze handmatig toe.
+            </Text>
+            <TouchableOpacity style={styles.emptyCardScanBtn} onPress={handleScanPress} disabled={scanning} activeOpacity={0.85}>
+              {scanning
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.emptyCardScanBtnText}>📷 Scan planten</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.emptyCardManualBtn} onPress={() => { ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
+              <Text style={styles.emptyCardManualBtnText}>✏️ Handmatig toevoegen</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Plant action menu */}
       <PlantMenu
@@ -1102,7 +1102,7 @@ const MapScreen = (): React.JSX.Element => {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.modalCancelBtn}
-                onPress={() => { setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null); setForceShowMap(false); }}>
+                onPress={() => { setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null);  }}>
                 <Text style={styles.modalCancelText}>Annuleren</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1120,23 +1120,33 @@ const MapScreen = (): React.JSX.Element => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  emptyContainer: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', padding: 32, gap: 14,
+  // Empty-state overlay (map is always shown underneath)
+  emptyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  emptyIcon: { fontSize: 64 },
-  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
-  emptySubtitle: { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
-  emptyScanBtn: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14,
-    borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center',
+  emptyCard: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 28,
+    alignItems: 'center', marginHorizontal: 24, gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18, shadowRadius: 12, elevation: 10,
   },
-  emptyScanBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  emptyManualBtn: {
-    backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 14,
-    borderRadius: 14, minWidth: 200, alignItems: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
+  emptyCardIcon:         { fontSize: 52 },
+  emptyCardTitle:        { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  emptyCardSubtitle:     { fontSize: 14, color: '#6b705c', textAlign: 'center', lineHeight: 20 },
+  emptyCardScanBtn:      { backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 13, borderRadius: 13, minWidth: 200, alignItems: 'center', marginTop: 4 },
+  emptyCardScanBtnText:  { color: '#fff', fontWeight: '700', fontSize: 15 },
+  emptyCardManualBtn:    { backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 13, borderRadius: 13, minWidth: 200, alignItems: 'center', borderWidth: 1, borderColor: '#b7e4c7' },
+  emptyCardManualBtnText:{ color: '#2d6a4f', fontWeight: '700', fontSize: 15 },
+  // Legacy names kept so nothing else breaks
+  emptyContainer:        { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', padding: 32, gap: 14 },
+  emptyIcon:             { fontSize: 64 },
+  emptyTitle:            { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  emptySubtitle:         { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
+  emptyScanBtn:          { backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center' },
+  emptyScanBtnText:      { color: '#fff', fontWeight: '700', fontSize: 16 },
+  emptyManualBtn:        { backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, minWidth: 200, alignItems: 'center', borderWidth: 1, borderColor: '#b7e4c7' },
   emptyManualBtnText: { color: '#2d6a4f', fontWeight: '700', fontSize: 16 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
