@@ -11,10 +11,12 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
+import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, Garden } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
+import { useTheme } from '@/hooks/useTheme';
+import { Theme } from '@/theme';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -89,6 +91,8 @@ interface PlantMenuProps {
 }
 
 const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, onSaveNote }: PlantMenuProps): React.JSX.Element | null => {
+  const theme = useTheme();
+  const menuStyles = makeMenuStyles(theme);
   const [showColors, setShowColors] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState('');
@@ -158,7 +162,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
                 value={noteText}
                 onChangeText={setNoteText}
                 placeholder="Voeg een notitie toe…"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={3}
               />
@@ -188,6 +192,9 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 const MapScreen = (): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
+  const corrStyles = makeCorrStyles(theme);
   const navigation = useNavigation<MapNavProp>();
   const garden      = useGardenStore((s) => s.garden);
   const setGarden   = useGardenStore((s) => s.setGarden);
@@ -196,14 +203,27 @@ const MapScreen = (): React.JSX.Element => {
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
 
-  const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
-  const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
-  const [firstPoint,          setFirstPoint]          = useState<{ x: number; y: number } | null>(null);
-  const [drawTarget,          setDrawTarget]          = useState<Plant | null>(null);
-  const [menuPlant,           setMenuPlant]           = useState<Plant | null>(null);
-  const [forceShowMap,        setForceShowMap]        = useState(false);
-  const [showOnboarding,      setShowOnboarding]      = useState(false);
+  const [movingPlant,          setMovingPlant]          = useState<Plant | null>(null);
+  const [drawStep,             setDrawStep]             = useState<DrawStep | null>(null);
+  const [firstPoint,           setFirstPoint]           = useState<{ x: number; y: number } | null>(null);
+  const [drawTarget,           setDrawTarget]           = useState<Plant | null>(null);
+  const [menuPlant,            setMenuPlant]            = useState<Plant | null>(null);
+  const [showOnboarding,       setShowOnboarding]       = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
+
+  // Ensure a garden always exists on mount so the map is never blocked
+  useEffect(() => {
+    if (!garden) {
+      setGarden({
+        id: `garden-${Date.now()}`,
+        userId: 'local',
+        name: 'Mijn tuin',
+        polygons: [],
+        plants: [],
+        tasks: [],
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -233,12 +253,20 @@ const MapScreen = (): React.JSX.Element => {
   const [correctionName,      setCorrectionName]      = useState('');
   const [correctionSpecies,   setCorrectionSpecies]   = useState('');
 
-  const ensureGarden = useCallback(() => {
-    if (garden) return garden;
-    const g = { id: `garden-${Date.now()}`, userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
+  const ensureGarden = useCallback((): Garden => {
+    const current = useGardenStore.getState().garden;
+    if (current) return current;
+    const g: Garden = {
+      id: `garden-${Date.now()}`,
+      userId: 'local',
+      name: 'Mijn tuin',
+      polygons: [],
+      plants: [],
+      tasks: [],
+    };
     setGarden(g);
     return g;
-  }, [garden, setGarden]);
+  }, [setGarden]);
 
   // Show correction sheet whenever plantsToPlace gets new entries
   useEffect(() => {
@@ -253,7 +281,7 @@ const MapScreen = (): React.JSX.Element => {
   }, [plantsToPlace]);
 
   const isInteractive = !!movingPlant || !!drawStep || plantsToPlace.length > 0;
-  const showMap = !!(garden && garden.plants.length > 0) || plantsToPlace.length > 0 || forceShowMap;
+  const isEmpty = !garden || garden.plants.length === 0;
 
   const pendingTaskCount = useMemo(() => {
     if (!garden) return 0;
@@ -369,7 +397,6 @@ const MapScreen = (): React.JSX.Element => {
       identificationConfidence: 1,
     });
     setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null);
-    setForceShowMap(false);
   };
 
   // ── scan ──────────────────────────────────────────────────────────────────
@@ -402,35 +429,10 @@ const MapScreen = (): React.JSX.Element => {
     ]);
   };
 
-  const startManualAdd = () => {
-    ensureGarden();
-    setForceShowMap(true);
-    setDrawStep('first');
+  const currentGarden = garden ?? {
+    id: 'temp', userId: 'local', name: 'Mijn tuin',
+    polygons: [], plants: [], tasks: [],
   };
-
-  // ── empty state ───────────────────────────────────────────────────────────
-  if (!showMap) {
-    return (
-      <SafeAreaView style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🌳</Text>
-        <Text style={styles.emptyTitle}>Je tuin is nog leeg</Text>
-        <Text style={styles.emptySubtitle}>
-          Scan een foto om planten te herkennen, of voeg ze handmatig toe.
-        </Text>
-        <TouchableOpacity style={styles.emptyScanBtn} onPress={handleScanPress} disabled={scanning}>
-          {scanning
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.emptyScanBtnText}>📷 Scan planten</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.emptyManualBtn} onPress={startManualAdd}>
-          <Text style={styles.emptyManualBtnText}>✏️ Handmatig toevoegen</Text>
-        </TouchableOpacity>
-        <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
-      </SafeAreaView>
-    );
-  }
-
-  const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -438,7 +440,11 @@ const MapScreen = (): React.JSX.Element => {
       <View style={styles.header}>
         <View>
           <Text style={styles.gardenName}>{currentGarden.name}</Text>
-          <Text style={styles.plantCount}>{currentGarden.plants.length} planten</Text>
+          <Text style={styles.plantCount}>
+            {currentGarden.plants.length === 0
+              ? 'Lege tuin — voeg je eerste plant toe'
+              : `${currentGarden.plants.length} ${currentGarden.plants.length === 1 ? 'plant' : 'planten'}`}
+          </Text>
         </View>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
@@ -449,27 +455,31 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
             {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
-            onPress={() => setShowCompanionOverlay((v) => !v)}>
-            <Text style={styles.companionBtnText}>🌿</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => Alert.alert(
-              'Tuin verwijderen',
-              'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
-              [
-                { text: 'Annuleren', style: 'cancel' },
-                { text: 'Verwijderen', style: 'destructive', onPress: () => { clearGarden(); setForceShowMap(false); } },
-              ],
-            )}>
-            <Text style={styles.deleteBtnText}>🗑️</Text>
-          </TouchableOpacity>
+          {!isEmpty && (
+            <TouchableOpacity
+              style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
+              onPress={() => setShowCompanionOverlay((v) => !v)}>
+              <Text style={styles.companionBtnText}>🌿</Text>
+            </TouchableOpacity>
+          )}
+          {!isEmpty && (
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => Alert.alert(
+                'Tuin verwijderen',
+                'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+                [
+                  { text: 'Annuleren', style: 'cancel' },
+                  { text: 'Verwijderen', style: 'destructive', onPress: () => clearGarden() },
+                ],
+              )}>
+              <Text style={styles.deleteBtnText}>🗑️</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* Banner */}
+      {/* Banner / hint bar */}
       {bannerInfo ? (
         <View style={styles.banner}>
           <View style={styles.bannerLeft}>
@@ -481,14 +491,14 @@ const MapScreen = (): React.JSX.Element => {
             <TouchableOpacity onPress={bannerInfo.onCancel}><Text style={styles.bannerCancel}>✕</Text></TouchableOpacity>
           </View>
         </View>
-      ) : (
+      ) : !isEmpty ? (
         <View style={styles.hintBar}>
           <Text style={styles.hintText}>1 cel = 30×30 cm · lang indrukken om te bewerken · ＋ voor nieuwe zone</Text>
         </View>
-      )}
+      ) : null}
 
       {/* Companion legend */}
-      {showCompanionOverlay && (
+      {showCompanionOverlay && !isEmpty && (
         <View style={styles.companionLegend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDash, styles.legendGood]} />
@@ -517,7 +527,7 @@ const MapScreen = (): React.JSX.Element => {
         </View>
       )}
 
-      {/* Map */}
+      {/* Map — always visible */}
       <View style={styles.mapWrapper}>
         <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
           <ScrollView bounces={false}>
@@ -529,7 +539,7 @@ const MapScreen = (): React.JSX.Element => {
               isInteractive={isInteractive}
               highlightPoint={drawStep === 'second' ? firstPoint : null}
               movingPlantId={movingPlant?.id}
-              onMapPress={handleMapPress}
+              onMapPress={isInteractive ? handleMapPress : undefined}
               companionPairs={companionPairs}
               showCompanionOverlay={showCompanionOverlay}
               thirstyPlantIds={thirstyPlantIds}
@@ -537,8 +547,30 @@ const MapScreen = (): React.JSX.Element => {
           </ScrollView>
         </ScrollView>
 
+        {/* Empty-state overlay — shown on top of the (empty) map */}
+        {isEmpty && !isInteractive && (
+          <View style={styles.emptyOverlay} pointerEvents="box-none">
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyCardIcon}>🌱</Text>
+              <Text style={styles.emptyCardTitle}>Je tuin is nog leeg</Text>
+              <Text style={styles.emptyCardSubtitle}>
+                Scan een foto om planten te herkennen, of tik op ＋ om handmatig toe te voegen.
+              </Text>
+              <TouchableOpacity style={styles.emptyCardScanBtn} onPress={handleScanPress} disabled={scanning}>
+                {scanning
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.emptyCardScanBtnText}>📷 Scan planten</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* FAB — always visible when not in interactive mode */}
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => { ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => { ensureGarden(); setDrawStep('first'); }}
+            activeOpacity={0.85}>
             <Text style={styles.fabText}>＋</Text>
           </TouchableOpacity>
         )}
@@ -582,7 +614,7 @@ const MapScreen = (): React.JSX.Element => {
                 value={correctionName}
                 onChangeText={setCorrectionName}
                 placeholder="Naam van de plant"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
               />
               <Text style={corrStyles.label}>Soort (optioneel)</Text>
               <TextInput
@@ -590,7 +622,7 @@ const MapScreen = (): React.JSX.Element => {
                 value={correctionSpecies}
                 onChangeText={setCorrectionSpecies}
                 placeholder="Latijnse naam"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
               />
               <TouchableOpacity
                 style={corrStyles.confirmBtn}
@@ -626,7 +658,7 @@ const MapScreen = (): React.JSX.Element => {
             <TextInput
               style={styles.modalInput}
               placeholder="Naam…"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={theme.textMuted}
               value={modalName}
               onChangeText={setModalName}
               autoFocus
@@ -667,7 +699,7 @@ const MapScreen = (): React.JSX.Element => {
             <TextInput
               style={[styles.modalInput, styles.modalInputNotes]}
               placeholder="Notitie (optioneel)…"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={theme.textMuted}
               value={modalNotes}
               onChangeText={setModalNotes}
               multiline
@@ -676,7 +708,7 @@ const MapScreen = (): React.JSX.Element => {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.modalCancelBtn}
-                onPress={() => { setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null); setForceShowMap(false); }}>
+                onPress={() => { setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null); }}>
                 <Text style={styles.modalCancelText}>Annuleren</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -692,195 +724,209 @@ const MapScreen = (): React.JSX.Element => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  emptyContainer: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', padding: 32, gap: 14,
-  },
-  emptyIcon: { fontSize: 64 },
-  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
-  emptySubtitle: { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
-  emptyScanBtn: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14,
-    borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center',
-  },
-  emptyScanBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  emptyManualBtn: {
-    backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 14,
-    borderRadius: 14, minWidth: 200, alignItems: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  emptyManualBtnText: { color: '#2d6a4f', fontWeight: '700', fontSize: 16 },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef',
+    borderBottomWidth: 1, borderBottomColor: t.border,
+    backgroundColor: t.card,
   },
-  gardenName: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  plantCount: { fontSize: 13, color: '#6b705c', marginTop: 2 },
+  gardenName: { fontSize: 20, fontWeight: '700', color: t.primaryDark },
+  plantCount: { fontSize: 13, color: t.textSecondary, marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  badge: { backgroundColor: t.warning, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
   scanBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: t.primaryLighter, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: t.borderLight,
   },
   scanBtnText: { fontSize: 20 },
   deleteBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#fff5f5', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#f4bfc0',
+    backgroundColor: t.dangerLight, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: t.dangerBorder,
   },
   deleteBtnText: { fontSize: 18 },
   companionBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: t.primaryLighter, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: t.borderLight,
   },
   companionBtnActive: {
-    backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
+    backgroundColor: t.primary, borderColor: t.primary,
   },
   companionBtnText: { fontSize: 20 },
   waterBanner: {
-    backgroundColor: '#e0f0ff', paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#90c8f0',
+    backgroundColor: t.infoLight, paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: t.infoBorder,
   },
-  waterBannerText: { fontSize: 13, fontWeight: '600', color: '#0a558c' },
+  waterBannerText: { fontSize: 13, fontWeight: '600', color: t.info },
   companionLegend: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
     paddingHorizontal: 16, paddingVertical: 8,
-    backgroundColor: '#f0faf4',
-    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
+    backgroundColor: t.primaryLighter,
+    borderBottomWidth: 1, borderBottomColor: t.borderLight,
     gap: 16,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDash: { width: 22, height: 3, borderRadius: 2 },
-  legendGood: { backgroundColor: '#2d6a4f' },
-  legendBad:  { backgroundColor: '#e63946' },
-  legendText: { fontSize: 12, color: '#1b4332', fontWeight: '600' },
-  legendHint: { fontSize: 11, color: '#6b705c', fontStyle: 'italic' },
+  legendGood: { backgroundColor: t.primary },
+  legendBad:  { backgroundColor: t.danger },
+  legendText: { fontSize: 12, color: t.primaryDark, fontWeight: '600' },
+  legendHint: { fontSize: 11, color: t.textSecondary, fontStyle: 'italic' },
   banner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#2d6a4f', gap: 8,
+    backgroundColor: t.primaryLight, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: t.primary, gap: 8,
   },
   bannerLeft: { flex: 1 },
-  bannerText: { fontSize: 13, color: '#1b4332', fontWeight: '600' },
-  bannerExtra: { fontSize: 11, color: '#2d6a4f', marginTop: 1 },
+  bannerText: { fontSize: 13, color: t.primaryDark, fontWeight: '600' },
+  bannerExtra: { fontSize: 11, color: t.primary, marginTop: 1 },
   bannerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  bannerSkip: { fontSize: 13, color: '#6b705c', fontWeight: '600' },
-  bannerCancel: { fontSize: 18, color: '#e63946', fontWeight: '700' },
+  bannerSkip: { fontSize: 13, color: t.textSecondary, fontWeight: '600' },
+  bannerCancel: { fontSize: 18, color: t.danger, fontWeight: '700' },
   hintBar: {
     paddingHorizontal: 16, paddingVertical: 6,
-    backgroundColor: '#f8f9fa', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
+    backgroundColor: t.card, borderBottomWidth: 1, borderBottomColor: t.border,
   },
-  hintText: { fontSize: 11, color: '#aaa', textAlign: 'center' },
+  hintText: { fontSize: 11, color: t.textMuted, textAlign: 'center' },
   mapWrapper: { flex: 1, overflow: 'hidden' },
   scrollOuter: { flex: 1 },
+  // Empty overlay — sits on top of the map grid
+  emptyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  emptyCard: {
+    backgroundColor: t.card,
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+    maxWidth: 320,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: t.border,
+  },
+  emptyCardIcon: { fontSize: 52 },
+  emptyCardTitle: { fontSize: 20, fontWeight: '700', color: t.primaryDark, textAlign: 'center' },
+  emptyCardSubtitle: { fontSize: 14, color: t.textSecondary, textAlign: 'center', lineHeight: 20 },
+  emptyCardScanBtn: {
+    backgroundColor: t.primary, paddingHorizontal: 24, paddingVertical: 13,
+    borderRadius: 14, marginTop: 6, minWidth: 180, alignItems: 'center',
+  },
+  emptyCardScanBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   fab: {
     position: 'absolute', bottom: 20, right: 20,
     width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#2d6a4f', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: t.primary, alignItems: 'center', justifyContent: 'center',
     elevation: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: t.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 24, gap: 14, paddingBottom: 36,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  modalSubtitle: { fontSize: 13, color: '#6b705c', marginTop: -8 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: t.primaryDark },
+  modalSubtitle: { fontSize: 13, color: t.textSecondary, marginTop: -8 },
   modalInput: {
-    backgroundColor: '#f8f9fa', borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#1b4332',
+    backgroundColor: t.background, borderRadius: 12, borderWidth: 1, borderColor: t.border,
+    paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: t.text,
   },
   modalInputNotes: { fontSize: 14, minHeight: 60, textAlignVertical: 'top' },
   typeRow: { flexDirection: 'row', gap: 8 },
   typeBtn: {
     flex: 1, alignItems: 'center', paddingVertical: 10,
-    borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa', gap: 4,
+    borderRadius: 12, borderWidth: 1, borderColor: t.border,
+    backgroundColor: t.background, gap: 4,
   },
-  typeBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
+  typeBtnActive: { borderColor: t.primary, backgroundColor: t.primaryLight },
   typeBtnIcon: { fontSize: 18 },
-  typeBtnLabel: { fontSize: 11, color: '#6b705c', fontWeight: '600' },
-  typeBtnLabelActive: { color: '#2d6a4f' },
-  colorLabel: { fontSize: 13, fontWeight: '600', color: '#6b705c' },
+  typeBtnLabel: { fontSize: 11, color: t.textSecondary, fontWeight: '600' },
+  typeBtnLabelActive: { color: t.primary },
+  colorLabel: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
   colorSwatch: {
     width: 36, height: 36, borderRadius: 18, marginRight: 10,
     borderWidth: 2, borderColor: 'transparent',
   },
-  colorSwatchSelected: { borderColor: '#1b4332', transform: [{ scale: 1.2 }] },
+  colorSwatchSelected: { borderColor: t.primaryDark, transform: [{ scale: 1.2 }] },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalCancelBtn: {
-    flex: 1, borderWidth: 1, borderColor: '#e9ecef', borderRadius: 12,
+    flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',
   },
-  modalCancelText: { color: '#6b705c', fontWeight: '600', fontSize: 15 },
+  modalCancelText: { color: t.textSecondary, fontWeight: '600', fontSize: 15 },
   modalConfirmBtn: {
-    flex: 2, backgroundColor: '#2d6a4f', borderRadius: 12,
+    flex: 2, backgroundColor: t.primary, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',
   },
-  modalConfirmBtnDisabled: { backgroundColor: '#ccc' },
+  modalConfirmBtnDisabled: { backgroundColor: t.textMuted },
   modalConfirmText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
 
-const menuStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 28, overflow: 'hidden' },
-  header: { backgroundColor: '#1b4332', paddingHorizontal: 20, paddingVertical: 16, marginBottom: 6 },
+const makeMenuStyles = (t: Theme) => StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: t.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 28, overflow: 'hidden' },
+  header: { backgroundColor: t.primaryDark, paddingHorizontal: 20, paddingVertical: 16, marginBottom: 6 },
   plantName: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  plantSpecies: { fontSize: 13, color: '#b7e4c7', fontStyle: 'italic', marginTop: 2 },
+  plantSpecies: { fontSize: 13, color: t.borderLight, fontStyle: 'italic', marginTop: 2 },
   item: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef', gap: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border, gap: 14,
   },
   itemDanger: { borderBottomWidth: 0 },
   itemIcon: { fontSize: 20, width: 28, textAlign: 'center' },
-  colorDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#e9ecef' },
-  itemLabel: { fontSize: 16, color: '#1b4332', fontWeight: '500', flex: 1 },
-  itemLabelDanger: { fontSize: 16, color: '#e63946', fontWeight: '500', flex: 1 },
-  chevron: { fontSize: 12, color: '#aaa' },
+  colorDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: t.border },
+  itemLabel: { fontSize: 16, color: t.primaryDark, fontWeight: '500', flex: 1 },
+  itemLabelDanger: { fontSize: 16, color: t.danger, fontWeight: '500', flex: 1 },
+  chevron: { fontSize: 12, color: t.textMuted },
   colorRow: { marginLeft: 20, marginBottom: 4 },
   colorRowContent: { paddingRight: 20, gap: 10, paddingVertical: 8 },
   swatch: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: 'transparent' },
-  swatchSelected: { borderColor: '#1b4332', transform: [{ scale: 1.2 }] },
+  swatchSelected: { borderColor: t.primaryDark, transform: [{ scale: 1.2 }] },
   noteArea: { marginHorizontal: 20, marginBottom: 4, gap: 8 },
   noteInput: {
-    backgroundColor: '#f8f9fa', borderRadius: 10, borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#1b4332',
+    backgroundColor: t.background, borderRadius: 10, borderWidth: 1, borderColor: t.border,
+    paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: t.text,
     minHeight: 72, textAlignVertical: 'top',
   },
   noteSaveBtn: {
-    backgroundColor: '#2d6a4f', borderRadius: 10, paddingVertical: 10, alignItems: 'center',
+    backgroundColor: t.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center',
   },
   noteSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   cancelBtn: {
     marginHorizontal: 20, marginTop: 8,
-    backgroundColor: '#f1f8f3', borderRadius: 14,
+    backgroundColor: t.primaryLighter, borderRadius: 14,
     paddingVertical: 16, alignItems: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
+    borderWidth: 1, borderColor: t.borderLight,
   },
-  cancelText: { fontSize: 16, color: '#2d6a4f', fontWeight: '700' },
+  cancelText: { fontSize: 16, color: t.primary, fontWeight: '700' },
 });
 
-const corrStyles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, maxHeight: '70%' },
-  handle: { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  title: { fontSize: 18, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+const makeCorrStyles = (t: Theme) => StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: t.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, maxHeight: '70%' },
+  handle: { width: 36, height: 4, backgroundColor: t.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  title: { fontSize: 18, fontWeight: '700', color: t.primaryDark, marginBottom: 4 },
   lowConf: { fontSize: 12, color: '#e85d04', marginBottom: 12, backgroundColor: '#fff3e0', padding: 8, borderRadius: 8 },
-  label: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 8, marginBottom: 4 },
-  input: { borderWidth: 1, borderColor: '#b7e4c7', borderRadius: 10, padding: 10, fontSize: 15, color: '#1b4332', backgroundColor: '#f8fdf9' },
-  confirmBtn: { marginTop: 16, backgroundColor: '#2d6a4f', borderRadius: 12, padding: 14, alignItems: 'center' },
+  label: { fontSize: 12, fontWeight: '600', color: t.textSecondary, marginTop: 8, marginBottom: 4 },
+  input: { borderWidth: 1, borderColor: t.borderLight, borderRadius: 10, padding: 10, fontSize: 15, color: t.text, backgroundColor: t.background },
+  confirmBtn: { marginTop: 16, backgroundColor: t.primary, borderRadius: 12, padding: 14, alignItems: 'center' },
   confirmText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   skipBtn: { marginTop: 8, alignItems: 'center', padding: 8 },
-  skipText: { color: '#888', fontSize: 13 },
+  skipText: { color: t.textMuted, fontSize: 13 },
 });
 
 export default MapScreen;

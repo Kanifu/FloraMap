@@ -10,6 +10,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
+import { useTheme } from '@/hooks/useTheme';
+import { Theme } from '@/theme';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -62,6 +64,8 @@ const LINKS = [
 ];
 
 const AboutScreen = (): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const navigation = useNavigation();
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
@@ -252,8 +256,8 @@ const AboutScreen = (): React.JSX.Element => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -261,47 +265,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: t.border,
   },
   backBtn: { width: 70 },
-  backText: { fontSize: 16, color: '#2d6a4f', fontWeight: '600' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#1b4332' },
+  backText: { fontSize: 16, color: t.primary, fontWeight: '600' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: t.primaryDark },
   content: { padding: 20, gap: 20, paddingBottom: 40 },
   hero: { alignItems: 'center', gap: 6, paddingVertical: 12 },
   heroIcon: { fontSize: 56 },
-  heroName: { fontSize: 28, fontWeight: '800', color: '#1b4332' },
-  heroTagline: { fontSize: 14, color: '#6b705c' },
+  heroName: { fontSize: 28, fontWeight: '800', color: t.primaryDark },
+  heroTagline: { fontSize: 14, color: t.textSecondary },
   versionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   versionPill: {
-    backgroundColor: '#d8f3dc',
+    backgroundColor: t.primaryLight,
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: 20,
   },
-  versionPillText: { fontSize: 13, fontWeight: '700', color: '#2d6a4f' },
+  versionPillText: { fontSize: 13, fontWeight: '700', color: t.primary },
   buildPill: {
-    backgroundColor: '#1b4332',
+    backgroundColor: t.primaryDark,
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: 20,
   },
-  buildPillText: { fontSize: 13, fontWeight: '700', color: '#d8f3dc' },
-  buildDate: { fontSize: 12, color: '#aaa', marginTop: 2 },
-  buildHash: { fontSize: 11, color: '#ccc', fontFamily: 'monospace' },
+  buildPillText: { fontSize: 13, fontWeight: '700', color: t.primaryLight },
+  buildDate: { fontSize: 12, color: t.textMuted, marginTop: 2 },
+  buildHash: { fontSize: 11, color: t.textMuted },
   section: { gap: 8 },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#aaa',
+    color: t.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     paddingHorizontal: 4,
   },
   card: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: t.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: t.border,
     overflow: 'hidden',
   },
   row: {
@@ -312,14 +316,14 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   rowLeft: { flex: 1, gap: 2 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
-  rowLabel: { fontSize: 14, color: '#1b4332', fontWeight: '500' },
-  rowSub: { fontSize: 12, color: '#aaa' },
-  rowValue: { fontSize: 14, color: '#6b705c', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
-  linkChevron: { fontSize: 20, color: '#aaa' },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: t.border },
+  rowLabel: { fontSize: 14, color: t.text, fontWeight: '500' },
+  rowSub: { fontSize: 12, color: t.textMuted },
+  rowValue: { fontSize: 14, color: t.textSecondary, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
+  linkChevron: { fontSize: 20, color: t.textMuted },
   footer: {
     fontSize: 12,
-    color: '#aaa',
+    color: t.textMuted,
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 8,

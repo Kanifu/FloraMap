@@ -3,6 +3,7 @@ import { StyleSheet, Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
+import { useTheme } from '@/hooks/useTheme';
 
 export const CELL_CM  = 30;
 export const SCALE    = 40;
@@ -116,6 +117,7 @@ export const GardenMap = ({
   showCompanionOverlay = false,
   thirstyPlantIds = [],
 }: GardenMapProps): React.JSX.Element => {
+  const theme = useTheme();
 
   // ── Fast long-press via manual timer ────────────────────────────────────────
   const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -149,16 +151,16 @@ export const GardenMap = ({
       <Svg width={MAP_WIDTH} height={MAP_HEIGHT}>
 
         {/* Background */}
-        <Rect x={0} y={0} width={MAP_WIDTH} height={MAP_HEIGHT} fill="#eaf4ec" />
+        <Rect x={0} y={0} width={MAP_WIDTH} height={MAP_HEIGHT} fill={theme.mapBackground} />
 
         {/* Grid lines */}
         {Array.from({ length: GRID_COLS + 1 }, (_, i) => (
           <Rect key={`v${i}`} x={i * SCALE} y={0} width={0.5} height={MAP_HEIGHT}
-            fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
+            fill={theme.mapGrid} opacity={isInteractive ? 0.8 : 0.3} />
         ))}
         {Array.from({ length: GRID_ROWS + 1 }, (_, i) => (
           <Rect key={`h${i}`} x={0} y={i * SCALE} width={MAP_WIDTH} height={0.5}
-            fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
+            fill={theme.mapGrid} opacity={isInteractive ? 0.8 : 0.3} />
         ))}
 
         {/* Garden polygons */}
