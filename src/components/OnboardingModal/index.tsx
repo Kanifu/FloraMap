@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '@/hooks/useTheme';
+import { Theme } from '@/theme';
 
 const STEPS = [
   {
@@ -25,6 +27,8 @@ interface Props {
 }
 
 export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
+  const theme = useTheme();
+  const s = makeStyles(theme);
   const [step, setStep] = useState(0);
   const isLast = step === STEPS.length - 1;
 
@@ -66,14 +70,14 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (t: Theme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'flex-end',
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 32,
@@ -86,13 +90,13 @@ const s = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 10,
-    color: '#1b4332',
+    color: t.primaryDark,
   },
   body: {
     fontSize: 15,
     lineHeight: 23,
     textAlign: 'center',
-    color: '#6b705c',
+    color: t.textSecondary,
     marginBottom: 28,
   },
   dots: { flexDirection: 'row', gap: 7, marginBottom: 28 },
@@ -100,11 +104,11 @@ const s = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#d8f3dc',
+    backgroundColor: t.primaryLight,
   },
-  dotActive: { backgroundColor: '#2d6a4f', width: 22 },
+  dotActive: { backgroundColor: t.primary, width: 22 },
   btn: {
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 14,
     paddingVertical: 15,
     paddingHorizontal: 32,
@@ -113,5 +117,5 @@ const s = StyleSheet.create({
   },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   backLink: { marginTop: 14, padding: 8 },
-  backLinkText: { color: '#aaa', fontSize: 14 },
+  backLinkText: { color: t.textMuted, fontSize: 14 },
 });

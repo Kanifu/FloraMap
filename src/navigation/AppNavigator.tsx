@@ -1,5 +1,6 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
+import { NavigationContainer, DarkTheme, DefaultTheme, Theme as NavTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Text } from 'react-native';
@@ -8,6 +9,7 @@ import AssistantScreen from '@/screens/AssistantScreen';
 import MaintenanceScreen from '@/screens/MaintenanceScreen';
 import PlantCardScreen from '@/screens/PlantCardScreen';
 import AboutScreen from '@/screens/AboutScreen';
+import { lightTheme, darkTheme } from '@/theme';
 
 export type RootTabParamList = {
   MapTab: undefined;
@@ -56,38 +58,61 @@ const MaintenanceStackNavigator = (): React.JSX.Element => (
   </MaintenanceStack.Navigator>
 );
 
-export const AppNavigator = (): React.JSX.Element => (
-  <NavigationContainer>
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#2d6a4f',
-        tabBarInactiveTintColor: '#aaa',
-      }}>
-      <Tab.Screen
-        name="MapTab"
-        component={MapStackNavigator}
-        options={{
-          tabBarLabel: 'Tuin',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🗺️</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="AssistantTab"
-        component={AssistantStackNavigator}
-        options={{
-          tabBarLabel: 'Assistent',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🌿</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="MaintenanceTab"
-        component={MaintenanceStackNavigator}
-        options={{
-          tabBarLabel: 'Onderhoud',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🔔</Text>,
-        }}
-      />
-    </Tab.Navigator>
-  </NavigationContainer>
-);
+export const AppNavigator = (): React.JSX.Element => {
+  const scheme = useColorScheme();
+  const t = scheme === 'dark' ? darkTheme : lightTheme;
+
+  // Extend React Navigation's built-in dark/light themes with our brand colours
+  const FloraNavTheme: NavTheme = {
+    ...(scheme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(scheme === 'dark' ? DarkTheme.colors : DefaultTheme.colors),
+      primary:    t.primary,
+      background: t.background,
+      card:       t.tabBar,
+      text:       t.text,
+      border:     t.tabBorder,
+      notification: t.danger,
+    },
+  };
+
+  return (
+    <NavigationContainer theme={FloraNavTheme}>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor:   t.tabActive,
+          tabBarInactiveTintColor: t.tabInactive,
+          tabBarStyle: {
+            backgroundColor: t.tabBar,
+            borderTopColor:  t.tabBorder,
+          },
+        }}>
+        <Tab.Screen
+          name="MapTab"
+          component={MapStackNavigator}
+          options={{
+            tabBarLabel: 'Tuin',
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🗺️</Text>,
+          }}
+        />
+        <Tab.Screen
+          name="AssistantTab"
+          component={AssistantStackNavigator}
+          options={{
+            tabBarLabel: 'Assistent',
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🌿</Text>,
+          }}
+        />
+        <Tab.Screen
+          name="MaintenanceTab"
+          component={MaintenanceStackNavigator}
+          options={{
+            tabBarLabel: 'Onderhoud',
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🔔</Text>,
+          }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+};
