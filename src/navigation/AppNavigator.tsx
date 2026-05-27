@@ -20,6 +20,7 @@ export type MapStackParamList = {
   Map: undefined;
   PlantCard: { plantId: string };
   SeedInventory: undefined;
+  About: undefined;
 };
 
 export type AssistantStackParamList = {
@@ -42,6 +43,7 @@ const MapStackNavigator = (): React.JSX.Element => (
     <MapStack.Screen name="Map" component={MapScreen} />
     <MapStack.Screen name="PlantCard" component={PlantCardScreen} />
     <MapStack.Screen name="SeedInventory" component={SeedInventoryScreen} />
+    <MapStack.Screen name="About" component={AboutScreen} />
   </MapStack.Navigator>
 );
 

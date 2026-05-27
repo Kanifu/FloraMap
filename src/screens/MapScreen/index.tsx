@@ -16,6 +16,7 @@ import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } f
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { SideMenu } from '@/components/SideMenu';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
@@ -243,6 +244,7 @@ const MapScreen = (): React.JSX.Element => {
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
 
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showMenu,     setShowMenu]     = useState(false);
 
   // Correction sheet state (for scan-identified plants before placing)
   const [showCorrectionSheet, setShowCorrectionSheet] = useState(false);
@@ -504,6 +506,17 @@ const MapScreen = (): React.JSX.Element => {
     }
   }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updatePlant, ensureGarden]);
 
+  const handleClearGarden = useCallback(() => {
+    Alert.alert(
+      'Tuin verwijderen',
+      'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+      [
+        { text: 'Annuleren', style: 'cancel' },
+        { text: 'Verwijderen', style: 'destructive', onPress: () => clearGarden() },
+      ],
+    );
+  }, [clearGarden]);
+
   const handleDelete = useCallback((plant: Plant) => {
     Alert.alert('Verwijderen', `${plant.commonName} uit je tuin verwijderen?`, [
       { text: 'Annuleren', style: 'cancel' },
@@ -663,30 +676,8 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
             {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.companionBtn} onPress={() => setShowFeedback(true)}>
-            <Text style={styles.companionBtnText}>🐛</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
-            onPress={() => setShowCompanionOverlay((v) => !v)}>
-            <Text style={styles.companionBtnText}>🌿</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.companionBtn, !showNames && styles.companionBtnActive]}
-            onPress={() => setShowNames((v) => !v)}>
-            <Text style={styles.companionBtnText}>{showNames ? '🏷️' : '👁️'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => Alert.alert(
-              'Tuin verwijderen',
-              'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
-              [
-                { text: 'Annuleren', style: 'cancel' },
-                { text: 'Verwijderen', style: 'destructive', onPress: () => { clearGarden();  } },
-              ],
-            )}>
-            <Text style={styles.deleteBtnText}>🗑️</Text>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}>
+            <Text style={styles.menuBtnText}>☰</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1121,6 +1112,24 @@ const MapScreen = (): React.JSX.Element => {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Side menu (drawer) — alles centraal bereikbaar vanuit de tuin-tab */}
+      <SideMenu
+        visible={showMenu}
+        onClose={() => setShowMenu(false)}
+        plantCount={currentGarden.plants.length}
+        showCompanion={showCompanionOverlay}
+        showNames={showNames}
+        onToggleCompanion={() => setShowCompanionOverlay((v) => !v)}
+        onToggleNames={() => setShowNames((v) => !v)}
+        onScan={handleScanPress}
+        onOpenAssistant={() => navigation.getParent()?.navigate('AssistantTab')}
+        onOpenMaintenance={() => navigation.getParent()?.navigate('MaintenanceTab')}
+        onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
+        onOpenAbout={() => navigation.navigate('About')}
+        onReportBug={() => setShowFeedback(true)}
+        onClearGarden={handleClearGarden}
+      />
+
       {/* Bug report modal */}
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
     </SafeAreaView>
@@ -1173,6 +1182,11 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#b7e4c7',
   },
   scanBtnText: { fontSize: 20 },
+  menuBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#1b4332', alignItems: 'center', justifyContent: 'center',
+  },
+  menuBtnText: { fontSize: 20, color: '#fff', fontWeight: '700', lineHeight: 22 },
   deleteBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#fff5f5', alignItems: 'center', justifyContent: 'center',

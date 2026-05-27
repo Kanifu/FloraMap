@@ -27,7 +27,7 @@ Bij **elke commit naar `main`** die iets verandert aan de app (code, assets, con
 | Bugfix of kleine verbetering | Gemini 400 fix | `"4.1"`, `"4.2"`, … |
 | Meerdere fixes in één commit | 2 bugfixes | `"4.1"` (één stap) |
 
-Huidige stand: **Build #7.3 · v1.8.0 · versionCode 23**
+Huidige stand: **Build #8.0 · v1.8.0 · versionCode 24**
 
 ### Checklist vóór elke push naar main
 
