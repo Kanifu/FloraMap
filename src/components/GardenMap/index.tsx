@@ -6,10 +6,10 @@ import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM  = 30;
 export const SCALE    = 30;
-export const GRID_COLS = 36;
-export const GRID_ROWS = 36;
-export const MAP_WIDTH  = GRID_COLS * SCALE;   // = 1080
-export const MAP_HEIGHT = GRID_ROWS * SCALE;   // = 1080
+export const GRID_COLS = 48;
+export const GRID_ROWS = 48;
+export const MAP_WIDTH  = GRID_COLS * SCALE;   // = 1440 (14,4 m)
+export const MAP_HEIGHT = GRID_ROWS * SCALE;   // = 1440 (14,4 m)
 
 // ── Plant emoji lookup — 100+ soorten ────────────────────────────────────────
 

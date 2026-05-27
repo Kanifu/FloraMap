@@ -222,6 +222,7 @@ const MapScreen = (): React.JSX.Element => {
   const clearGarden  = useGardenStore((s) => s.clearGarden);
   const addBoundary  = useGardenStore((s) => s.addBoundary);
   const removeBoundary = useGardenStore((s) => s.removeBoundary);
+  const updateBoundary = useGardenStore((s) => s.updateBoundary);
   const rotationHistory = useGardenStore((s) => s.rotationHistory);
 
   const [showNames,           setShowNames]           = useState(true);
@@ -232,6 +233,24 @@ const MapScreen = (): React.JSX.Element => {
   const animPinchScale = useRef(new Animated.Value(1)).current;
   const MIN_SCALE = 0.5;
   const MAX_SCALE = 3.0;
+
+  // Scroll the map to its centre on first render so the user starts in the
+  // middle of the garden (handy for laying out boundaries around the centre)
+  const hScrollRef = useRef<ScrollView>(null);
+  const vScrollRef = useRef<ScrollView>(null);
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  const didCenter = useRef(false);
+
+  useEffect(() => {
+    if (didCenter.current || viewport.w === 0 || viewport.h === 0) return;
+    const cx = Math.max(0, (MAP_WIDTH  - viewport.w) / 2);
+    const cy = Math.max(0, (MAP_HEIGHT - viewport.h) / 2);
+    requestAnimationFrame(() => {
+      hScrollRef.current?.scrollTo({ x: cx, animated: false });
+      vScrollRef.current?.scrollTo({ y: cy, animated: false });
+    });
+    didCenter.current = true;
+  }, [viewport]);
 
   const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
@@ -263,6 +282,7 @@ const MapScreen = (): React.JSX.Element => {
   const [boundaryDrawStep,    setBoundaryDrawStep]    = useState<DrawStep | null>(null);
   const [boundaryFirstPoint,  setBoundaryFirstPoint]  = useState<{ x: number; y: number } | null>(null);
   const [selectedBoundaryId,  setSelectedBoundaryId]  = useState<string | null>(null);
+  const [boundaryEditId,      setBoundaryEditId]      = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -283,11 +303,20 @@ const MapScreen = (): React.JSX.Element => {
     if (!selectedBoundaryId) return;
     const boundary = garden?.boundaries?.find((b) => b.id === selectedBoundaryId);
     if (!boundary) { setSelectedBoundaryId(null); return; }
-    const typeLabel = BOUNDARY_TYPES.find((t) => t.type === boundary.type)?.label ?? boundary.type;
+    const cfg = BOUNDARY_TYPES.find((t) => t.type === boundary.type);
+    const typeLabel = cfg?.label ?? boundary.type;
     Alert.alert(
       `${typeLabel}`,
       'Wat wil je doen met deze grens?',
       [
+        { text: '✏️ Aanpassen', onPress: () => {
+          setPendingBoundaryType(boundary.type);
+          setPendingBoundaryIsLine(cfg?.isLine ?? false);
+          setBoundaryEditId(selectedBoundaryId);
+          setBoundaryFirstPoint(null);
+          setBoundaryDrawStep('first');
+          setSelectedBoundaryId(null);
+        } },
         { text: '🗑️ Verwijderen', style: 'destructive', onPress: () => { removeBoundary(selectedBoundaryId); setSelectedBoundaryId(null); } },
         { text: 'Annuleren', style: 'cancel', onPress: () => setSelectedBoundaryId(null) },
       ],
@@ -421,10 +450,11 @@ const MapScreen = (): React.JSX.Element => {
     if (drawStep === 'first' && !drawTarget) return { text: 'Tik op het startpunt van de nieuwe plant of zone', onCancel: cancelDraw };
     if (drawStep === 'first' && drawTarget) return { text: `Tik op startpunt voor ${drawTarget.commonName}`, onCancel: cancelDraw };
     if (drawStep === 'second') return { text: 'Tik op het eindpunt (tegenovergestelde hoek)', onCancel: cancelDraw };
-    if (boundaryDrawStep === 'first') return { text: 'Tik op het startpunt van de grens', onCancel: () => { setBoundaryDrawStep(null); setBoundaryFirstPoint(null); setPendingBoundaryType(null); } };
-    if (boundaryDrawStep === 'second') return { text: 'Tik op het eindpunt van de grens', onCancel: () => { setBoundaryDrawStep(null); setBoundaryFirstPoint(null); setPendingBoundaryType(null); } };
+    const cancelBoundary = () => { setBoundaryDrawStep(null); setBoundaryFirstPoint(null); setPendingBoundaryType(null); setBoundaryEditId(null); };
+    if (boundaryDrawStep === 'first') return { text: boundaryEditId ? 'Tik op het nieuwe startpunt van de grens' : 'Tik op het startpunt van de grens', onCancel: cancelBoundary };
+    if (boundaryDrawStep === 'second') return { text: boundaryEditId ? 'Tik op het nieuwe eindpunt van de grens' : 'Tik op het eindpunt van de grens', onCancel: cancelBoundary };
     return null;
-  }, [plantsToPlace, movingPlant, drawStep, drawTarget, cancelDraw, boundaryDrawStep]);
+  }, [plantsToPlace, movingPlant, drawStep, drawTarget, cancelDraw, boundaryDrawStep, boundaryEditId]);
 
   // ── map tap ───────────────────────────────────────────────────────────────
   const handleMapPress = useCallback((x: number, y: number) => {
@@ -435,21 +465,24 @@ const MapScreen = (): React.JSX.Element => {
       return;
     }
     if (boundaryDrawStep === 'second' && boundaryFirstPoint && pendingBoundaryType) {
+      const id = boundaryEditId ?? newBoundaryId();
       const boundary: GardenBoundary = pendingBoundaryIsLine
-        ? { id: newBoundaryId(), type: pendingBoundaryType, x1: boundaryFirstPoint.x, y1: boundaryFirstPoint.y, x2: x, y2: y }
+        ? { id, type: pendingBoundaryType, x1: boundaryFirstPoint.x, y1: boundaryFirstPoint.y, x2: x, y2: y }
         : {
-            id: newBoundaryId(), type: pendingBoundaryType,
+            id, type: pendingBoundaryType,
             x: Math.min(boundaryFirstPoint.x, x),
             y: Math.min(boundaryFirstPoint.y, y),
             width:  Math.abs(x - boundaryFirstPoint.x) + 1,
             height: Math.abs(y - boundaryFirstPoint.y) + 1,
           };
       ensureGarden();
-      addBoundary(boundary);
+      if (boundaryEditId) updateBoundary(boundary);
+      else addBoundary(boundary);
       setBoundaryDrawStep(null);
       setBoundaryFirstPoint(null);
       setPendingBoundaryType(null);
       setPendingBoundaryIsLine(false);
+      setBoundaryEditId(null);
       return;
     }
 
@@ -504,7 +537,7 @@ const MapScreen = (): React.JSX.Element => {
         setShowModal(true);
       }
     }
-  }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updatePlant, ensureGarden]);
+  }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, boundaryEditId, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updateBoundary, updatePlant, ensureGarden]);
 
   const handleClearGarden = useCallback(() => {
     Alert.alert(
@@ -762,14 +795,16 @@ const MapScreen = (): React.JSX.Element => {
       )}
 
       {/* Map */}
-      <View style={styles.mapWrapper}>
+      <View
+        style={styles.mapWrapper}
+        onLayout={(e) => setViewport({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
         <PinchGestureHandler
           ref={pinchRef}
           onGestureEvent={onPinchGestureEvent}
           onHandlerStateChange={onPinchStateChange}>
           <Animated.View style={{ flex: 1, transform: [{ scale: animPinchScale }] }}>
-          <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
-            <ScrollView bounces={false}>
+          <ScrollView ref={hScrollRef} horizontal style={styles.scrollOuter} bounces={false}>
+            <ScrollView ref={vScrollRef} bounces={false}>
               <GardenMap
                 garden={currentGarden}
                 onPlantPress={(p) => setQuickSheetPlant(p)}

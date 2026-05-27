@@ -34,6 +34,7 @@ interface GardenActions {
   setScanning: (isScanning: boolean) => void;
   addBoundary: (boundary: GardenBoundary) => void;
   removeBoundary: (boundaryId: string) => void;
+  updateBoundary: (boundary: GardenBoundary) => void;
   recordTaskCompletion: () => void;
   recordHarvest: (plantId: string, entry: HarvestEntry) => void;
   addRotationRecord: (record: RotationRecord) => void;
@@ -197,6 +198,10 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
       removeBoundary: (id) => set((s) => ({
         garden: s.garden ? { ...s.garden, boundaries: (s.garden.boundaries ?? []).filter(b => b.id !== id) } : null,
+      })),
+
+      updateBoundary: (boundary) => set((s) => ({
+        garden: s.garden ? { ...s.garden, boundaries: (s.garden.boundaries ?? []).map(b => b.id === boundary.id ? boundary : b) } : null,
       })),
 
       recordTaskCompletion: () => {
