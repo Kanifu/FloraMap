@@ -14,6 +14,7 @@ import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, Garden } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { PlantQuickSheet } from '@/components/PlantQuickSheet';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { useTheme } from '@/hooks/useTheme';
 import { Theme } from '@/theme';
@@ -203,6 +204,7 @@ const MapScreen = (): React.JSX.Element => {
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
 
+  const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
   const [movingPlant,          setMovingPlant]          = useState<Plant | null>(null);
   const [drawStep,             setDrawStep]             = useState<DrawStep | null>(null);
   const [firstPoint,           setFirstPoint]           = useState<{ x: number; y: number } | null>(null);
@@ -533,7 +535,7 @@ const MapScreen = (): React.JSX.Element => {
           <ScrollView bounces={false}>
             <GardenMap
               garden={currentGarden}
-              onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}
+              onPlantPress={(p) => setQuickSheetPlant(p)}
               onPlantLongPress={(p) => setMenuPlant(p)}
               viewMode="2d"
               isInteractive={isInteractive}
@@ -575,6 +577,18 @@ const MapScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Plant quick-action sheet (tap → tasks + details) */}
+      <PlantQuickSheet
+        plant={quickSheetPlant}
+        visible={quickSheetPlant !== null}
+        onClose={() => setQuickSheetPlant(null)}
+        onDetails={(id) => {
+          setQuickSheetPlant(null);
+          navigation.navigate('PlantCard', { plantId: id });
+        }}
+        weatherRainExpected={false}
+      />
 
       {/* Onboarding */}
       <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
