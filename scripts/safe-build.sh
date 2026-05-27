@@ -199,7 +199,7 @@ if ! confirm "Alles gecontroleerd. Nu de EAS build starten?"; then
   exit 0
 fi
 
-BUILD_LOG="$(mktemp /tmp/floramap-build-XXXXXX.log)"
+BUILD_LOG="$(mktemp --suffix=.log /tmp/floramap-build-XXXXXX)"
 
 if [[ "$AUTO_YES" == "1" ]]; then
   # Niet-interactief: stroom output naar scherm én naar logbestand
