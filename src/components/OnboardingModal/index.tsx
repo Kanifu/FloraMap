@@ -33,7 +33,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   const [selectedTypes, setSelectedTypes] = useState<GardenType[]>([]);
   const [experience, setExperience] = useState<Experience | null>(null);
 
-  const totalSteps = 5;
+  const totalSteps = 6;
   const isLast = step === totalSteps - 1;
 
   const handleLocationRequest = async () => {
@@ -169,6 +169,26 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
         );
 
       case 4:
+        return (
+          <>
+            <Text style={s.emoji}>📷</Text>
+            <Text style={s.title}>Slimme fotoscan</Text>
+            <Text style={s.body}>
+              Scan een foto om planten te herkennen. FloraMap herkent
+              {' '}<Text style={s.bold}>maximaal 3 planten per scan</Text>.
+              Maak meerdere foto's voor een volle tuin.
+            </Text>
+            <View style={s.infoBox}>
+              <Text style={s.infoText}>🗺️ Je tuinkaart is{' '}
+                <Text style={s.bold}>48 × 48 vakjes</Text>
+                {' '}= 14,4 × 14,4 m
+              </Text>
+              <Text style={s.infoText}>📐 1 vakje = 30 × 30 cm</Text>
+            </View>
+          </>
+        );
+
+      case 5:
         return (
           <>
             <Text style={s.emoji}>🎉</Text>
@@ -328,6 +348,13 @@ const s = StyleSheet.create({
   typeBtnEmoji: { fontSize: 24, marginBottom: 4 },
   typeBtnLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600' },
   typeBtnLabelActive: { color: '#2d6a4f' },
+  // Scan/kaart info stap
+  bold: { fontWeight: '700', color: '#1b4332' },
+  infoBox: {
+    backgroundColor: '#f1f8f3', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: '#b7e4c7', width: '100%', gap: 6,
+  },
+  infoText: { fontSize: 14, color: '#1b4332', lineHeight: 20 },
   // Ervaring stap
   expRow: {
     flexDirection: 'row',

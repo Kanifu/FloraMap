@@ -702,9 +702,9 @@ const MapScreen = (): React.JSX.Element => {
         </View>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
-            <View style={styles.badge}>
+            <TouchableOpacity style={styles.badge} onPress={() => navigation.navigate('Maintenance')}>
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
-            </View>
+            </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
             {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
@@ -844,19 +844,14 @@ const MapScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         )}
 
-        {/* Assistant FAB — quick access to chat without leaving map */}
-        {!isInteractive && fabMode === 'idle' && (
-          <TouchableOpacity
-            style={styles.assistantFab}
-            onPress={() => navigation.getParent()?.navigate('AssistantTab')}
-            activeOpacity={0.85}>
-            <Text style={styles.assistantFabText}>💬</Text>
-          </TouchableOpacity>
-        )}
-
         {/* FAB menu */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); navigation.navigate('Assistant'); }} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>💬</Text>
+              <Text style={styles.fabMenuLabel}>Ga naar assistent</Text>
+            </TouchableOpacity>
+            <View style={styles.fabMenuDivider} />
             <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden();  setDrawStep('first'); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>🌱</Text>
               <Text style={styles.fabMenuLabel}>Plant/zone toevoegen</Text>
@@ -1157,8 +1152,8 @@ const MapScreen = (): React.JSX.Element => {
         onToggleCompanion={() => setShowCompanionOverlay((v) => !v)}
         onToggleNames={() => setShowNames((v) => !v)}
         onScan={handleScanPress}
-        onOpenAssistant={() => navigation.getParent()?.navigate('AssistantTab')}
-        onOpenMaintenance={() => navigation.getParent()?.navigate('MaintenanceTab')}
+        onOpenAssistant={() => navigation.navigate('Assistant')}
+        onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
         onOpenAbout={() => navigation.navigate('About')}
         onReportBug={() => setShowFeedback(true)}
@@ -1329,6 +1324,9 @@ const styles = StyleSheet.create({
   fabMenuItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 13, gap: 12,
+  },
+  fabMenuDivider: {
+    height: StyleSheet.hairlineWidth, backgroundColor: '#e9ecef', marginHorizontal: 16,
   },
   fabMenuIcon: { fontSize: 22 },
   fabMenuLabel: { fontSize: 15, fontWeight: '600', color: '#1b4332' },

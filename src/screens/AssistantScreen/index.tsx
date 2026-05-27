@@ -13,11 +13,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { RootStackParamList } from '@/navigation/AppNavigator';
 
 interface Message {
   id: string;
@@ -81,7 +84,10 @@ const makeGardenTask = (task: AssistantTask): GardenTask => ({
   ).toISOString(),
 });
 
+type AssistantNavProp = StackNavigationProp<RootStackParamList, 'Assistant'>;
+
 const AssistantScreen = (): React.JSX.Element => {
+  const navigation = useNavigation<AssistantNavProp>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
@@ -349,7 +355,10 @@ const AssistantScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🌿 Tuin Assistent</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>← Tuin</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>🌿 Assistent</Text>
         <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
@@ -440,7 +449,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#1b4332' },
+  backBtn: { paddingHorizontal: 4, paddingVertical: 6 },
+  backBtnText: { fontSize: 15, color: '#2d6a4f', fontWeight: '600' },
   feedbackBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   feedbackBtnText: { fontSize: 22 },
   messageList: { padding: 16, gap: 12, flexGrow: 1 },

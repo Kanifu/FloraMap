@@ -471,7 +471,12 @@ const MaintenanceScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Onderhoud</Text>
+        <View>
+          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>← Tuin</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Onderhoud</Text>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={handleExportICS}
@@ -934,6 +939,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#e9ecef',
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  backBtn: { paddingVertical: 2, marginBottom: 2 },
+  backBtnText: { fontSize: 13, color: '#2d6a4f', fontWeight: '600' },
   headerActions: { flexDirection: 'row', gap: 4 },
   headerIconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerIconText: { fontSize: 22 },

@@ -1,8 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
 import MapScreen from '@/screens/MapScreen';
 import AssistantScreen from '@/screens/AssistantScreen';
 import MaintenanceScreen from '@/screens/MaintenanceScreen';
@@ -10,89 +8,31 @@ import PlantCardScreen from '@/screens/PlantCardScreen';
 import AboutScreen from '@/screens/AboutScreen';
 import SeedInventoryScreen from '@/screens/SeedInventoryScreen';
 
-export type RootTabParamList = {
-  MapTab: undefined;
-  AssistantTab: undefined;
-  MaintenanceTab: undefined;
-};
-
-export type MapStackParamList = {
+export type RootStackParamList = {
   Map: undefined;
   PlantCard: { plantId: string };
   SeedInventory: undefined;
   About: undefined;
-};
-
-export type AssistantStackParamList = {
   Assistant: undefined;
-};
-
-export type MaintenanceStackParamList = {
   Maintenance: undefined;
-  PlantCard: { plantId: string };
-  About: undefined;
 };
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
-const MapStack = createStackNavigator<MapStackParamList>();
-const AssistantStack = createStackNavigator<AssistantStackParamList>();
-const MaintenanceStack = createStackNavigator<MaintenanceStackParamList>();
+// Keep old type aliases so existing imports in other screens still compile
+export type MapStackParamList = RootStackParamList;
+export type AssistantStackParamList = RootStackParamList;
+export type MaintenanceStackParamList = RootStackParamList;
 
-const MapStackNavigator = (): React.JSX.Element => (
-  <MapStack.Navigator screenOptions={{ headerShown: false }}>
-    <MapStack.Screen name="Map" component={MapScreen} />
-    <MapStack.Screen name="PlantCard" component={PlantCardScreen} />
-    <MapStack.Screen name="SeedInventory" component={SeedInventoryScreen} />
-    <MapStack.Screen name="About" component={AboutScreen} />
-  </MapStack.Navigator>
-);
-
-const AssistantStackNavigator = (): React.JSX.Element => (
-  <AssistantStack.Navigator screenOptions={{ headerShown: false }}>
-    <AssistantStack.Screen name="Assistant" component={AssistantScreen} />
-  </AssistantStack.Navigator>
-);
-
-const MaintenanceStackNavigator = (): React.JSX.Element => (
-  <MaintenanceStack.Navigator screenOptions={{ headerShown: false }}>
-    <MaintenanceStack.Screen name="Maintenance" component={MaintenanceScreen} />
-    <MaintenanceStack.Screen name="PlantCard" component={PlantCardScreen} />
-    <MaintenanceStack.Screen name="About" component={AboutScreen} />
-  </MaintenanceStack.Navigator>
-);
+const RootStack = createStackNavigator<RootStackParamList>();
 
 export const AppNavigator = (): React.JSX.Element => (
   <NavigationContainer>
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#2d6a4f',
-        tabBarInactiveTintColor: '#aaa',
-      }}>
-      <Tab.Screen
-        name="MapTab"
-        component={MapStackNavigator}
-        options={{
-          tabBarLabel: 'Tuin',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🗺️</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="AssistantTab"
-        component={AssistantStackNavigator}
-        options={{
-          tabBarLabel: 'Assistent',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🌿</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="MaintenanceTab"
-        component={MaintenanceStackNavigator}
-        options={{
-          tabBarLabel: 'Plannen',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📅</Text>,
-        }}
-      />
-    </Tab.Navigator>
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Map" component={MapScreen} />
+      <RootStack.Screen name="PlantCard" component={PlantCardScreen} />
+      <RootStack.Screen name="SeedInventory" component={SeedInventoryScreen} />
+      <RootStack.Screen name="About" component={AboutScreen} />
+      <RootStack.Screen name="Assistant" component={AssistantScreen} />
+      <RootStack.Screen name="Maintenance" component={MaintenanceScreen} />
+    </RootStack.Navigator>
   </NavigationContainer>
 );
