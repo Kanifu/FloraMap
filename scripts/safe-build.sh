@@ -203,10 +203,10 @@ BUILD_LOG="$(mktemp /tmp/floramap-build-XXXXXX.log)"
 
 if [[ "$AUTO_YES" == "1" ]]; then
   # Niet-interactief: stroom output naar scherm én naar logbestand
-  npx eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive \
+  npx --yes eas-cli build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive \
     2>&1 | tee "$BUILD_LOG"
 else
-  npx eas build --profile "$PROFILE" --platform "$PLATFORM" \
+  npx --yes eas-cli build --profile "$PROFILE" --platform "$PLATFORM" \
     2>&1 | tee "$BUILD_LOG"
 fi
 
