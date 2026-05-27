@@ -27,7 +27,7 @@ Bij **elke commit naar `main`** die iets verandert aan de app (code, assets, con
 | Bugfix of kleine verbetering | Gemini 400 fix | `"4.1"`, `"4.2"`, … |
 | Meerdere fixes in één commit | 2 bugfixes | `"4.1"` (één stap) |
 
-Huidige stand: **Build #6.1 · v1.7.0 · versionCode 19**
+Huidige stand: **Build #7.4 · v1.8.0 · versionCode 24**
 
 ### Checklist vóór elke push naar main
 
@@ -62,20 +62,52 @@ FloraMap/
 │   ├── data/
 │   │   └── companionPlanting.ts     ← companion planting database
 │   ├── components/
-│   │   └── GardenMap/               ← SVG tuinkaart + companion overlay
+│   │   ├── GardenMap/               ← SVG tuinkaart + companion overlay
+│   │   ├── FeedbackModal/           ← in-app feedback → GitHub issues (#56)
+│   │   ├── OnboardingModal/         ← onboarding wizard
+│   │   └── PlantQuickSheet/         ← tap-plant quick actions (taken, tips)
+│   ├── hooks/
+│   │   └── useTheme.ts              ← auto light/dark theme hook
 │   ├── screens/
 │   │   ├── MapScreen/               ← hoofdscherm met kaart
 │   │   ├── AssistantScreen/         ← Gemini chat
 │   │   ├── MaintenanceScreen/       ← onderhoudstaken
+│   │   ├── PlantCardScreen/         ← plantenpaspoort
 │   │   └── AboutScreen/             ← leest versie uit app.json via Constants
 │   ├── services/
 │   │   ├── ApiConfig.ts             ← Gemini endpoint (proxy of direct)
 │   │   └── GardenAssistantService.ts
-│   └── store/
-│       └── gardenStore.ts           ← Zustand store
+│   ├── store/
+│   │   └── gardenStore.ts           ← Zustand store
+│   └── theme/
+│       └── index.ts                 ← lightTheme + darkTheme tokens
 ├── cloudflare-worker/worker.js      ← API proxy (Cloudflare)
 └── scripts/safe-build.sh            ← build-script (npm run build:android)
 ```
+
+### Thema-patroon (verplicht voor nieuwe schermen)
+
+Elk scherm/component dat kleuren gebruikt moet het `makeStyles(t: Theme)` factory-patroon gebruiken:
+
+```ts
+import { useTheme } from '@/hooks/useTheme';
+import { Theme } from '@/theme';
+
+const MyScreen = () => {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
+  // ...
+};
+
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { backgroundColor: t.background },
+  card:      { backgroundColor: t.card, borderColor: t.border },
+  text:      { color: t.text },
+  title:     { color: t.primaryDark },
+});
+```
+
+**Nooit** hardcoded hex-kleuren gebruiken in StyleSheet (behalve `'#fff'` op gekleurde knoppen waar de achtergrond altijd donker is, of `rgba(...)` overlays).
 
 ---
 
