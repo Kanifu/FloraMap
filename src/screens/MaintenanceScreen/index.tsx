@@ -16,6 +16,7 @@ import { generateICS } from '@/utils/icsExport';
 import { getCachedLocation } from '@/utils/location';
 import { useTheme } from '@/hooks/useTheme';
 import { Theme } from '@/theme';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'geschiedenis';
@@ -283,7 +284,8 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const [activeTab, setActiveTab]           = useState<Tab>('taken');
   const [exporting, setExporting]           = useState(false);
   const [showAllTasks, setShowAllTasks]     = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast]                   = useState<string | null>(null);
+  const [showFeedback, setShowFeedback]     = useState(false);
 
   const styles = makeStyles(theme);
   const currentMonth = new Date().getMonth();
@@ -476,6 +478,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
             disabled={exporting || !garden}>
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+            <Text style={styles.headerIconText}>📣</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
@@ -660,6 +665,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       )}
+
+      {/* Feedback modal */}
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
     </SafeAreaView>
   );
 };

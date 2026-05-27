@@ -18,6 +18,7 @@ import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, creat
 import { Plant, Garden, GardenTask } from '@/models';
 import { useTheme } from '@/hooks/useTheme';
 import { Theme } from '@/theme';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 interface Message {
   id: string;
@@ -83,7 +84,9 @@ const makeGardenTask = (task: AssistantTask): GardenTask => ({
 
 const AssistantScreen = (): React.JSX.Element => {
   const theme = useTheme();
+  const styles = makeStyles(theme);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [inputText, setInputText] = useState('');
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -344,6 +347,9 @@ const AssistantScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🌿 Tuin Assistent</Text>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+          <Text style={styles.feedbackBtnText}>📣</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -407,6 +413,7 @@ const AssistantScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
     </SafeAreaView>
   );
 };
@@ -418,8 +425,13 @@ const makeStyles = (t: Theme) => StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: t.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: t.primaryDark },
+  feedbackBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  feedbackBtnText: { fontSize: 22 },
   messageList: { padding: 16, gap: 12, flexGrow: 1 },
   messageRow: { gap: 6 },
   userRow: { alignItems: 'flex-end' },
