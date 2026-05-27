@@ -519,9 +519,8 @@ export const GardenMap = ({
           const pA = garden.plants.find((p) => p.id === pair.plantIdA);
           const pB = garden.plants.find((p) => p.id === pair.plantIdB);
           if (!pA || !pB) return null;
-          // Only show companion arcs for actual neighbours (≤ 4 grid cells apart)
-          const cellDist = Math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2);
-          if (cellDist > 4) return null;
+          // Draw an arc for every reported pair so the on-map lines match the
+          // relations counted in the legend (no distance gate — #59)
           const x1 = plantCx(pA); const y1 = plantCy(pA);
           const x2 = plantCx(pB); const y2 = plantCy(pB);
           const col = pair.relation === 'good' ? '#2d6a4f' : '#e63946';
