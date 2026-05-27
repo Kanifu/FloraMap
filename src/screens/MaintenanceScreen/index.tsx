@@ -684,10 +684,10 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   headerIconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerIconText: { fontSize: 22 },
   rainBanner: {
-    backgroundColor: '#cce5ff', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#b8d4f0',
+    backgroundColor: t.infoLight, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: t.infoBorder,
   },
-  rainBannerText: { fontSize: 13, color: '#0d3a6e', fontWeight: '600' },
+  rainBannerText: { fontSize: 13, color: t.info, fontWeight: '600' },
   tabBar: {
     flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: t.border,
     backgroundColor: t.card,
@@ -716,7 +716,7 @@ const makeStyles = (t: Theme) => StyleSheet.create({
     padding: 14, marginBottom: 8, gap: 10,
   },
   taskRowOverdue: { borderColor: t.danger, backgroundColor: t.dangerLight },
-  taskRowSkip: { borderColor: '#cce5ff', backgroundColor: '#f0f7ff' },
+  taskRowSkip: { borderColor: t.infoBorder, backgroundColor: t.infoLight },
   taskIcon: { fontSize: 22 },
   taskBody: { flex: 1, gap: 2 },
   taskNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -730,7 +730,7 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   taskNotes: { fontSize: 12, color: t.textMuted, fontStyle: 'italic' },
   taskDue: { fontSize: 13, fontWeight: '500', color: t.textSecondary },
   textOverdue: { color: t.danger },
-  skipText: { fontSize: 12, color: '#0d3a6e', fontStyle: 'italic' },
+  skipText: { fontSize: 12, color: t.info, fontStyle: 'italic' },
   klaarButton: {
     backgroundColor: t.primary, paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: 8, marginLeft: 8,
@@ -750,11 +750,11 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   seasonTitle: { fontSize: 12, fontWeight: '700', color: t.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
   seasonText: { fontSize: 14, color: t.primaryDark, lineHeight: 20 },
   harvestCard: {
-    backgroundColor: '#fff9e6', borderRadius: 12, borderWidth: 1, borderColor: '#ffe08a',
+    backgroundColor: t.warningLight, borderRadius: 12, borderWidth: 1, borderColor: t.warning,
     padding: 14, gap: 6, marginBottom: 12,
   },
-  harvestTitle: { fontSize: 13, fontWeight: '700', color: '#7c5a00' },
-  harvestItem: { fontSize: 13, color: '#5a4000', lineHeight: 20 },
+  harvestTitle: { fontSize: 13, fontWeight: '700', color: t.primaryDark },
+  harvestItem: { fontSize: 13, color: t.text, lineHeight: 20 },
   // Planning tab
   planningDayHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -790,15 +790,15 @@ const makeStyles = (t: Theme) => StyleSheet.create({
     backgroundColor: t.card, borderRadius: 12, borderWidth: 1, borderColor: t.borderLight,
     padding: 14, gap: 8, marginBottom: 12,
   },
-  weatherCardDry: { borderColor: '#f4a261', backgroundColor: t.cardAlt },
+  weatherCardDry: { borderColor: t.warning, backgroundColor: t.warningLight },
   weatherMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   weatherEmoji: { fontSize: 36 },
   weatherInfo: { flex: 1, gap: 2 },
   weatherTemp: { fontSize: 20, fontWeight: '700', color: t.primaryDark },
   weatherDesc: { fontSize: 13, color: t.textSecondary },
   weatherDryAlert: {
-    fontSize: 13, fontWeight: '600', color: '#c05600',
-    backgroundColor: '#fff4e6', borderRadius: 8, padding: 8, textAlign: 'center',
+    fontSize: 13, fontWeight: '600', color: t.primaryDark,
+    backgroundColor: t.warningLight, borderRadius: 8, padding: 8, textAlign: 'center',
   },
   // Show more tasks
   showMoreBtn: {

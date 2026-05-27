@@ -920,7 +920,7 @@ const makeCorrStyles = (t: Theme) => StyleSheet.create({
   sheet: { backgroundColor: t.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, maxHeight: '70%' },
   handle: { width: 36, height: 4, backgroundColor: t.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   title: { fontSize: 18, fontWeight: '700', color: t.primaryDark, marginBottom: 4 },
-  lowConf: { fontSize: 12, color: '#e85d04', marginBottom: 12, backgroundColor: '#fff3e0', padding: 8, borderRadius: 8 },
+  lowConf: { fontSize: 12, color: t.warning, marginBottom: 12, backgroundColor: t.warningLight, padding: 8, borderRadius: 8 },
   label: { fontSize: 12, fontWeight: '600', color: t.textSecondary, marginTop: 8, marginBottom: 4 },
   input: { borderWidth: 1, borderColor: t.borderLight, borderRadius: 10, padding: 10, fontSize: 15, color: t.text, backgroundColor: t.background },
   confirmBtn: { marginTop: 16, backgroundColor: t.primary, borderRadius: 12, padding: 14, alignItems: 'center' },

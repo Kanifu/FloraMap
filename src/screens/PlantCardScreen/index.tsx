@@ -417,10 +417,10 @@ const makeStyles = (t: Theme) => StyleSheet.create({
   },
   inputMulti: { minHeight: 72, textAlignVertical: 'top' },
   notesCard: {
-    backgroundColor: '#fff9e6', borderRadius: 12,
-    padding: 14, borderWidth: 1, borderColor: '#ffe08a',
+    backgroundColor: t.warningLight, borderRadius: 12,
+    padding: 14, borderWidth: 1, borderColor: t.warning,
   },
-  notesText: { fontSize: 14, color: '#5a4000', lineHeight: 21 },
+  notesText: { fontSize: 14, color: t.text, lineHeight: 21 },
   tipsCard: {
     backgroundColor: t.primaryLighter, borderRadius: 12,
     padding: 14, gap: 8, borderWidth: 1, borderColor: t.borderLight,
@@ -450,7 +450,7 @@ const makeStyles = (t: Theme) => StyleSheet.create({
     backgroundColor: t.primary, paddingHorizontal: 12, paddingVertical: 7,
     borderRadius: 8, marginLeft: 6,
   },
-  doneBtnEditing: { backgroundColor: '#ccc' },
+  doneBtnEditing: { backgroundColor: t.textMuted },
   doneBtnText: { color: t.card, fontWeight: '700', fontSize: 13 },
   historyToggle: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

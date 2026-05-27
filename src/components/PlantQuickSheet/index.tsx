@@ -6,6 +6,8 @@ import {
 import { Plant, MaintenanceTaskType } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
+import { useTheme } from '@/hooks/useTheme';
+import { Theme } from '@/theme';
 
 interface Props {
   plant: Plant | null;
@@ -24,8 +26,11 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
 };
 
 export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRainExpected }: Props): React.JSX.Element | null => {
-  const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
-  const updatePlant             = useGardenStore((s) => s.updatePlant);
+  const theme = useTheme();
+  const s = makeStyles(theme);
+
+  const completeMaintenanceTask = useGardenStore((st) => st.completeMaintenanceTask);
+  const updatePlant             = useGardenStore((st) => st.updatePlant);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName,      setEditName]      = useState('');
@@ -102,7 +107,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 value={editName}
                 onChangeText={setEditName}
                 placeholder="Naam van de plant"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 autoFocus
               />
               <TextInput
@@ -110,7 +115,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 value={editSpecies}
                 onChangeText={setEditSpecies}
                 placeholder="Latijnse naam (optioneel)"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
               />
               <TouchableOpacity style={s.editSaveBtn} onPress={handleSaveEdit} activeOpacity={0.8}>
                 <Text style={s.editSaveBtnText}>Opslaan</Text>
@@ -186,14 +191,14 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   );
 };
 
-const s = StyleSheet.create({
+const makeStyles = (t: Theme) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 32,
@@ -206,7 +211,7 @@ const s = StyleSheet.create({
   },
   handle: {
     width: 36, height: 4,
-    backgroundColor: '#ddd',
+    backgroundColor: t.border,
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 10, marginBottom: 4,
@@ -218,85 +223,85 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: t.border,
   },
-  plantName: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
-  plantSpecies: { fontSize: 12, color: '#888', fontStyle: 'italic', marginTop: 2 },
+  plantName: { fontSize: 18, fontWeight: '700', color: t.primaryDark },
+  plantSpecies: { fontSize: 12, color: t.textMuted, fontStyle: 'italic', marginTop: 2 },
   doneTodayBadge: {
-    backgroundColor: '#d8f3dc', borderRadius: 12,
+    backgroundColor: t.primaryLight, borderRadius: 12,
     paddingHorizontal: 10, paddingVertical: 4,
   },
-  doneTodayText: { fontSize: 12, color: '#2d6a4f', fontWeight: '600' },
+  doneTodayText: { fontSize: 12, color: t.primary, fontWeight: '600' },
   editSection: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#f8fdf9',
+    backgroundColor: t.cardAlt,
     borderBottomWidth: 1,
-    borderBottomColor: '#e8f5e9',
+    borderBottomColor: t.borderLight,
   },
   editInput: {
     borderWidth: 1,
-    borderColor: '#b7e4c7',
+    borderColor: t.borderLight,
     borderRadius: 8,
     padding: 8,
     fontSize: 14,
-    color: '#1b4332',
+    color: t.text,
     marginBottom: 6,
-    backgroundColor: '#fff',
+    backgroundColor: t.background,
   },
   editSaveBtn: {
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 8,
     padding: 8,
     alignItems: 'center',
   },
   editSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   editCancelBtn: { alignItems: 'center', padding: 4 },
-  editCancelText: { color: '#888', fontSize: 12 },
+  editCancelText: { color: t.textMuted, fontSize: 12 },
   editRowBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 0, paddingBottom: 4 },
-  editRowBtnText: { fontSize: 11, color: '#888', marginLeft: 4 },
+  editRowBtnText: { fontSize: 11, color: t.textMuted, marginLeft: 4 },
   taskList: { paddingHorizontal: 16, paddingTop: 8 },
   emptyTasks: { alignItems: 'center', paddingVertical: 20 },
-  emptyTasksText: { fontSize: 15, color: '#52b788' },
+  emptyTasksText: { fontSize: 15, color: t.primary },
   taskBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fdf9',
+    backgroundColor: t.cardAlt,
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#d8f3dc',
+    borderColor: t.primaryLight,
   },
-  taskBtnOverdue: { backgroundColor: '#fff5f5', borderColor: '#ffd0d0' },
+  taskBtnOverdue: { backgroundColor: t.dangerLight, borderColor: t.dangerBorder },
   taskBtnIcon: { fontSize: 22, marginRight: 12 },
   taskBtnBody: { flex: 1 },
-  taskBtnLabel: { fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  taskBtnLabelOverdue: { color: '#c1121f' },
-  taskBtnDue: { fontSize: 11, color: '#888', marginTop: 2 },
-  rainHint: { fontSize: 11, color: '#1565c0', marginTop: 2 },
+  taskBtnLabel: { fontSize: 14, fontWeight: '600', color: t.primaryDark },
+  taskBtnLabelOverdue: { color: t.danger },
+  taskBtnDue: { fontSize: 11, color: t.textMuted, marginTop: 2 },
+  rainHint: { fontSize: 11, color: t.info, marginTop: 2 },
   taskBtnCheck: {
     width: 32, height: 32,
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   taskBtnCheckText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   tipsSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 4 },
-  tipsSectionTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', marginBottom: 4 },
-  tipRow: { fontSize: 12, color: '#555', lineHeight: 18, marginLeft: 4 },
-  moreTips: { fontSize: 11, color: '#888', marginTop: 2, fontStyle: 'italic' },
+  tipsSectionTitle: { fontSize: 13, fontWeight: '700', color: t.primary, marginBottom: 4 },
+  tipRow: { fontSize: 12, color: t.textSecondary, lineHeight: 18, marginLeft: 4 },
+  moreTips: { fontSize: 11, color: t.textMuted, marginTop: 2, fontStyle: 'italic' },
   detailsBtn: {
     marginHorizontal: 16,
     marginTop: 12,
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2d6a4f',
+    borderColor: t.primary,
   },
   detailsBtnText: { fontSize: 14, color: '#fff', fontWeight: '600' },
-  hintText: { textAlign: 'center', fontSize: 10, color: '#bbb', marginTop: 6, paddingBottom: 4 },
+  hintText: { textAlign: 'center', fontSize: 10, color: t.textMuted, marginTop: 6, paddingBottom: 4 },
 });
