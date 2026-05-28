@@ -3,6 +3,13 @@
 Dit bestand wordt door Claude gelezen aan het begin van elke sessie.
 Het beschrijft verplichte werkwijzen voor dit project.
 
+## 📋 Huidige specificatie
+
+**[SPEC2.md](./SPEC2.md) is de enige bron van waarheid voor FloraMap v2.0.**
+Lees dit bestand aan het begin van elke sessie. Het vervangt PRODUCT_DESIGN.md en de README feature list (beide stale).
+
+Huidige staat: v1.7.0 · build #6.1 · drie geplande changes + cleanup (zie SPEC2.md §3–4).
+
 ---
 
 ## 📦 Versiebeheer — VERPLICHT bij elke commit naar main
