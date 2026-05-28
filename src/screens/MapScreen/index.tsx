@@ -11,10 +11,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden } from '@/models';
+import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
+import { TodaySheet } from '@/components/TodaySheet';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { SideMenu } from '@/components/SideMenu';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
@@ -262,8 +263,9 @@ const MapScreen = (): React.JSX.Element => {
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
 
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [showMenu,     setShowMenu]     = useState(false);
+  const [showFeedback,   setShowFeedback]   = useState(false);
+  const [showMenu,       setShowMenu]       = useState(false);
+  const [showTodaySheet, setShowTodaySheet] = useState(false);
 
   // Correction sheet state (for scan-identified plants before placing)
   const [showCorrectionSheet, setShowCorrectionSheet] = useState(false);
@@ -403,6 +405,29 @@ const MapScreen = (): React.JSX.Element => {
       result[plant.id] = status;
     }
     return result;
+  }, [garden]);
+
+  const plantStatusMap = useMemo((): Map<string, PlantStatus> => {
+    if (!garden) return new Map();
+    const now = new Date().toISOString();
+    const currentMonth = new Date().getMonth();
+    return new Map(
+      garden.plants.map((plant) => {
+        const overdue = plant.maintenanceTasks.filter(
+          (t) => !t.completedDate && t.dueDate < now,
+        );
+        return [
+          plant.id,
+          {
+            needsWater:     overdue.some((t) => t.type === 'water'),
+            needsFertilize: overdue.some((t) => t.type === 'fertilize'),
+            needsPrune:     overdue.some((t) => t.type === 'prune'),
+            harvestReady:   (plant.harvestMonths ?? []).includes(currentMonth),
+            overdueCount:   overdue.length,
+          },
+        ];
+      }),
+    );
   }, [garden]);
 
   const companionPairs = useMemo<CompanionPair[]>(() => {
@@ -702,7 +727,7 @@ const MapScreen = (): React.JSX.Element => {
         </View>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
-            <TouchableOpacity style={styles.badge} onPress={() => navigation.navigate('Maintenance')}>
+            <TouchableOpacity style={styles.badge} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8}>
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
             </TouchableOpacity>
           )}
@@ -727,11 +752,11 @@ const MapScreen = (): React.JSX.Element => {
             <TouchableOpacity onPress={bannerInfo.onCancel}><Text style={styles.bannerCancel}>✕</Text></TouchableOpacity>
           </View>
         </View>
-      ) : (
+      ) : isInteractive ? (
         <View style={styles.hintBar}>
           <Text style={styles.hintText}>1 cel = 30×30 cm · lang indrukken om te bewerken · ＋ voor nieuwe zone</Text>
         </View>
-      )}
+      ) : null}
 
       {/* Companion legend */}
       {showCompanionOverlay && (
@@ -774,14 +799,14 @@ const MapScreen = (): React.JSX.Element => {
             return (
               <>
                 {overdueCount > 0 && (
-                  <View style={styles.dashPillRed}>
+                  <TouchableOpacity style={styles.dashPillRed} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8}>
                     <Text style={styles.dashPillText}>⚠️ {overdueCount} te laat</Text>
-                  </View>
+                  </TouchableOpacity>
                 )}
                 {soonCount > 0 && (
-                  <View style={styles.dashPillOrange}>
+                  <TouchableOpacity style={styles.dashPillOrange} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8}>
                     <Text style={styles.dashPillText}>🕐 {soonCount} binnenkort</Text>
-                  </View>
+                  </TouchableOpacity>
                 )}
                 {overdueCount === 0 && soonCount === 0 && garden && garden.plants.length > 0 && (
                   <View style={styles.dashPillGreen}>
@@ -820,6 +845,7 @@ const MapScreen = (): React.JSX.Element => {
                 companionPairs={companionPairs}
                 showCompanionOverlay={showCompanionOverlay}
                 plantStatuses={plantStatuses}
+                plantStatusMap={plantStatusMap}
                 boundaries={currentGarden.boundaries ?? []}
                 showNames={showNames}
                 renderScale={mapScale}
@@ -910,6 +936,19 @@ const MapScreen = (): React.JSX.Element => {
         onClose={() => setQuickSheetPlant(null)}
         onDetails={(plantId) => navigation.navigate('PlantCard', { plantId })}
         weatherRainExpected={weather.rainExpected}
+      />
+
+      {/* Today sheet — tapping the task pill opens this */}
+      <TodaySheet
+        visible={showTodaySheet}
+        onClose={() => setShowTodaySheet(false)}
+        garden={garden}
+        weatherRainExpected={weather.rainExpected}
+        onOpenPlant={(plantId) => {
+          const plant = garden?.plants.find((p) => p.id === plantId);
+          if (plant) setQuickSheetPlant(plant);
+        }}
+        onOpenMaintenance={() => navigation.navigate('Maintenance')}
       />
 
       {/* Plant correction sheet — shown after scan, before placement */}

@@ -24,6 +24,15 @@ export interface GardenPolygon {
 
 export type MaintenanceTaskType = 'water' | 'prune' | 'fertilize' | 'repot' | 'treat';
 
+/** Per-plant badge status — used by GardenMap to render action indicators */
+export interface PlantStatus {
+  needsWater: boolean;
+  needsFertilize: boolean;
+  needsPrune: boolean;
+  harvestReady: boolean;
+  overdueCount: number;
+}
+
 export interface MaintenanceTask {
   id: string;
   plantId: string;
@@ -102,15 +111,16 @@ export const ZONE_COLORS = [
   '#a8dadc', '#e9c46a', '#c9b1ff', '#ffd6e0',
 ];
 
+/** @deprecated Zones are represented as Plants with width/height > 1. This interface is unused. */
 export interface PlantZone {
   id: string;
   gardenId: string;
   commonName: string;
   species?: string;
-  x: number;       // top-left grid column (1-indexed)
-  y: number;       // top-left grid row (1-indexed)
-  width: number;   // cells wide  (≥1)
-  height: number;  // cells tall  (≥1)
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   color: string;
   careTips?: string[];
   notes?: string;
@@ -141,6 +151,7 @@ export interface Garden {
   name: string;
   polygons: GardenPolygon[];
   plants: Plant[];
+  /** @deprecated Use Plants with width/height > 1 instead */
   zones?: PlantZone[];
   tasks?: GardenTask[];
   boundaries?: GardenBoundary[];

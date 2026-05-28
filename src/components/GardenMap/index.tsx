@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { StyleSheet, Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Line } from 'react-native-svg';
-import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary, BoundaryType } from '@/models';
+import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary, BoundaryType, PlantStatus } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM  = 30;
@@ -249,6 +249,7 @@ interface GardenMapProps {
   companionPairs?: CompanionPair[];
   showCompanionOverlay?: boolean;
   plantStatuses?: Record<string, 'overdue' | 'soon' | 'done_today' | 'water' | 'ok'>;
+  plantStatusMap?: Map<string, PlantStatus>;
   boundaries?: GardenBoundary[];
   showNames?: boolean;           // default true
   onBoundaryPress?: (boundaryId: string) => void;
@@ -269,6 +270,7 @@ export const GardenMap = ({
   companionPairs = [],
   showCompanionOverlay = false,
   plantStatuses,
+  plantStatusMap,
   boundaries = [],
   showNames = true,
   onBoundaryPress,
@@ -276,6 +278,17 @@ export const GardenMap = ({
 }: GardenMapProps): React.JSX.Element => {
 
   const statusMap = plantStatuses ?? {};
+
+  const getBadge = (plantId: string): { label: string; color: string } | null => {
+    const s = plantStatusMap?.get(plantId);
+    if (!s) return null;
+    if (s.overdueCount >= 2)  return { label: `${s.overdueCount}`, color: '#e63946' };
+    if (s.needsWater)         return { label: '💧', color: '#3a86ff' };
+    if (s.needsFertilize)     return { label: '🌱', color: '#2d6a4f' };
+    if (s.needsPrune)         return { label: '✂', color: '#6b705c' };
+    if (s.harvestReady)       return { label: '🍓', color: '#ffb703' };
+    return null;
+  };
 
   // ── Fast long-press via manual timer ────────────────────────────────────────
   const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -632,6 +645,22 @@ export const GardenMap = ({
                   </>
                 )}
 
+                {/* Status badge — top-right corner of zone */}
+                {(() => {
+                  const badge = getBadge(plant.id);
+                  if (!badge) return null;
+                  const bx = zLeft + zW - 10;
+                  const by = zTop + 10;
+                  return (
+                    <G key={`badge-${plant.id}`}>
+                      <Circle cx={bx} cy={by} r={11} fill={badge.color} />
+                      <SvgText x={bx} y={by + 4} textAnchor="middle" fontSize={10} fill="#fff" fontWeight="700">
+                        {badge.label}
+                      </SvgText>
+                    </G>
+                  );
+                })()}
+
                 {/* Transparent touch target */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH} fill="transparent" rx={10}
                   onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
@@ -692,6 +721,21 @@ export const GardenMap = ({
                   <SvgText x={cx + 11} y={cy - 7} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="700">✓</SvgText>
                 </G>
               )}
+              {/* Status badge — top-right of plant circle */}
+              {statusMap[plant.id] !== 'done_today' && (() => {
+                const badge = getBadge(plant.id);
+                if (!badge) return null;
+                const bx = cx + 14;
+                const by = cy - 14;
+                return (
+                  <G key={`badge-${plant.id}`}>
+                    <Circle cx={bx} cy={by} r={9} fill={badge.color} />
+                    <SvgText x={bx} y={by + 4} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="700">
+                      {badge.label}
+                    </SvgText>
+                  </G>
+                );
+              })()}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={17} fill="transparent"
                 onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
