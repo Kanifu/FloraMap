@@ -24,6 +24,15 @@ export interface GardenPolygon {
 
 export type MaintenanceTaskType = 'water' | 'prune' | 'fertilize' | 'repot' | 'treat';
 
+/** Per-plant badge status — used by GardenMap to render action indicators */
+export interface PlantStatus {
+  needsWater: boolean;
+  needsFertilize: boolean;
+  needsPrune: boolean;
+  harvestReady: boolean;
+  overdueCount: number;
+}
+
 export interface MaintenanceTask {
   id: string;
   plantId: string;
@@ -42,6 +51,20 @@ export interface PhotoLogEntry {
   uri: string;       // local file path
   date: string;      // ISO 8601
   note?: string;
+}
+
+export interface HarvestEntry {
+  id: string;
+  date: string;           // ISO 8601
+  amountGrams?: number;
+  notes?: string;
+}
+
+export interface RotationRecord {
+  plantFamily: string;
+  x: number;
+  y: number;
+  removedDate: string;
 }
 
 export interface Plant {
@@ -66,6 +89,7 @@ export interface Plant {
   imageUri?: string;
   careTips?: string[];
   harvestMonths?: number[]; // 0-indexed months when harvest is expected (0=Jan, 5=Jun)
+  plantFamily?: string;    // voor gewasrotatie
   notes?: string;
   addedVia?: PlantAddedVia;
   photoLog?: PhotoLogEntry[];
@@ -115,18 +139,38 @@ export const ZONE_COLORS = [
   '#a8dadc', '#e9c46a', '#c9b1ff', '#ffd6e0',
 ];
 
+/** @deprecated Zones are represented as Plants with width/height > 1. This interface is unused. */
 export interface PlantZone {
   id: string;
   gardenId: string;
   commonName: string;
   species?: string;
-  x: number;       // top-left grid column (1-indexed)
-  y: number;       // top-left grid row (1-indexed)
-  width: number;   // cells wide  (≥1)
-  height: number;  // cells tall  (≥1)
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   color: string;
   careTips?: string[];
   notes?: string;
+}
+
+export type BoundaryType =
+  | 'fence'       // 🪵 Schutting
+  | 'wall'        // 🧱 Muur
+  | 'hedge'       // 🌿 Haag
+  | 'forest'      // 🌳 Bebossing
+  | 'lawn'        // 🌾 Gras
+  | 'patio'       // 🪨 Terras
+  | 'pond'        // 🌊 Vijver
+  | 'path';       // 🪵 Looppad
+
+export interface GardenBoundary {
+  id: string;
+  type: BoundaryType;
+  // Rechthoekig vlak (voor lawn, patio, pond, forest):
+  x?: number; y?: number; width?: number; height?: number;
+  // Lijn/looppad (voor fence, wall, hedge, path) — 2 punten:
+  x1?: number; y1?: number; x2?: number; y2?: number;
 }
 
 export interface Garden {
@@ -137,11 +181,25 @@ export interface Garden {
   gridRows?: number;  // default 25
   polygons: GardenPolygon[];
   plants: Plant[];
+  /** @deprecated Use Plants with width/height > 1 instead */
   zones?: PlantZone[];
   tasks?: GardenTask[];
+  boundaries?: GardenBoundary[];
   lastScannedAt?: string;
   northOrientationDeg?: number;
   soilProfiles?: SoilProfile[];
+}
+
+export interface SeedPacket {
+  id: string;
+  commonName: string;
+  species?: string;
+  emoji?: string;
+  purchaseDate?: string;   // ISO date
+  expiryYear?: number;     // e.g. 2026
+  amountGrams?: number;
+  notes?: string;
+  isUsedUp?: boolean;
 }
 
 export interface ScanResult {
@@ -157,3 +215,29 @@ export interface DiffProposal {
   plant: Plant;
   confidence: number;
 }
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  unlockedAt?: string; // ISO date
+}
+
+export interface GardenStats {
+  currentStreak: number;       // consecutive days with ≥1 task completed
+  longestStreak: number;
+  totalTasksCompleted: number;
+  lastCompletionDate?: string;  // YYYY-MM-DD
+  badges: Badge[];
+}
+
+export const BADGE_DEFINITIONS: Omit<Badge, 'unlockedAt'>[] = [
+  { id: 'first_task',  name: 'Eerste stap',     emoji: '🌱', description: 'Eerste taak voltooid' },
+  { id: 'streak_3',   name: 'Op dreef',          emoji: '🔥', description: '3 dagen op rij actief' },
+  { id: 'streak_7',   name: 'Groene week',       emoji: '🌿', description: '7 dagen streak' },
+  { id: 'streak_30',  name: 'Tuinmeester',       emoji: '🏆', description: '30 dagen streak' },
+  { id: 'tasks_10',   name: 'Vlijtige tuinier',  emoji: '💪', description: '10 taken voltooid' },
+  { id: 'tasks_50',   name: 'Doorgewinterd',     emoji: '⭐', description: '50 taken voltooid' },
+  { id: 'tasks_100',  name: 'Groene duim',       emoji: '🎯', description: '100 taken voltooid' },
+];

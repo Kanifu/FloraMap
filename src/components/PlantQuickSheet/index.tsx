@@ -25,6 +25,7 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
 
 export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRainExpected }: Props): React.JSX.Element | null => {
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
+  const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
 
   const [isEditingName, setIsEditingName] = useState(false);
@@ -34,7 +35,8 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   const handleComplete = useCallback((taskId: string) => {
     if (!plant) return;
     completeMaintenanceTask(plant.id, taskId);
-  }, [plant, completeMaintenanceTask]);
+    recordTaskCompletion();
+  }, [plant, completeMaintenanceTask, recordTaskCompletion]);
 
   const handleStartEdit = useCallback(() => {
     if (!plant) return;
@@ -253,8 +255,8 @@ const s = StyleSheet.create({
   editSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   editCancelBtn: { alignItems: 'center', padding: 4 },
   editCancelText: { color: '#888', fontSize: 12 },
-  editRowBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 0, paddingBottom: 4 },
-  editRowBtnText: { fontSize: 11, color: '#888', marginLeft: 4 },
+  editRowBtn: { flexDirection: 'row', alignItems: 'center', paddingBottom: 4 },
+  editRowBtnText: { fontSize: 11, color: '#888' },
   taskList: { paddingHorizontal: 16, paddingTop: 8 },
   emptyTasks: { alignItems: 'center', paddingVertical: 20 },
   emptyTasksText: { fontSize: 15, color: '#52b788' },

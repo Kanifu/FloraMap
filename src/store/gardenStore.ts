@@ -1,12 +1,16 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, SoilProfile, SoilAmendment, HarvestEntry } from '@/models';
+import {
+  Garden, Plant, DiffProposal, GardenTask, MaintenanceTask,
+  GardenBoundary, SoilProfile, SoilAmendment, HarvestEntry,
+  RotationRecord, SeedPacket, BADGE_DEFINITIONS,
+} from '@/models';
 import { Tier, TIER_RANK, FREE_PLANT_LIMIT } from '@/constants/tiers';
 
 interface GardenState {
-  garden: Garden | null;       // active garden (always in sync with gardens[activeGardenId])
-  gardens: Garden[];           // all saved gardens
+  garden: Garden | null;
+  gardens: Garden[];
   activeGardenId: string | null;
   isScanning: boolean;
   pendingDiffProposals: DiffProposal[];
@@ -15,9 +19,25 @@ interface GardenState {
   recentUnlockId: string | null;                 // cleared after display (not persisted)
   totalTasksCompleted: number;
   currentStreak: number;
+  longestStreak: number;
   lastTaskDate: string | null;
   totalScans: number;
+  // Freemium
   userTier: Tier;
+  // Seed packets & rotation (from main)
+  rotationHistory: RotationRecord[];
+  seedPackets: SeedPacket[];
+  // Computed compat field for MaintenanceScreen
+  gardenStats: GardenStats;
+}
+
+/** Computed shape expected by MaintenanceScreen (from main branch) */
+export interface GardenStats {
+  currentStreak: number;
+  longestStreak: number;
+  totalTasksCompleted: number;
+  lastCompletionDate?: string;
+  badges: { id: string; name: string; emoji: string; unlockedAt: string }[];
 }
 
 interface GardenActions {
@@ -35,20 +55,49 @@ interface GardenActions {
   // Harvest tracking
   recordHarvest: (plantId: string, entry: HarvestEntry) => void;
   deleteHarvestEntry: (plantId: string, entryId: string) => void;
-  // Soil health actions
+  // Soil health
   setSoilProfile: (profile: SoilProfile) => void;
   addSoilAmendment: (profileId: string, amendment: SoilAmendment) => void;
   deleteSoilProfile: (profileId: string) => void;
-  // Multi-garden actions
+  // Boundaries
+  addBoundary: (boundary: GardenBoundary) => void;
+  removeBoundary: (boundaryId: string) => void;
+  updateBoundary: (boundary: GardenBoundary) => void;
+  // Rotation & seeds
+  addRotationRecord: (record: RotationRecord) => void;
+  addSeedPacket: (packet: SeedPacket) => void;
+  updateSeedPacket: (packet: SeedPacket) => void;
+  removeSeedPacket: (id: string) => void;
+  // Multi-garden
   createGarden: (name: string) => Garden;
   switchGarden: (id: string) => void;
   renameGarden: (id: string, name: string) => void;
   deleteGarden: (id: string) => void;
-  // Achievement actions
+  // Achievements
   clearRecentUnlock: () => void;
   // Tier / freemium
   setUserTier: (tier: Tier) => void;
+  // Compatibility shim for MaintenanceScreen (main branch pattern)
+  recordTaskCompletion: () => void;
+  gardenStats: GardenStats;
 }
+
+/** Build the compat gardenStats object from flat fields + unlocked achievements */
+const buildGardenStats = (
+  currentStreak: number,
+  longestStreak: number,
+  totalTasksCompleted: number,
+  lastTaskDate: string | null,
+  unlockedAchievements: Record<string, string>,
+): GardenStats => ({
+  currentStreak,
+  longestStreak,
+  totalTasksCompleted,
+  lastCompletionDate: lastTaskDate ?? undefined,
+  badges: BADGE_DEFINITIONS
+    .filter((def) => unlockedAchievements[def.id])
+    .map((def) => ({ id: def.id, name: (def as any).name ?? def.id, emoji: def.emoji ?? '🏅', unlockedAt: unlockedAchievements[def.id] })),
+});
 
 /** Sync updated active garden into the gardens array */
 const syncActive = (state: GardenState, updated: Garden): Partial<GardenState> => ({
@@ -84,9 +133,13 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       recentUnlockId: null,
       totalTasksCompleted: 0,
       currentStreak: 0,
+      longestStreak: 0,
       lastTaskDate: null,
       totalScans: 0,
       userTier: 'free',
+      rotationHistory: [],
+      seedPackets: [],
+      gardenStats: buildGardenStats(0, 0, 0, null, {}),
 
       setGarden: (garden) => {
         const state = get();
@@ -116,7 +169,6 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const { garden } = state;
         if (!garden) return;
-        // Enforce free-tier plant limit
         if (TIER_RANK[state.userTier] < TIER_RANK['plus'] && garden.plants.length >= FREE_PLANT_LIMIT) return;
         const updated = { ...garden, plants: [...garden.plants, plant] };
         const count = updated.plants.length;
@@ -132,8 +184,19 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       removePlant: (plantId) => {
         const { garden } = get();
         if (!garden) return;
+        const removedPlant = garden.plants.find((p) => p.id === plantId);
         const updated = { ...garden, plants: garden.plants.filter((p) => p.id !== plantId) };
-        set(syncActive(get(), updated));
+        if (removedPlant?.plantFamily) {
+          set({
+            ...syncActive(get(), updated),
+            rotationHistory: [
+              ...get().rotationHistory,
+              { plantFamily: removedPlant.plantFamily, x: removedPlant.x, y: removedPlant.y, removedDate: new Date().toISOString() },
+            ],
+          });
+        } else {
+          set(syncActive(get(), updated));
+        }
       },
 
       completeMaintenanceTask: (plantId, taskId) => {
@@ -180,6 +243,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         let newStreak = state.currentStreak;
         if (state.lastTaskDate === yesterdayStr) newStreak = state.currentStreak + 1;
         else if (state.lastTaskDate !== todayStr) newStreak = 1;
+        const newLongest = Math.max(state.longestStreak, newStreak);
 
         const newTotal = state.totalTasksCompleted + 1;
 
@@ -191,14 +255,31 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         if (newStreak >= 3) toUnlock.push('streak_3');
         if (newStreak >= 7) toUnlock.push('streak_7');
         if (newStreak >= 30) toUnlock.push('streak_30');
+
+        // Also check badge definitions from main's system
+        const badgeCriteria: Record<string, boolean> = {
+          first_task: newTotal >= 1,
+          streak_3:   newStreak >= 3,
+          streak_7:   newStreak >= 7,
+          streak_30:  newStreak >= 30,
+          tasks_10:   newTotal >= 10,
+          tasks_50:   newTotal >= 50,
+          tasks_100:  newTotal >= 100,
+        };
+        for (const def of BADGE_DEFINITIONS) {
+          if (badgeCriteria[def.id]) toUnlock.push(def.id);
+        }
+
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
 
         set({
           ...syncActive(state, updated),
           totalTasksCompleted: newTotal,
           currentStreak: newStreak,
+          longestStreak: newLongest,
           lastTaskDate: todayStr,
           unlockedAchievements: unlocked,
+          gardenStats: buildGardenStats(newStreak, newLongest, newTotal, todayStr, unlocked),
           ...(recentUnlockId ? { recentUnlockId } : {}),
         });
       },
@@ -242,6 +323,20 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         }));
       },
 
+      setScanning: (isScanning) => {
+        const state = get();
+        if (!isScanning && state.isScanning) {
+          const newTotal = state.totalScans + 1;
+          const toUnlock: string[] = [];
+          if (newTotal === 1) toUnlock.push('first_scan');
+          if (newTotal >= 5) toUnlock.push('five_scans');
+          const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+          set({ isScanning: false, totalScans: newTotal, unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
+        } else {
+          set({ isScanning });
+        }
+      },
+
       recordHarvest: (plantId, entry) => {
         const { garden } = get();
         if (!garden) return;
@@ -264,21 +359,6 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           ),
         };
         set(syncActive(get(), updated));
-      },
-
-      setScanning: (isScanning) => {
-        const state = get();
-        if (!isScanning && state.isScanning) {
-          // Scan just completed
-          const newTotal = state.totalScans + 1;
-          const toUnlock: string[] = [];
-          if (newTotal === 1) toUnlock.push('first_scan');
-          if (newTotal >= 5) toUnlock.push('five_scans');
-          const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
-          set({ isScanning: false, totalScans: newTotal, unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
-        } else {
-          set({ isScanning });
-        }
       },
 
       setSoilProfile: (profile) => {
@@ -314,6 +394,39 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const updated = { ...garden, soilProfiles: (garden.soilProfiles ?? []).filter((p) => p.id !== profileId) };
         set(syncActive(get(), updated));
       },
+
+      addBoundary: (boundary) => {
+        const { garden } = get();
+        if (!garden) return;
+        const updated = { ...garden, boundaries: [...(garden.boundaries ?? []), boundary] };
+        set(syncActive(get(), updated));
+      },
+
+      removeBoundary: (id) => {
+        const { garden } = get();
+        if (!garden) return;
+        const updated = { ...garden, boundaries: (garden.boundaries ?? []).filter((b) => b.id !== id) };
+        set(syncActive(get(), updated));
+      },
+
+      updateBoundary: (boundary) => {
+        const { garden } = get();
+        if (!garden) return;
+        const updated = { ...garden, boundaries: (garden.boundaries ?? []).map((b) => b.id === boundary.id ? boundary : b) };
+        set(syncActive(get(), updated));
+      },
+
+      addRotationRecord: (record) => set((s) => ({ rotationHistory: [...s.rotationHistory, record] })),
+
+      addSeedPacket: (packet) => set((s) => ({ seedPackets: [...s.seedPackets, packet] })),
+
+      updateSeedPacket: (packet) => set((s) => ({
+        seedPackets: s.seedPackets.map((p) => (p.id === packet.id ? packet : p)),
+      })),
+
+      removeSeedPacket: (id) => set((s) => ({
+        seedPackets: s.seedPackets.filter((p) => p.id !== id),
+      })),
 
       createGarden: (name) => {
         const state = get();
@@ -353,6 +466,37 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       clearRecentUnlock: () => set({ recentUnlockId: null }),
 
       setUserTier: (tier) => set({ userTier: tier }),
+
+      recordTaskCompletion: () => {
+        const state = get();
+        const now = new Date();
+        const todayStr = now.toISOString().slice(0, 10);
+        if (state.lastTaskDate === todayStr) return; // already counted today
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yesterdayStr = yest.toISOString().slice(0, 10);
+        const newStreak = state.lastTaskDate === yesterdayStr ? state.currentStreak + 1 : 1;
+        const newLongest = Math.max(state.longestStreak, newStreak);
+        const newTotal = state.totalTasksCompleted + 1;
+        const toUnlock: string[] = [];
+        if (newTotal === 1) toUnlock.push('first_task');
+        if (newTotal >= 10) toUnlock.push('ten_tasks');
+        if (newTotal >= 50) toUnlock.push('fifty_tasks');
+        if (newTotal >= 100) toUnlock.push('hundred_tasks');
+        if (newStreak >= 3) toUnlock.push('streak_3');
+        if (newStreak >= 7) toUnlock.push('streak_7');
+        if (newStreak >= 30) toUnlock.push('streak_30');
+        const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+        set({
+          totalTasksCompleted: newTotal,
+          currentStreak: newStreak,
+          longestStreak: newLongest,
+          lastTaskDate: todayStr,
+          unlockedAchievements: unlocked,
+          gardenStats: buildGardenStats(newStreak, newLongest, newTotal, todayStr, unlocked),
+          ...(recentUnlockId ? { recentUnlockId } : {}),
+        });
+      },
     }),
     {
       name: 'garden-storage',
@@ -364,9 +508,12 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         unlockedAchievements: state.unlockedAchievements,
         totalTasksCompleted: state.totalTasksCompleted,
         currentStreak: state.currentStreak,
+        longestStreak: state.longestStreak,
         lastTaskDate: state.lastTaskDate,
         totalScans: state.totalScans,
         userTier: state.userTier,
+        rotationHistory: state.rotationHistory,
+        seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
         // Migrate old format: single garden → gardens array

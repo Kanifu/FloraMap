@@ -1,104 +1,41 @@
 import React from 'react';
-import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text, useColorScheme } from 'react-native';
 import MapScreen from '@/screens/MapScreen';
 import AssistantScreen from '@/screens/AssistantScreen';
 import MaintenanceScreen from '@/screens/MaintenanceScreen';
 import PlantCardScreen from '@/screens/PlantCardScreen';
 import AboutScreen from '@/screens/AboutScreen';
+import SeedInventoryScreen from '@/screens/SeedInventoryScreen';
 import VirtualGardenScreen from '@/screens/VirtualGardenScreen';
 
-export type RootTabParamList = {
-  MapTab: undefined;
-  AssistantTab: undefined;
-  MaintenanceTab: undefined;
-};
-
-export type MapStackParamList = {
+export type RootStackParamList = {
   Map: undefined;
   PlantCard: { plantId: string };
-};
-
-export type AssistantStackParamList = {
-  Assistant: undefined;
-};
-
-export type MaintenanceStackParamList = {
-  Maintenance: undefined;
-  PlantCard: { plantId: string };
+  SeedInventory: undefined;
   About: undefined;
+  Assistant: undefined;
+  Maintenance: undefined;
   VirtualGarden: undefined;
 };
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
-const MapStack = createStackNavigator<MapStackParamList>();
-const AssistantStack = createStackNavigator<AssistantStackParamList>();
-const MaintenanceStack = createStackNavigator<MaintenanceStackParamList>();
+// Keep old type aliases so existing imports in other screens still compile
+export type MapStackParamList = RootStackParamList;
+export type AssistantStackParamList = RootStackParamList;
+export type MaintenanceStackParamList = RootStackParamList;
 
-const MapStackNavigator = (): React.JSX.Element => (
-  <MapStack.Navigator screenOptions={{ headerShown: false }}>
-    <MapStack.Screen name="Map" component={MapScreen} />
-    <MapStack.Screen name="PlantCard" component={PlantCardScreen} />
-  </MapStack.Navigator>
-);
+const RootStack = createStackNavigator<RootStackParamList>();
 
-const AssistantStackNavigator = (): React.JSX.Element => (
-  <AssistantStack.Navigator screenOptions={{ headerShown: false }}>
-    <AssistantStack.Screen name="Assistant" component={AssistantScreen} />
-  </AssistantStack.Navigator>
-);
-
-const MaintenanceStackNavigator = (): React.JSX.Element => (
-  <MaintenanceStack.Navigator screenOptions={{ headerShown: false }}>
-    <MaintenanceStack.Screen name="Maintenance" component={MaintenanceScreen} />
-    <MaintenanceStack.Screen name="PlantCard" component={PlantCardScreen} />
-    <MaintenanceStack.Screen name="About" component={AboutScreen} />
-    <MaintenanceStack.Screen name="VirtualGarden" component={VirtualGardenScreen} />
-  </MaintenanceStack.Navigator>
-);
-
-export const AppNavigator = (): React.JSX.Element => {
-  const scheme = useColorScheme();
-  const navTheme = scheme === 'dark'
-    ? { ...DarkTheme,    colors: { ...DarkTheme.colors,    background: '#0f1a0f', card: '#1a2d1a', border: '#2a3d2a' } }
-    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '#f5f7f2', card: '#ffffff', border: '#e9ecef' } };
-
-  return (
-  <NavigationContainer theme={navTheme}>
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor:   scheme === 'dark' ? '#52b788' : '#2d6a4f',
-        tabBarInactiveTintColor: scheme === 'dark' ? '#5a7a5c' : '#aaa',
-        tabBarStyle: { backgroundColor: scheme === 'dark' ? '#1a2d1a' : '#ffffff' },
-      }}>
-      <Tab.Screen
-        name="MapTab"
-        component={MapStackNavigator}
-        options={{
-          tabBarLabel: 'Tuin',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🗺️</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="AssistantTab"
-        component={AssistantStackNavigator}
-        options={{
-          tabBarLabel: 'Assistent',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🌿</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="MaintenanceTab"
-        component={MaintenanceStackNavigator}
-        options={{
-          tabBarLabel: 'Onderhoud',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🔔</Text>,
-        }}
-      />
-    </Tab.Navigator>
+export const AppNavigator = (): React.JSX.Element => (
+  <NavigationContainer>
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Map" component={MapScreen} />
+      <RootStack.Screen name="PlantCard" component={PlantCardScreen} />
+      <RootStack.Screen name="SeedInventory" component={SeedInventoryScreen} />
+      <RootStack.Screen name="About" component={AboutScreen} />
+      <RootStack.Screen name="Assistant" component={AssistantScreen} />
+      <RootStack.Screen name="Maintenance" component={MaintenanceScreen} />
+      <RootStack.Screen name="VirtualGarden" component={VirtualGardenScreen} />
+    </RootStack.Navigator>
   </NavigationContainer>
-  );
-};
+);

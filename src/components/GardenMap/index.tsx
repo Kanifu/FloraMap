@@ -8,6 +8,8 @@ export const CELL_CM    = 30;
 export const SCALE      = 40;
 export const GRID_COLS  = 25;   // default grid width in cells
 export const GRID_ROWS  = 25;   // default grid height in cells
+export const MAP_WIDTH  = GRID_COLS * SCALE;   // default map pixel width
+export const MAP_HEIGHT = GRID_ROWS * SCALE;   // default map pixel height
 
 // ── Plant emoji lookup ────────────────────────────────────────────────────────
 
@@ -96,7 +98,13 @@ interface GardenMapProps {
   onMapPress?: (gridX: number, gridY: number) => void;
   companionPairs?: CompanionPair[];
   showCompanionOverlay?: boolean;
-  thirstyPlantIds?: string[];    // plants with overdue water tasks (#23)
+  thirstyPlantIds?: string[];
+  plantStatuses?: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'>;
+  plantStatusMap?: unknown;
+  boundaries?: unknown[];
+  showNames?: boolean;
+  renderScale?: number;
+  onBoundaryPress?: (id: string) => void;
 }
 
 const LONG_PRESS_MS = 300;

@@ -7,11 +7,22 @@ const GEMINI_PATH = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const fetchWithRetry = async (url: string, init: RequestInit, retries = 3): Promise<Response> => {
+const fetchWithRetry = async (url: string, init: RequestInit, retries = 3, timeoutMs = 30000): Promise<Response> => {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(url, init);
-    if (res.status !== 503 || attempt === retries) return res;
-    await sleep(1000 * Math.pow(2, attempt));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      clearTimeout(timer);
+      if (res.status !== 503 || attempt === retries) return res;
+      await sleep(1000 * Math.pow(2, attempt));
+    } catch (err: unknown) {
+      clearTimeout(timer);
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('Scan duurde te lang (>30 s). Probeer een foto met minder planten of een betere verbinding.');
+      }
+      throw err;
+    }
   }
   throw new Error('Gemini niet beschikbaar na meerdere pogingen.');
 };
@@ -24,6 +35,7 @@ export interface IdentifiedPlant {
   waterIntervalDays?: number;     // how often to water (days)
   fertilizeIntervalDays?: number; // how often to fertilize (days)
   harvestMonths?: number[];       // 0-indexed months (0=Jan, 5=Jun)
+  plantFamily?: string;           // for crop rotation checks
 }
 
 export interface AssistantTask {
@@ -80,12 +92,16 @@ export const createInitialTasksForPlant = (
 
 export class GardenAssistantService {
 
-  private buildSystemPrompt(gardenPlants: string[]): string {
+  private buildSystemPrompt(gardenPlants: string[], hasImage: boolean): string {
     const plantList =
       gardenPlants.length > 0 ? gardenPlants.join('; ') : 'nog geen planten';
 
-    return `Je bent FloraMap, een beknopte tuinassistent. Antwoord altijd in de taal van de gebruiker.
-Geef korte, directe antwoorden — maximaal 3-4 zinnen tenzij meer detail echt nodig is.
+    const lengthInstruction = hasImage
+      ? 'Bij foto-analyse: geef een volledige analyse. Stuur altijd de complete PLANTS: en TASKS: regels mee — sla deze nooit af.'
+      : 'Geef korte, directe antwoorden — maximaal 3-4 zinnen tenzij meer detail echt nodig is.';
+
+    return `Je bent FloraMap, een tuinassistent. Antwoord altijd in de taal van de gebruiker.
+${lengthInstruction}
 
 Huidige tuin (naam, soort, positie op raster):
 ${plantList}
@@ -95,7 +111,7 @@ Je kunt advies geven over:
 - Waar nieuwe planten het beste passen (zon, schaduw, ruimte, buren)
 - Verzorging, ziektes en seizoenstips
 
-Als je een of meer planten herkent in een foto, scan elke plant voor 2-3 concrete verzorgingstips en voeg toe (één regel, geen markdown):
+Als je een of meer planten herkent in een foto, identificeer maximaal 3 planten (de meest duidelijk zichtbare). Scan elke plant voor 2-3 concrete verzorgingstips en voeg toe (één regel, geen markdown):
 PLANTS:[{"species":"wetenschappelijke naam","commonName":"gewone naam","confidence":0.92,"careTips":["tip1","tip2"],"waterIntervalDays":2,"fertilizeIntervalDays":14,"harvestMonths":[5,6]}]
 
 Veld uitleg:
@@ -157,18 +173,22 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
     }
     contents.push({ role: 'user', parts: currentParts });
 
+    // Foto-analyse heeft meer tokens nodig: PLANTS+TASKS JSON + uitleg kan 2000+ tokens zijn.
+    // Text-chat is doorgaans <500 tokens. Gemini 2.5 Flash ondersteunt tot 65 536 output tokens.
+    const maxOutputTokens = imageUri ? 8192 : 4096;
+
     const { url, headers } = geminiEndpoint(GEMINI_PATH);
     const response = await fetchWithRetry(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         system_instruction: {
-          parts: [{ text: this.buildSystemPrompt(gardenPlants) }],
+          parts: [{ text: this.buildSystemPrompt(gardenPlants, !!imageUri) }],
         },
         contents,
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 2048,
+          maxOutputTokens,
         },
       }),
     });
@@ -184,8 +204,12 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
     const candidate = data.candidates?.[0];
     const finishReason: string = candidate?.finishReason ?? '';
     const rawText: string = candidate?.content?.parts?.[0]?.text ?? 'Geen antwoord ontvangen.';
+
+    // Onderscheid: bij foto-analyse is afkappen een technisch probleem, niet de schuld van de vraag.
     const fullText = finishReason === 'MAX_TOKENS'
-      ? rawText + '\n\n_(Antwoord afgekapt — stel een kortere vraag voor meer detail.)_'
+      ? rawText + (imageUri
+          ? '\n\n_(Analyse onvolledig — probeer een foto met minder planten of een betere belichting.)_'
+          : '\n\n_(Antwoord afgekapt — stel je vraag in kleinere stukjes.)_')
       : rawText;
 
     // Scan all lines for structured markers, then strip them from display text
