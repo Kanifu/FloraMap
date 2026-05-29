@@ -6,6 +6,8 @@ import {
 import { Plant, MaintenanceTaskType } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
+import { plantDatabase } from '@/data/plantDatabase';
+import { createInitialTasksForPlant } from '@/services/GardenAssistantService';
 
 interface Props {
   plant: Plant | null;
@@ -47,7 +49,55 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
 
   const handleSaveEdit = useCallback(() => {
     if (!plant) return;
-    updatePlant({ ...plant, commonName: editName.trim() || plant.commonName, species: editSpecies.trim() || plant.species });
+    const newName = editName.trim() || plant.commonName;
+    const newSpecies = editSpecies.trim() || plant.species;
+
+    // Look up in database to refresh care data
+    const match = plantDatabase.find((p) =>
+      p.commonName.toLowerCase() === newName.toLowerCase() ||
+      p.species.toLowerCase() === newSpecies.toLowerCase()
+    );
+
+    if (match && (match.commonName.toLowerCase() !== plant.commonName.toLowerCase())) {
+      const { Alert } = require('react-native');
+      Alert.alert(
+        '🌱 Verzorgingsdata updaten?',
+        `We kennen ${match.commonName} — wil je de verzorgingstips en taakinstellingen bijwerken?`,
+        [
+          {
+            text: 'Ja, updaten',
+            onPress: () => {
+              const newTasks = createInitialTasksForPlant(plant.id, {
+                species: match.species,
+                commonName: match.commonName,
+                confidence: 1,
+                careTips: match.careTips,
+                waterIntervalDays: match.waterIntervalDays,
+                fertilizeIntervalDays: match.fertilizeIntervalDays,
+                harvestMonths: match.harvestMonths,
+                plantFamily: match.plantFamily,
+              });
+              updatePlant({
+                ...plant,
+                commonName: newName,
+                species: newSpecies || match.species,
+                careTips: match.careTips,
+                harvestMonths: match.harvestMonths,
+                plantFamily: match.plantFamily,
+                maintenanceTasks: newTasks.length > 0 ? newTasks : plant.maintenanceTasks,
+              });
+            },
+          },
+          {
+            text: 'Alleen naam',
+            onPress: () => updatePlant({ ...plant, commonName: newName, species: newSpecies }),
+          },
+        ],
+      );
+    } else {
+      updatePlant({ ...plant, commonName: newName, species: newSpecies });
+    }
+
     setIsEditingName(false);
   }, [plant, editName, editSpecies, updatePlant]);
 

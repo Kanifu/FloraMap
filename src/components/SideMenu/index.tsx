@@ -36,8 +36,12 @@ interface SideMenuProps {
   onOpenSeedInventory: () => void;
   onOpenAbout: () => void;
   onOpenAchievements: () => void;
+  onOpenTierComparison: () => void;
   onReportBug: () => void;
   onClearGarden: () => void;
+  onDeleteGarden: () => void;
+  onCreateGarden: () => void;
+  onOpenGardenPicker: () => void;
   unlockedBadgeCount: number;
   recentBadgeEmojis: string[];
 }
@@ -46,8 +50,9 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
   const {
     visible, onClose, plantCount, showCompanion, showNames,
     onToggleCompanion, onToggleNames, onScan, onOpenAssistant,
-    onOpenMaintenance, onOpenSeedInventory, onOpenAbout, onOpenAchievements,
-    onReportBug, onClearGarden, unlockedBadgeCount, recentBadgeEmojis,
+    onOpenMaintenance, onOpenSeedInventory, onOpenAbout, onOpenAchievements, onOpenTierComparison,
+    onReportBug, onClearGarden, onDeleteGarden, onCreateGarden, onOpenGardenPicker,
+    unlockedBadgeCount, recentBadgeEmojis,
   } = props;
 
   const slide = useRef(new Animated.Value(-PANEL_WIDTH)).current;
@@ -81,17 +86,21 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
     {
       title: 'Ga naar',
       rows: [
-        { icon: '💬', label: 'Assistent', sub: 'Vraag de AI-tuinhulp', onPress: run(onOpenAssistant) },
         { icon: '📅', label: 'Plannen & onderhoud', sub: 'Taken, planning, geschiedenis', onPress: run(onOpenMaintenance) },
         { icon: '🏆', label: 'Prestaties', sub: unlockedBadgeCount > 0 ? `${unlockedBadgeCount} behaald` : 'Verdien badges', onPress: run(onOpenAchievements) },
+        { icon: '💎', label: 'Abonnementen', sub: 'Gratis · Plus · Premium', onPress: run(onOpenTierComparison) },
         { icon: 'ℹ️', label: 'Over FloraMap', sub: 'Versie, backup & info', onPress: run(onOpenAbout) },
       ],
     },
     {
       title: 'Overig',
       rows: [
+        { icon: '💬', label: 'Assistent', sub: 'Vraag de AI-tuinhulp', onPress: run(onOpenAssistant) },
         { icon: '🐛', label: 'Bug melden', sub: 'Stuur feedback of een foutmelding', onPress: run(onReportBug) },
-        { icon: '🗑️', label: 'Tuin wissen', sub: 'Verwijder alle planten', onPress: run(onClearGarden), danger: true },
+        { icon: '🔄', label: 'Wissel van tuin', sub: 'Beheer en wissel tuinen', onPress: run(onOpenGardenPicker) },
+        { icon: '🌿', label: 'Nieuwe tuin', sub: 'Balkon, moestuin, siertuin…', onPress: run(onCreateGarden) },
+        { icon: '🧹', label: 'Tuin leegmaken', sub: 'Verwijder alle planten', onPress: run(onClearGarden), danger: true },
+        { icon: '🗑️', label: 'Tuin verwijderen', sub: 'Definitief verwijderen', onPress: run(onDeleteGarden), danger: true },
       ],
     },
   ];

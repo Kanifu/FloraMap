@@ -13,9 +13,10 @@ import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
-import { OnboardingModal } from '@/components/OnboardingModal';
+import { OnboardingModal, OnboardingResult } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
 import { TodaySheet } from '@/components/TodaySheet';
+import { TierComparisonModal } from '@/components/TierComparisonModal';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { SideMenu } from '@/components/SideMenu';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
@@ -227,6 +228,11 @@ const MapScreen = (): React.JSX.Element => {
   const updateBoundary = useGardenStore((s) => s.updateBoundary);
   const rotationHistory        = useGardenStore((s) => s.rotationHistory);
   const unlockedAchievements   = useGardenStore((s) => s.unlockedAchievements);
+  const gardens                = useGardenStore((s) => s.gardens);
+  const createGarden           = useGardenStore((s) => s.createGarden);
+  const switchGarden           = useGardenStore((s) => s.switchGarden);
+  const deleteGarden           = useGardenStore((s) => s.deleteGarden);
+  const renameGarden           = useGardenStore((s) => s.renameGarden);
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -272,9 +278,15 @@ const MapScreen = (): React.JSX.Element => {
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
 
-  const [showFeedback,   setShowFeedback]   = useState(false);
-  const [showMenu,       setShowMenu]       = useState(false);
-  const [showTodaySheet, setShowTodaySheet] = useState(false);
+  const [showFeedback,      setShowFeedback]      = useState(false);
+  const [showTierModal,     setShowTierModal]     = useState(false);
+  const [showMenu,          setShowMenu]          = useState(false);
+  const [showTodaySheet,    setShowTodaySheet]    = useState(false);
+  const [showGardenPicker,  setShowGardenPicker]  = useState(false);
+  const [showNewGarden,     setShowNewGarden]     = useState(false);
+  const [newGardenName,     setNewGardenName]     = useState('');
+  const [newGardenCols,     setNewGardenCols]     = useState(25);
+  const [newGardenRows,     setNewGardenRows]     = useState(25);
 
   // Correction sheet state (for scan-identified plants before placing)
   const [showCorrectionSheet, setShowCorrectionSheet] = useState(false);
@@ -299,11 +311,6 @@ const MapScreen = (): React.JSX.Element => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
       if (!val) setShowOnboarding(true);
     });
-  }, []);
-
-  const handleOnboardingDone = useCallback(() => {
-    setShowOnboarding(false);
-    AsyncStorage.setItem(ONBOARDED_KEY, '1');
   }, []);
 
   const handleBoundaryPress = useCallback((id: string) => {
@@ -370,6 +377,13 @@ const MapScreen = (): React.JSX.Element => {
     setGarden(g);
     return g;
   }, [setGarden]);
+
+  const handleOnboardingDone = useCallback(({ gridCols, gridRows, gardenName }: OnboardingResult) => {
+    setShowOnboarding(false);
+    AsyncStorage.setItem(ONBOARDED_KEY, '1');
+    const g = ensureGarden();
+    setGarden({ ...g, name: gardenName, gridCols, gridRows });
+  }, [ensureGarden, setGarden]);
 
   const isInteractive = !!movingPlant || !!drawStep || plantsToPlace.length > 0 || !!boundaryDrawStep;
   const isEmpty = !garden || garden.plants.length === 0;
@@ -573,6 +587,30 @@ const MapScreen = (): React.JSX.Element => {
     }
   }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, boundaryEditId, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updateBoundary, updatePlant, ensureGarden]);
 
+  const handleCreateGarden = useCallback(() => {
+    const name = newGardenName.trim() || 'Nieuwe tuin';
+    const g = createGarden(name);
+    if (newGardenCols !== 25 || newGardenRows !== 25) {
+      setGarden({ ...g, gridCols: newGardenCols, gridRows: newGardenRows });
+    }
+    setShowNewGarden(false);
+    setNewGardenName('');
+    setNewGardenCols(25);
+    setNewGardenRows(25);
+  }, [newGardenName, newGardenCols, newGardenRows, createGarden, setGarden]);
+
+  const handleDeleteActiveGarden = useCallback(() => {
+    if (!garden) return;
+    Alert.alert(
+      'Tuin verwijderen',
+      `Wil je "${garden.name}" definitief verwijderen? Dit kan niet ongedaan worden gemaakt.`,
+      [
+        { text: 'Annuleren', style: 'cancel' },
+        { text: 'Verwijderen', style: 'destructive', onPress: () => deleteGarden(garden.id) },
+      ],
+    );
+  }, [garden, deleteGarden]);
+
   const handleClearGarden = useCallback(() => {
     Alert.alert(
       'Tuin verwijderen',
@@ -730,10 +768,13 @@ const MapScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.gardenName}>{currentGarden.name}</Text>
+        <TouchableOpacity onPress={() => setShowGardenPicker(true)} activeOpacity={0.75}>
+          <View style={styles.gardenNameRow}>
+            <Text style={styles.gardenName}>{currentGarden.name}</Text>
+            {gardens.length > 1 && <Text style={styles.gardenChevron}>⌄</Text>}
+          </View>
           <Text style={styles.plantCount}>{currentGarden.plants.length} planten</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
             <TouchableOpacity style={styles.badge} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8}>
@@ -879,25 +920,21 @@ const MapScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         )}
 
-        {/* FAB menu */}
+        {/* FAB menu — scan is primary, assistant/zaadkast moved to drawer */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); navigation.navigate('Assistant'); }} activeOpacity={0.85}>
-              <Text style={styles.fabMenuIcon}>💬</Text>
-              <Text style={styles.fabMenuLabel}>Ga naar assistent</Text>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); handleScanPress(); }} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>📷</Text>
+              <Text style={styles.fabMenuLabel}>Plant scannen / herkennen</Text>
             </TouchableOpacity>
             <View style={styles.fabMenuDivider} />
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden();  setDrawStep('first'); }} activeOpacity={0.85}>
-              <Text style={styles.fabMenuIcon}>🌱</Text>
-              <Text style={styles.fabMenuLabel}>Plant/zone toevoegen</Text>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>✏️</Text>
+              <Text style={styles.fabMenuLabel}>Plant / zone toevoegen</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>🏡</Text>
               <Text style={styles.fabMenuLabel}>Grens toevoegen</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); navigation.navigate('SeedInventory'); }} activeOpacity={0.85}>
-              <Text style={styles.fabMenuIcon}>🌱</Text>
-              <Text style={styles.fabMenuLabel}>Zaadkast</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -971,10 +1008,44 @@ const MapScreen = (): React.JSX.Element => {
             <Pressable style={corrStyles.sheet} onPress={() => {}}>
               <View style={corrStyles.handle} />
               <Text style={corrStyles.title}>🔍 Plant herkend</Text>
-              {(plantsToPlace[0].confidence ?? 1) < 0.85 && (
-                <Text style={corrStyles.lowConf}>
-                  ⚠️ Lage zekerheid ({Math.round((plantsToPlace[0].confidence ?? 0.7) * 100)}%) — controleer de naam
-                </Text>
+              {(plantsToPlace[0].confidence ?? 1) < 0.80 && (
+                <>
+                  <Text style={corrStyles.lowConf}>
+                    ⚠️ Lage zekerheid ({Math.round((plantsToPlace[0].confidence ?? 0.7) * 100)}%) — klopt dit?
+                  </Text>
+                  {/* Alternatives from plantDatabase */}
+                  {(() => {
+                    const query = correctionName.toLowerCase();
+                    const alts = plantDatabase
+                      .filter((p) => {
+                        const n = p.commonName.toLowerCase();
+                        const s = p.species.toLowerCase();
+                        return (n !== query) && (
+                          n.split(' ').some((w) => query.split(' ').some((q) => w.startsWith(q) || q.startsWith(w))) ||
+                          s.includes(query.split(' ')[0])
+                        );
+                      })
+                      .slice(0, 3);
+                    if (alts.length === 0) return null;
+                    return (
+                      <View style={corrStyles.altSection}>
+                        <Text style={corrStyles.altLabel}>Of misschien:</Text>
+                        <View style={corrStyles.altRow}>
+                          {alts.map((alt) => (
+                            <TouchableOpacity
+                              key={alt.species}
+                              style={corrStyles.altChip}
+                              onPress={() => { setCorrectionName(alt.commonName); setCorrectionSpecies(alt.species); }}
+                              activeOpacity={0.8}>
+                              <Text style={corrStyles.altChipEmoji}>{alt.emoji}</Text>
+                              <Text style={corrStyles.altChipText}>{alt.commonName}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })()}
+                </>
               )}
               <Text style={corrStyles.label}>Naam</Text>
               <TextInput
@@ -1190,6 +1261,78 @@ const MapScreen = (): React.JSX.Element => {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Garden picker modal */}
+      <Modal visible={showGardenPicker} transparent animationType="slide" onRequestClose={() => setShowGardenPicker(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowGardenPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>🌻 Mijn tuinen</Text>
+            {gardens.map((g) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.gardenPickerRow, g.id === garden?.id && styles.gardenPickerRowActive]}
+                onPress={() => { switchGarden(g.id); setShowGardenPicker(false); }}
+                activeOpacity={0.8}>
+                <Text style={styles.gardenPickerName}>{g.name}</Text>
+                <Text style={styles.gardenPickerMeta}>{g.plants.length} planten · {g.gridCols ?? 25}×{g.gridRows ?? 25}</Text>
+                {g.id === garden?.id && <Text style={styles.gardenPickerCheck}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.gardenPickerAdd} onPress={() => { setShowGardenPicker(false); setShowNewGarden(true); }} activeOpacity={0.85}>
+              <Text style={styles.gardenPickerAddText}>＋ Nieuwe tuin / balkon</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowGardenPicker(false)}>
+              <Text style={styles.modalCancelText}>Sluiten</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* New garden modal */}
+      <Modal visible={showNewGarden} transparent animationType="slide" onRequestClose={() => setShowNewGarden(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>🌿 Nieuwe tuin</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Naam (bijv. Balkon, Moestuin…)"
+              placeholderTextColor="#aaa"
+              value={newGardenName}
+              onChangeText={setNewGardenName}
+              autoFocus
+            />
+            <Text style={styles.colorLabel}>Grootte</Text>
+            <View style={styles.gardenSizeGrid}>
+              {([
+                { label: '🪴 Balkon',        cols: 6,  rows: 4  },
+                { label: '🌿 Kleine tuin',   cols: 10, rows: 8  },
+                { label: '🥬 Moestuin',      cols: 15, rows: 12 },
+                { label: '🌳 Groot',         cols: 25, rows: 20 },
+              ] as { label: string; cols: number; rows: number }[]).map((preset) => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={[styles.gardenSizeBtn, newGardenCols === preset.cols && styles.gardenSizeBtnActive]}
+                  onPress={() => { setNewGardenCols(preset.cols); setNewGardenRows(preset.rows); }}
+                  activeOpacity={0.8}>
+                  <Text style={styles.gardenSizeBtnLabel}>{preset.label}</Text>
+                  <Text style={styles.gardenSizeBtnMeta}>{preset.cols}×{preset.rows} vakjes</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => { setShowNewGarden(false); setNewGardenName(''); }}>
+                <Text style={styles.modalCancelText}>Annuleren</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirmBtn, !newGardenName.trim() && styles.modalConfirmBtnDisabled]}
+                onPress={handleCreateGarden}
+                disabled={!newGardenName.trim()}>
+                <Text style={styles.modalConfirmText}>Aanmaken</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Side menu (drawer) — alles centraal bereikbaar vanuit de tuin-tab */}
       <SideMenu
         visible={showMenu}
@@ -1205,14 +1348,21 @@ const MapScreen = (): React.JSX.Element => {
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
         onOpenAbout={() => navigation.navigate('About')}
         onOpenAchievements={() => navigation.navigate('About')}
+        onOpenTierComparison={() => setShowTierModal(true)}
         onReportBug={() => setShowFeedback(true)}
         onClearGarden={handleClearGarden}
+        onDeleteGarden={handleDeleteActiveGarden}
+        onCreateGarden={() => { setNewGardenName(''); setShowNewGarden(true); }}
+        onOpenGardenPicker={() => setShowGardenPicker(true)}
         unlockedBadgeCount={unlockedBadgeCount}
         recentBadgeEmojis={recentBadgeEmojis}
       />
 
       {/* Bug report modal */}
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
+
+      {/* Tier comparison modal */}
+      <TierComparisonModal visible={showTierModal} onClose={() => setShowTierModal(false)} />
     </SafeAreaView>
   );
 };
@@ -1252,8 +1402,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: '#e9ecef',
   },
+  gardenNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   gardenName: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  gardenChevron: { fontSize: 16, color: '#6b705c', marginTop: 2 },
   plantCount: { fontSize: 13, color: '#6b705c', marginTop: 2 },
+  gardenPickerRow: { paddingHorizontal: 4, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef', flexDirection: 'row', alignItems: 'center' },
+  gardenPickerRowActive: { backgroundColor: '#f1f8f3' },
+  gardenPickerName: { fontSize: 16, fontWeight: '600', color: '#1b4332', flex: 1 },
+  gardenPickerMeta: { fontSize: 12, color: '#aaa', marginRight: 8 },
+  gardenPickerCheck: { fontSize: 16, color: '#2d6a4f', fontWeight: '700' },
+  gardenPickerAdd: { marginTop: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#f1f8f3', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7' },
+  gardenPickerAddText: { fontSize: 15, color: '#2d6a4f', fontWeight: '700' },
+  gardenSizeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  gardenSizeBtn: { flex: 1, minWidth: '45%', borderWidth: 1.5, borderColor: '#e9ecef', borderRadius: 12, padding: 12, backgroundColor: '#f8f9fa', alignItems: 'center' },
+  gardenSizeBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
+  gardenSizeBtnLabel: { fontSize: 14, fontWeight: '700', color: '#1b4332' },
+  gardenSizeBtnMeta: { fontSize: 11, color: '#6b705c', marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
@@ -1512,7 +1676,13 @@ const corrStyles = StyleSheet.create({
   },
   handle: { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   title: { fontSize: 18, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
-  lowConf: { fontSize: 12, color: '#e85d04', marginBottom: 12, backgroundColor: '#fff3e0', padding: 8, borderRadius: 8 },
+  lowConf: { fontSize: 12, color: '#e85d04', marginBottom: 8, backgroundColor: '#fff3e0', padding: 8, borderRadius: 8 },
+  altSection: { marginBottom: 10 },
+  altLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600', marginBottom: 6 },
+  altRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  altChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f1f8f3', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#b7e4c7' },
+  altChipEmoji: { fontSize: 16 },
+  altChipText: { fontSize: 13, color: '#1b4332', fontWeight: '600' },
   label: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 8, marginBottom: 4 },
   input: { borderWidth: 1, borderColor: '#b7e4c7', borderRadius: 10, padding: 10, fontSize: 15, color: '#1b4332', backgroundColor: '#f8fdf9' },
   confirmBtn: { marginTop: 16, backgroundColor: '#2d6a4f', borderRadius: 12, padding: 14, alignItems: 'center' },

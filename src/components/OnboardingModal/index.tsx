@@ -5,10 +5,23 @@ import {
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export interface OnboardingResult {
+  gridCols: number;
+  gridRows: number;
+  gardenName: string;
+}
+
 interface Props {
   visible: boolean;
-  onDone: () => void;
+  onDone: (result: OnboardingResult) => void;
 }
+
+const SIZE_PRESETS = [
+  { label: '🪴 Balkon',      cols: 6,  rows: 4,  sub: '1.8 × 1.2 m' },
+  { label: '🌿 Kleine tuin', cols: 10, rows: 8,  sub: '3 × 2.4 m'  },
+  { label: '🥬 Moestuin',    cols: 15, rows: 12, sub: '4.5 × 3.6 m' },
+  { label: '🌳 Groot',       cols: 25, rows: 20, sub: '7.5 × 6 m'  },
+];
 
 type GardenType = 'moestuin' | 'siertuin' | 'balkon' | 'kruidentuin' | 'fruitbomen';
 type Experience = 'beginner' | 'gevorderd' | 'expert';
@@ -32,8 +45,9 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   const [locationGranted, setLocationGranted] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<GardenType[]>([]);
   const [experience, setExperience] = useState<Experience | null>(null);
+  const [selectedSize, setSelectedSize] = useState(SIZE_PRESETS[2]); // default: Moestuin
 
-  const totalSteps = 6;
+  const totalSteps = 7;
   const isLast = step === totalSteps - 1;
 
   const handleLocationRequest = async () => {
@@ -76,7 +90,13 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
     }
     if (isLast) {
       setStep(0);
-      onDone();
+      const gardenType = selectedTypes[0] ?? 'moestuin';
+      const gardenName = gardenType === 'balkon' ? 'Mijn balkon'
+        : gardenType === 'siertuin' ? 'Mijn siertuin'
+        : gardenType === 'kruidentuin' ? 'Mijn kruidentuin'
+        : gardenType === 'fruitbomen' ? 'Mijn fruitbomen'
+        : 'Mijn tuin';
+      onDone({ gridCols: selectedSize.cols, gridRows: selectedSize.rows, gardenName });
       return;
     }
     setStep((n) => n + 1);
@@ -171,6 +191,30 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       case 4:
         return (
           <>
+            <Text style={s.emoji}>📐</Text>
+            <Text style={s.title}>Hoe groot is je tuin?</Text>
+            <Text style={s.body}>Kies een formaat dat het beste past. Je kunt dit later aanpassen.</Text>
+            <View style={s.typeGrid}>
+              {SIZE_PRESETS.map((preset) => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={[s.typeBtn, selectedSize.cols === preset.cols && s.typeBtnActive]}
+                  onPress={() => setSelectedSize(preset)}
+                  activeOpacity={0.8}>
+                  <Text style={s.typeBtnEmoji}>{preset.label.split(' ')[0]}</Text>
+                  <Text style={[s.typeBtnLabel, selectedSize.cols === preset.cols && s.typeBtnLabelActive]}>
+                    {preset.label.split(' ').slice(1).join(' ')}
+                  </Text>
+                  <Text style={[s.typeBtnLabel, { fontSize: 10 }]}>{preset.sub}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        );
+
+      case 5:
+        return (
+          <>
             <Text style={s.emoji}>📷</Text>
             <Text style={s.title}>Slimme fotoscan</Text>
             <Text style={s.body}>
@@ -188,7 +232,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
           </>
         );
 
-      case 5:
+      case 6:
         return (
           <>
             <Text style={s.emoji}>🎉</Text>
