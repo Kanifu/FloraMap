@@ -104,6 +104,8 @@ export interface Garden {
   id: string;
   userId: string;
   name: string;
+  gridCols?: number;  // default 25 (each cell = 30×30 cm)
+  gridRows?: number;  // default 25
   polygons: GardenPolygon[];
   plants: Plant[];
   zones?: PlantZone[];

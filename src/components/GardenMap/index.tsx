@@ -1,15 +1,13 @@
 import React, { useRef } from 'react';
-import { StyleSheet, Pressable } from 'react-native';
+import { Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
-export const CELL_CM  = 30;
-export const SCALE    = 40;
-export const GRID_COLS = 25;
-export const GRID_ROWS = 25;
-export const MAP_WIDTH  = GRID_COLS * SCALE;
-export const MAP_HEIGHT = GRID_ROWS * SCALE;
+export const CELL_CM    = 30;
+export const SCALE      = 40;
+export const GRID_COLS  = 25;   // default grid width in cells
+export const GRID_ROWS  = 25;   // default grid height in cells
 
 // ── Plant emoji lookup ────────────────────────────────────────────────────────
 
@@ -117,6 +115,11 @@ const GardenMapBase = ({
   thirstyPlantIds = [],
 }: GardenMapProps): React.JSX.Element => {
 
+  const effCols   = garden.gridCols ?? GRID_COLS;
+  const effRows   = garden.gridRows ?? GRID_ROWS;
+  const mapWidth  = effCols * SCALE;
+  const mapHeight = effRows * SCALE;
+
   // ── Fast long-press via manual timer ────────────────────────────────────────
   const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lpFired = useRef(false);
@@ -137,27 +140,28 @@ const GardenMapBase = ({
   // ── Background tap (place/move mode) ────────────────────────────────────────
   const handleBgTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
     if (!onMapPress) return;
-    const gridX = Math.max(1, Math.min(Math.round(e.nativeEvent.locationX / SCALE), GRID_COLS));
-    const gridY = Math.max(1, Math.min(Math.round(e.nativeEvent.locationY / SCALE), GRID_ROWS));
+    const gridX = Math.max(1, Math.min(Math.round(e.nativeEvent.locationX / SCALE), effCols));
+    const gridY = Math.max(1, Math.min(Math.round(e.nativeEvent.locationY / SCALE), effRows));
     onMapPress(gridX, gridY);
   };
 
   const thirstySet = new Set(thirstyPlantIds);
 
   return (
-    <Pressable onPress={isInteractive ? handleBgTap : undefined} style={styles.pressable}>
-      <Svg width={MAP_WIDTH} height={MAP_HEIGHT}>
+    <Pressable onPress={isInteractive ? handleBgTap : undefined}
+      style={{ width: mapWidth, height: mapHeight }}>
+      <Svg width={mapWidth} height={mapHeight}>
 
         {/* Background */}
-        <Rect x={0} y={0} width={MAP_WIDTH} height={MAP_HEIGHT} fill="#eaf4ec" />
+        <Rect x={0} y={0} width={mapWidth} height={mapHeight} fill="#eaf4ec" />
 
         {/* Grid lines */}
-        {Array.from({ length: GRID_COLS + 1 }, (_, i) => (
-          <Rect key={`v${i}`} x={i * SCALE} y={0} width={0.5} height={MAP_HEIGHT}
+        {Array.from({ length: effCols + 1 }, (_, i) => (
+          <Rect key={`v${i}`} x={i * SCALE} y={0} width={0.5} height={mapHeight}
             fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
         ))}
-        {Array.from({ length: GRID_ROWS + 1 }, (_, i) => (
-          <Rect key={`h${i}`} x={0} y={i * SCALE} width={MAP_WIDTH} height={0.5}
+        {Array.from({ length: effRows + 1 }, (_, i) => (
+          <Rect key={`h${i}`} x={0} y={i * SCALE} width={mapWidth} height={0.5}
             fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
         ))}
 
@@ -332,7 +336,3 @@ const GardenMapBase = ({
 };
 
 export const GardenMap = React.memo(GardenMapBase);
-
-const styles = StyleSheet.create({
-  pressable: { width: MAP_WIDTH, height: MAP_HEIGHT },
-});

@@ -18,6 +18,14 @@ import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
+const GARDEN_SIZES = [
+  { label: 'Balkon',      cols: 5,  rows: 3,  desc: '1,5 × 0,9 m' },
+  { label: 'Klein',       cols: 10, rows: 10, desc: '3 × 3 m' },
+  { label: 'Middelmatig', cols: 15, rows: 15, desc: '4,5 × 4,5 m' },
+  { label: 'Groot',       cols: 25, rows: 25, desc: '7,5 × 7,5 m (standaard)' },
+  { label: 'Zeer groot',  cols: 35, rows: 35, desc: '10,5 × 10,5 m' },
+];
+
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
 type DrawStep = 'first' | 'second';
 type PlantType = 'plant' | 'seed' | 'seedling' | 'cutting';
@@ -196,14 +204,15 @@ const MapScreen = (): React.JSX.Element => {
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
 
-  const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
-  const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
-  const [firstPoint,          setFirstPoint]          = useState<{ x: number; y: number } | null>(null);
-  const [drawTarget,          setDrawTarget]          = useState<Plant | null>(null);
-  const [menuPlant,           setMenuPlant]           = useState<Plant | null>(null);
-  const [forceShowMap,        setForceShowMap]        = useState(false);
-  const [showOnboarding,      setShowOnboarding]      = useState(false);
+  const [movingPlant,          setMovingPlant]          = useState<Plant | null>(null);
+  const [drawStep,             setDrawStep]             = useState<DrawStep | null>(null);
+  const [firstPoint,           setFirstPoint]           = useState<{ x: number; y: number } | null>(null);
+  const [drawTarget,           setDrawTarget]           = useState<Plant | null>(null);
+  const [menuPlant,            setMenuPlant]            = useState<Plant | null>(null);
+  const [forceShowMap,         setForceShowMap]         = useState(false);
+  const [showOnboarding,       setShowOnboarding]       = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
+  const [showSizePicker,       setShowSizePicker]       = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -454,6 +463,9 @@ const MapScreen = (): React.JSX.Element => {
             onPress={() => setShowCompanionOverlay((v) => !v)}>
             <Text style={styles.companionBtnText}>🌿</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.sizeBtn} onPress={() => setShowSizePicker(true)}>
+            <Text style={styles.sizeBtnText}>📐</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.deleteBtn}
             onPress={() => Alert.alert(
@@ -508,6 +520,27 @@ const MapScreen = (): React.JSX.Element => {
             </Text>
           )}
         </View>
+      )}
+
+      {/* Companion pair chips */}
+      {showCompanionOverlay && companionPairs.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          style={styles.companionChipsRow}
+          contentContainerStyle={styles.companionChipsContent}>
+          {companionPairs.map((pair, i) => {
+            const pA = currentGarden.plants.find((p) => p.id === pair.plantIdA);
+            const pB = currentGarden.plants.find((p) => p.id === pair.plantIdB);
+            if (!pA || !pB) return null;
+            const good = pair.relation === 'good';
+            return (
+              <View key={i} style={[styles.companionChip, good ? styles.chipGood : styles.chipBad]}>
+                <Text style={[styles.companionChipText, good ? styles.chipTextGood : styles.chipTextBad]}>
+                  {pA.commonName} {good ? '♥' : '✕'} {pB.commonName}
+                </Text>
+              </View>
+            );
+          })}
+        </ScrollView>
       )}
 
       {/* Water banner (#23) */}
@@ -611,6 +644,44 @@ const MapScreen = (): React.JSX.Element => {
           </Pressable>
         </Modal>
       )}
+
+      {/* Garden size picker modal */}
+      <Modal visible={showSizePicker} transparent animationType="slide">
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>📐 Tuingrootte</Text>
+            <Text style={styles.modalSubtitle}>
+              1 vakje = {CELL_CM}×{CELL_CM} cm
+            </Text>
+            {GARDEN_SIZES.map((s) => {
+              const active =
+                (currentGarden.gridCols ?? 25) === s.cols &&
+                (currentGarden.gridRows ?? 25) === s.rows;
+              return (
+                <TouchableOpacity
+                  key={s.label}
+                  style={[styles.sizeOption, active && styles.sizeOptionActive]}
+                  onPress={() => {
+                    const g = ensureGarden();
+                    setGarden({ ...g, gridCols: s.cols, gridRows: s.rows });
+                    setShowSizePicker(false);
+                  }}>
+                  <Text style={[styles.sizeOptionLabel, active && styles.sizeOptionLabelActive]}>
+                    {s.label}
+                  </Text>
+                  <Text style={[styles.sizeOptionDesc, active && styles.sizeOptionDescActive]}>
+                    {s.cols}×{s.rows} vakjes · {s.desc}
+                  </Text>
+                  {active && <Text style={styles.sizeCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowSizePicker(false)}>
+              <Text style={styles.modalCancelText}>Annuleren</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* New plant/zone modal */}
       <Modal visible={showModal} transparent animationType="slide">
@@ -751,6 +822,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#90c8f0',
   },
   waterBannerText: { fontSize: 13, fontWeight: '600', color: '#0a558c' },
+  sizeBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#b7e4c7',
+  },
+  sizeBtnText: { fontSize: 18 },
   companionLegend: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
     paddingHorizontal: 16, paddingVertical: 8,
@@ -758,6 +835,35 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
     gap: 16,
   },
+  companionChipsRow: {
+    backgroundColor: '#f0faf4',
+    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
+    maxHeight: 40,
+  },
+  companionChipsContent: {
+    paddingHorizontal: 12, paddingVertical: 6, gap: 8,
+  },
+  companionChip: {
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 12, borderWidth: 1,
+  },
+  chipGood: { backgroundColor: '#d8f3dc', borderColor: '#2d6a4f' },
+  chipBad:  { backgroundColor: '#ffe5e5', borderColor: '#e63946' },
+  companionChipText: { fontSize: 11, fontWeight: '600' },
+  chipTextGood: { color: '#1b4332' },
+  chipTextBad:  { color: '#9b1c1c' },
+  sizeOption: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef',
+    gap: 12,
+  },
+  sizeOptionActive: { backgroundColor: '#f0faf4' },
+  sizeOptionLabel: { fontSize: 16, fontWeight: '600', color: '#1b4332', width: 110 },
+  sizeOptionLabelActive: { color: '#2d6a4f' },
+  sizeOptionDesc: { flex: 1, fontSize: 13, color: '#6b705c' },
+  sizeOptionDescActive: { color: '#2d6a4f' },
+  sizeCheck: { fontSize: 16, color: '#2d6a4f', fontWeight: '700' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDash: { width: 22, height: 3, borderRadius: 2 },
   legendGood: { backgroundColor: '#2d6a4f' },
