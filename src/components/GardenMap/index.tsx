@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Pressable } from 'react-native';
-import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line } from 'react-native-svg';
+import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line, ClipPath, Image as SvgImage } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
@@ -170,6 +170,27 @@ const GardenMapBase = ({
           <Pattern id="pat-water" x="0" y="0" width="20" height="8" patternUnits="userSpaceOnUse">
             <Path d="M 0 4 Q 5 0 10 4 Q 15 8 20 4" stroke="#3a86ff" strokeWidth={1.5} fill="none" opacity={0.6} />
           </Pattern>
+          {/* Circular clip paths for plant photos */}
+          {garden.plants.filter((p) => p.imageUri).map((plant) => {
+            const w = plant.width ?? 1;
+            const h = plant.height ?? 1;
+            const isZone = w > 1 || h > 1;
+            if (isZone) {
+              const zLeft = rx(plant.x);
+              const zTop  = ry(plant.y);
+              const zW    = w * SCALE;
+              return (
+                <ClipPath key={`clipz-${plant.id}`} id={`imgclip-z-${plant.id}`}>
+                  <Circle cx={zLeft + zW - 16} cy={zTop + 16} r={14} />
+                </ClipPath>
+              );
+            }
+            return (
+              <ClipPath key={`clips-${plant.id}`} id={`imgclip-s-${plant.id}`}>
+                <Circle cx={plant.x * SCALE} cy={plant.y * SCALE} r={18} />
+              </ClipPath>
+            );
+          })}
         </Defs>
 
         {/* Background */}
@@ -297,6 +318,23 @@ const GardenMapBase = ({
                   {label}
                 </SvgText>
 
+                {/* Scan photo badge top-right */}
+                {plant.imageUri && (
+                  <G>
+                    <Circle cx={zLeft + zW - 16} cy={zTop + 16} r={15} fill="rgba(255,255,255,0.9)" />
+                    <SvgImage
+                      x={zLeft + zW - 30} y={zTop + 2}
+                      width={28} height={28}
+                      href={{ uri: plant.imageUri }}
+                      clipPath={`url(#imgclip-z-${plant.id})`}
+                      preserveAspectRatio="xMidYMid slice"
+                      opacity={isMoving ? 0.3 : 1}
+                    />
+                    <Circle cx={zLeft + zW - 16} cy={zTop + 16} r={15}
+                      fill="none" stroke={color} strokeWidth={1.5} opacity={0.7} />
+                  </G>
+                )}
+
                 {/* Transparent touch target */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH} fill="transparent" rx={10}
                   onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
@@ -314,6 +352,8 @@ const GardenMapBase = ({
             ? plant.commonName.slice(0, 10) + '…'
             : plant.commonName;
 
+          const hasPhoto = !!plant.imageUri;
+
           return (
             <G key={plant.id}>
               {/* Water-thirsty ring */}
@@ -327,13 +367,33 @@ const GardenMapBase = ({
                 <Circle cx={cx} cy={cy} r={22}
                   fill="none" stroke="#ffb703" strokeWidth={2.5} opacity={0.7} />
               )}
-              {/* Emoji — bigger, no background circle */}
-              <SvgText x={cx} y={cy + 10} textAnchor="middle"
-                fontSize={26} opacity={alpha}>
-                {emoji}
-              </SvgText>
+
+              {hasPhoto ? (
+                /* Circular photo */
+                <G>
+                  <Circle cx={cx} cy={cy} r={18} fill="#fff" opacity={0.92} />
+                  <SvgImage
+                    x={cx - 18} y={cy - 18}
+                    width={36} height={36}
+                    href={{ uri: plant.imageUri! }}
+                    clipPath={`url(#imgclip-s-${plant.id})`}
+                    preserveAspectRatio="xMidYMid slice"
+                    opacity={alpha}
+                  />
+                  <Circle cx={cx} cy={cy} r={18}
+                    fill="none" stroke={color} strokeWidth={2}
+                    opacity={isMoving ? 0.35 : 0.8} />
+                </G>
+              ) : (
+                /* Emoji */
+                <SvgText x={cx} y={cy + 10} textAnchor="middle"
+                  fontSize={26} opacity={alpha}>
+                  {emoji}
+                </SvgText>
+              )}
+
               {/* Plant name */}
-              <SvgText x={cx} y={cy + 27} textAnchor="middle"
+              <SvgText x={cx} y={hasPhoto ? cy + 31 : cy + 27} textAnchor="middle"
                 fontSize={8.5} fill="#1b4332" fontWeight="700"
                 opacity={isMoving ? 0.4 : 1}>
                 {name}
