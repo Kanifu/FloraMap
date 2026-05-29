@@ -13,6 +13,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useGardenStore } from '@/store/gardenStore';
 import { SeedPacket } from '@/models';
 
@@ -20,6 +21,7 @@ const newId = () => `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const CURRENT_YEAR = new Date().getFullYear();
 
 const SeedInventoryScreen = (): React.JSX.Element => {
+  const navigation = useNavigation();
   const seedPackets = useGardenStore((s) => s.seedPackets);
   const addSeedPacket = useGardenStore((s) => s.addSeedPacket);
   const removeSeedPacket = useGardenStore((s) => s.removeSeedPacket);
@@ -145,6 +147,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>←</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>🌱 Zaadvoorraad</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
           <Text style={styles.addBtnText}>＋ Toevoegen</Text>
@@ -251,7 +256,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: '#e9ecef',
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332', flex: 1, textAlign: 'center' },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtnText: { fontSize: 22, color: '#1b4332', fontWeight: '700' },
   addBtn: {
     backgroundColor: '#2d6a4f', paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 20,

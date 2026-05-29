@@ -19,6 +19,7 @@ import { TodaySheet } from '@/components/TodaySheet';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { SideMenu } from '@/components/SideMenu';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
+import { ACHIEVEMENTS } from '@/data/achievements';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
 import { findOvercrowdedPlants } from '@/utils/plantSpacing';
@@ -224,7 +225,15 @@ const MapScreen = (): React.JSX.Element => {
   const addBoundary  = useGardenStore((s) => s.addBoundary);
   const removeBoundary = useGardenStore((s) => s.removeBoundary);
   const updateBoundary = useGardenStore((s) => s.updateBoundary);
-  const rotationHistory = useGardenStore((s) => s.rotationHistory);
+  const rotationHistory        = useGardenStore((s) => s.rotationHistory);
+  const unlockedAchievements   = useGardenStore((s) => s.unlockedAchievements);
+
+  const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
+  const recentBadgeEmojis  = ACHIEVEMENTS
+    .filter((a) => unlockedAchievements[a.id])
+    .sort((a, b) => (unlockedAchievements[b.id] ?? '').localeCompare(unlockedAchievements[a.id] ?? ''))
+    .slice(0, 3)
+    .map((a) => a.emoji);
 
   const [showNames,           setShowNames]           = useState(true);
   const [mapScale,            setMapScale]            = useState(1.0);
@@ -1195,8 +1204,11 @@ const MapScreen = (): React.JSX.Element => {
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
         onOpenAbout={() => navigation.navigate('About')}
+        onOpenAchievements={() => navigation.navigate('About')}
         onReportBug={() => setShowFeedback(true)}
         onClearGarden={handleClearGarden}
+        unlockedBadgeCount={unlockedBadgeCount}
+        recentBadgeEmojis={recentBadgeEmojis}
       />
 
       {/* Bug report modal */}

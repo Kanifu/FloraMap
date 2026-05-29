@@ -35,15 +35,19 @@ interface SideMenuProps {
   onOpenMaintenance: () => void;
   onOpenSeedInventory: () => void;
   onOpenAbout: () => void;
+  onOpenAchievements: () => void;
   onReportBug: () => void;
   onClearGarden: () => void;
+  unlockedBadgeCount: number;
+  recentBadgeEmojis: string[];
 }
 
 export function SideMenu(props: SideMenuProps): React.JSX.Element {
   const {
     visible, onClose, plantCount, showCompanion, showNames,
     onToggleCompanion, onToggleNames, onScan, onOpenAssistant,
-    onOpenMaintenance, onOpenSeedInventory, onOpenAbout, onReportBug, onClearGarden,
+    onOpenMaintenance, onOpenSeedInventory, onOpenAbout, onOpenAchievements,
+    onReportBug, onClearGarden, unlockedBadgeCount, recentBadgeEmojis,
   } = props;
 
   const slide = useRef(new Animated.Value(-PANEL_WIDTH)).current;
@@ -79,6 +83,7 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
       rows: [
         { icon: '💬', label: 'Assistent', sub: 'Vraag de AI-tuinhulp', onPress: run(onOpenAssistant) },
         { icon: '📅', label: 'Plannen & onderhoud', sub: 'Taken, planning, geschiedenis', onPress: run(onOpenMaintenance) },
+        { icon: '🏆', label: 'Prestaties', sub: unlockedBadgeCount > 0 ? `${unlockedBadgeCount} behaald` : 'Verdien badges', onPress: run(onOpenAchievements) },
         { icon: 'ℹ️', label: 'Over FloraMap', sub: 'Versie, backup & info', onPress: run(onOpenAbout) },
       ],
     },
@@ -98,10 +103,16 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
           <Pressable style={s.panelInner} onPress={() => {}}>
             <View style={s.header}>
               <Text style={s.headerIcon}>🌻</Text>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={s.headerTitle}>Mijn tuin</Text>
                 <Text style={s.headerSub}>{plantCount} {plantCount === 1 ? 'plant' : 'planten'}</Text>
               </View>
+              {unlockedBadgeCount > 0 && (
+                <TouchableOpacity style={s.badgeChip} onPress={run(onOpenAchievements)} activeOpacity={0.8}>
+                  <Text style={s.badgeChipEmojis}>{recentBadgeEmojis.slice(0, 3).join('')}</Text>
+                  <Text style={s.badgeChipCount}>{unlockedBadgeCount}</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
@@ -146,6 +157,9 @@ const s = StyleSheet.create({
   headerIcon:  { fontSize: 34 },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
   headerSub:   { fontSize: 13, color: '#b7e4c7', marginTop: 2 },
+  badgeChip:   { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  badgeChipEmojis: { fontSize: 14 },
+  badgeChipCount:  { fontSize: 11, color: '#b7e4c7', fontWeight: '700', marginTop: 1 },
   scroll:      { paddingVertical: 8, paddingBottom: 40 },
   section:     { marginTop: 12 },
   sectionLabel:{ fontSize: 11, fontWeight: '700', color: '#95a99c', textTransform: 'uppercase', letterSpacing: 0.7, paddingHorizontal: 20, marginBottom: 4 },

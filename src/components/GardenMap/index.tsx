@@ -121,6 +121,7 @@ const GardenMapBase = ({
   companionPairs = [],
   showCompanionOverlay = false,
   thirstyPlantIds = [],
+  showNames = true,
 }: GardenMapProps): React.JSX.Element => {
 
   const effCols   = garden.gridCols ?? GRID_COLS;
@@ -315,16 +316,20 @@ const GardenMapBase = ({
                 ))}
 
                 {/* Label pill */}
-                <Rect
-                  x={cx - pillW / 2} y={cy - pillH / 2}
-                  width={pillW} height={pillH}
-                  fill="rgba(255,255,255,0.88)" rx={pillH / 2} />
-                <SvgText x={cx} y={cy + labelFontSize * 0.35}
-                  textAnchor="middle" fontSize={labelFontSize}
-                  fill="#1b4332" fontWeight="700"
-                  opacity={isMoving ? 0.4 : 1}>
-                  {label}
-                </SvgText>
+                {showNames && (
+                  <>
+                    <Rect
+                      x={cx - pillW / 2} y={cy - pillH / 2}
+                      width={pillW} height={pillH}
+                      fill="rgba(255,255,255,0.88)" rx={pillH / 2} />
+                    <SvgText x={cx} y={cy + labelFontSize * 0.35}
+                      textAnchor="middle" fontSize={labelFontSize}
+                      fill="#1b4332" fontWeight="700"
+                      opacity={isMoving ? 0.4 : 1}>
+                      {label}
+                    </SvgText>
+                  </>
+                )}
 
                 {/* Scan photo badge top-right */}
                 {plant.imageUri && (
@@ -401,11 +406,13 @@ const GardenMapBase = ({
               )}
 
               {/* Plant name */}
-              <SvgText x={cx} y={hasPhoto ? cy + 31 : cy + 27} textAnchor="middle"
-                fontSize={8.5} fill="#1b4332" fontWeight="700"
-                opacity={isMoving ? 0.4 : 1}>
-                {name}
-              </SvgText>
+              {showNames && (
+                <SvgText x={cx} y={hasPhoto ? cy + 31 : cy + 27} textAnchor="middle"
+                  fontSize={8.5} fill="#1b4332" fontWeight="700"
+                  opacity={isMoving ? 0.4 : 1}>
+                  {name}
+                </SvgText>
+              )}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={22} fill="transparent"
                 onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
