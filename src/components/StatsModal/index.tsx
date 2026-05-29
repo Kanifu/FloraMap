@@ -150,11 +150,11 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
 
 const s = StyleSheet.create({
   backdrop:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%' },
+  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', minHeight: 240 },
   handle:       { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
   title:        { fontSize: 20, fontWeight: '700', color: '#1b4332', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  scroll:       { flex: 1 },
-  scrollContent:{ padding: 16, paddingBottom: 8, gap: 0 },
+  scroll:       {},   // no flex:1 — ScrollView sizes to content up to maxHeight of parent
+  scrollContent:{ padding: 16, paddingBottom: 8 },
   section:      { backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef', padding: 14, marginBottom: 12, gap: 8 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
   statRow:      { flexDirection: 'row', gap: 8 },

@@ -49,7 +49,7 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
   const {
     visible, onClose, plantCount, showCompanion, showNames,
     onToggleCompanion, onToggleNames,
-    onOpenAssistant, onOpenMaintenance, onOpenAbout,
+    onOpenAssistant, onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
     onOpenStats, onOpenTierComparison,
     onReportBug, onClearGarden, onDeleteGarden,
     onCreateGarden, onOpenGardenPicker,
@@ -79,11 +79,9 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
     {
       title: 'Ga naar',
       rows: [
-        { icon: '💬', label: 'Assistent', sub: 'Planten toevoegen, tips, vragen', onPress: run(onOpenAssistant) },
         { icon: '📅', label: 'Plannen & onderhoud', sub: 'Taken, planning, log', onPress: run(onOpenMaintenance) },
         { icon: '📊', label: 'Statistieken & prestaties', sub: 'Streak, badges, oogst', onPress: run(onOpenStats) },
-        { icon: '💎', label: 'Abonnementen', sub: 'Gratis · Plus · Premium', onPress: run(onOpenTierComparison) },
-        { icon: 'ℹ️', label: 'Over FloraMap', sub: 'Versie, backup & info', onPress: run(onOpenAbout) },
+        { icon: '🌱', label: 'Zaadkast', sub: 'Beheer je zaadvoorraad', onPress: run(onOpenSeedInventory) },
       ],
     },
     {
@@ -99,6 +97,7 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
         { icon: '🐛', label: 'Bug melden', sub: 'Stuur feedback of een foutmelding', onPress: run(onReportBug) },
         { icon: '🧹', label: 'Tuin leegmaken', sub: 'Verwijder alle planten', onPress: run(onClearGarden), danger: true },
         { icon: '🗑️', label: 'Tuin verwijderen', sub: 'Definitief verwijderen', onPress: run(onDeleteGarden), danger: true },
+        { icon: 'ℹ️', label: 'Over FloraMap', sub: 'Versie, backup & abonnementen', onPress: run(onOpenAbout) },
       ],
     },
   ];
