@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -10,6 +11,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { MaintenanceTaskType, PhotoLogEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
+import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
@@ -57,6 +59,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [editNotes,    setEditNotes]    = useState('');
   const [editWater,    setEditWater]    = useState('');
   const [showHistory,  setShowHistory]  = useState(false);
+  const [enriching,    setEnriching]    = useState(false);
 
   const startEdit = () => {
     if (!plant) return;
@@ -87,6 +90,49 @@ const PlantCardScreen = (): React.JSX.Element => {
   };
 
   const handleCancelEdit = () => setIsEditing(false);
+
+  // ── AI info enrichment (#76) ───────────────────────────────────────────────
+  const handleEnrichWithAI = async () => {
+    if (!plant) return;
+    setEnriching(true);
+    try {
+      const response = await gardenAssistantService.chat(
+        `Geef verzorgingsinfo voor de plant: ${plant.commonName}`,
+        null, [], [],
+      );
+      const info = response.identifiedPlants?.[0];
+      if (!info) {
+        Alert.alert('Niet gevonden', 'Geen plantinfo ontvangen. Probeer de naam aan te passen.');
+        return;
+      }
+      const existingTypes = new Set(plant.maintenanceTasks.map((t) => t.type));
+      const newTasks = createInitialTasksForPlant(plant.id, info)
+        .filter((t) => !existingTypes.has(t.type));
+      updatePlant({
+        ...plant,
+        species:     plant.species || info.species,
+        careTips:    plant.careTips?.length ? plant.careTips : (info.careTips ?? []),
+        harvestMonths: plant.harvestMonths ?? info.harvestMonths,
+        maintenanceTasks: [
+          ...plant.maintenanceTasks.map((t) => {
+            if (t.type === 'water' && !t.completedDate && !t.intervalDays && info.waterIntervalDays) {
+              return { ...t, intervalDays: info.waterIntervalDays };
+            }
+            if (t.type === 'fertilize' && !t.completedDate && !t.intervalDays && info.fertilizeIntervalDays) {
+              return { ...t, intervalDays: info.fertilizeIntervalDays };
+            }
+            return t;
+          }),
+          ...newTasks,
+        ],
+      });
+      Alert.alert('✅ Info aangevuld', 'Plantinformatie is bijgewerkt via AI.');
+    } catch (e) {
+      Alert.alert('Fout', e instanceof Error ? e.message : 'Kon AI niet bereiken.');
+    } finally {
+      setEnriching(false);
+    }
+  };
 
   // ── task complete ──────────────────────────────────────────────────────────
   const handleCompleteTask = useCallback(
@@ -242,6 +288,18 @@ const PlantCardScreen = (): React.JSX.Element => {
               <Text style={s.emptyText}>Geen notitie — tik op Bewerken om er een toe te voegen.</Text>
             )}
           </View>
+
+          {/* ── AI enrich button — shown when no care tips yet ── */}
+          {!isEditing && (!plant.careTips || plant.careTips.length === 0) && (
+            <TouchableOpacity
+              style={s.enrichBtn}
+              onPress={handleEnrichWithAI}
+              disabled={enriching}>
+              {enriching
+                ? <ActivityIndicator size="small" color="#2d6a4f" />
+                : <Text style={s.enrichBtnText}>🌿 Vul plantinfo aan via AI</Text>}
+            </TouchableOpacity>
+          )}
 
           {/* ── Care tips ── */}
           {plant.careTips && plant.careTips.length > 0 && (
@@ -471,6 +529,13 @@ const s = StyleSheet.create({
   photoDate: { fontSize: 11, color: '#6b705c', textAlign: 'center' },
   photoHint: { fontSize: 11, color: '#aaa', fontStyle: 'italic' },
   emptyText: { fontSize: 14, color: '#aaa', fontStyle: 'italic', lineHeight: 20 },
+  enrichBtn: {
+    backgroundColor: '#f1f8f3', borderRadius: 12,
+    borderWidth: 1, borderColor: '#2d6a4f',
+    paddingVertical: 13, alignItems: 'center',
+    marginTop: 4,
+  },
+  enrichBtnText: { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
 });
 
 export default PlantCardScreen;

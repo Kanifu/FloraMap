@@ -213,6 +213,7 @@ const MapScreen = (): React.JSX.Element => {
   const [showOnboarding,       setShowOnboarding]       = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
   const [showSizePicker,       setShowSizePicker]       = useState(false);
+  const [showFabMenu,          setShowFabMenu]          = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -294,6 +295,7 @@ const MapScreen = (): React.JSX.Element => {
 
   const cancelDraw = useCallback(() => {
     setDrawStep(null); setFirstPoint(null); setDrawTarget(null);
+    setShowFabMenu(false);
   }, []);
 
   const bannerInfo = useMemo(() => {
@@ -455,9 +457,7 @@ const MapScreen = (): React.JSX.Element => {
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
             </View>
           )}
-          <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
-            {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
-          </TouchableOpacity>
+          {scanning && <ActivityIndicator size="small" color="#2d6a4f" />}
           <TouchableOpacity
             style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
             onPress={() => setShowCompanionOverlay((v) => !v)}>
@@ -465,18 +465,6 @@ const MapScreen = (): React.JSX.Element => {
           </TouchableOpacity>
           <TouchableOpacity style={styles.sizeBtn} onPress={() => setShowSizePicker(true)}>
             <Text style={styles.sizeBtnText}>📐</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => Alert.alert(
-              'Tuin verwijderen',
-              'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
-              [
-                { text: 'Annuleren', style: 'cancel' },
-                { text: 'Verwijderen', style: 'destructive', onPress: () => { clearGarden(); setForceShowMap(false); } },
-              ],
-            )}>
-            <Text style={styles.deleteBtnText}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -574,9 +562,41 @@ const MapScreen = (): React.JSX.Element => {
         </ScrollView>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => { ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
-            <Text style={styles.fabText}>＋</Text>
-          </TouchableOpacity>
+          <>
+            {showFabMenu && (
+              <View style={styles.fabMenu}>
+                <TouchableOpacity style={styles.fabMenuItem}
+                  onPress={() => { setShowFabMenu(false); handleScanPress(); }}>
+                  <Text style={styles.fabMenuItemText}>📷 Scan planten</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.fabMenuItem}
+                  onPress={() => { setShowFabMenu(false); ensureGarden(); setDrawStep('first'); }}>
+                  <Text style={styles.fabMenuItemText}>✏️ Handmatig toevoegen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.fabMenuItem, styles.fabMenuItemDanger]}
+                  onPress={() => {
+                    setShowFabMenu(false);
+                    Alert.alert(
+                      'Tuin verwijderen',
+                      'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+                      [
+                        { text: 'Annuleren', style: 'cancel' },
+                        { text: 'Verwijderen', style: 'destructive',
+                          onPress: () => { clearGarden(); setForceShowMap(false); } },
+                      ],
+                    );
+                  }}>
+                  <Text style={[styles.fabMenuItemText, styles.fabMenuItemTextDanger]}>🗑️ Tuin wissen</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[styles.fab, showFabMenu && styles.fabActive]}
+              onPress={() => setShowFabMenu((v) => !v)}
+              activeOpacity={0.85}>
+              <Text style={styles.fabText}>{showFabMenu ? '✕' : '＋'}</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -796,18 +816,6 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
-  scanBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  scanBtnText: { fontSize: 20 },
-  deleteBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#fff5f5', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#f4bfc0',
-  },
-  deleteBtnText: { fontSize: 18 },
   companionBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
@@ -895,7 +903,23 @@ const styles = StyleSheet.create({
     elevation: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
+  fabActive: { backgroundColor: '#e63946' },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
+  fabMenu: {
+    position: 'absolute', bottom: 82, right: 20,
+    backgroundColor: '#fff', borderRadius: 16,
+    borderWidth: 1, borderColor: '#e9ecef',
+    elevation: 6, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8,
+    overflow: 'hidden', minWidth: 200,
+  },
+  fabMenuItem: {
+    paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef',
+  },
+  fabMenuItemDanger: { borderBottomWidth: 0 },
+  fabMenuItemText: { fontSize: 15, color: '#1b4332', fontWeight: '600' },
+  fabMenuItemTextDanger: { color: '#e63946' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
