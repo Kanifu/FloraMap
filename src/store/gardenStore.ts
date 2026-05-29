@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, SoilProfile, SoilAmendment, HarvestEntry } from '@/models';
+import { Tier, TIER_RANK, FREE_PLANT_LIMIT } from '@/constants/tiers';
 
 interface GardenState {
   garden: Garden | null;       // active garden (always in sync with gardens[activeGardenId])
@@ -16,6 +17,7 @@ interface GardenState {
   currentStreak: number;
   lastTaskDate: string | null;
   totalScans: number;
+  userTier: Tier;
 }
 
 interface GardenActions {
@@ -44,6 +46,8 @@ interface GardenActions {
   deleteGarden: (id: string) => void;
   // Achievement actions
   clearRecentUnlock: () => void;
+  // Tier / freemium
+  setUserTier: (tier: Tier) => void;
 }
 
 /** Sync updated active garden into the gardens array */
@@ -82,6 +86,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       currentStreak: 0,
       lastTaskDate: null,
       totalScans: 0,
+      userTier: 'free',
 
       setGarden: (garden) => {
         const state = get();
@@ -111,6 +116,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const { garden } = state;
         if (!garden) return;
+        // Enforce free-tier plant limit
+        if (TIER_RANK[state.userTier] < TIER_RANK['plus'] && garden.plants.length >= FREE_PLANT_LIMIT) return;
         const updated = { ...garden, plants: [...garden.plants, plant] };
         const count = updated.plants.length;
         const toUnlock: string[] = [];
@@ -344,6 +351,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       clearRecentUnlock: () => set({ recentUnlockId: null }),
+
+      setUserTier: (tier) => set({ userTier: tier }),
     }),
     {
       name: 'garden-storage',
@@ -357,6 +366,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         currentStreak: state.currentStreak,
         lastTaskDate: state.lastTaskDate,
         totalScans: state.totalScans,
+        userTier: state.userTier,
       }),
       onRehydrateStorage: () => (state) => {
         // Migrate old format: single garden → gardens array

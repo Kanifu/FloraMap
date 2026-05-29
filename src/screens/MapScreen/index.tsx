@@ -14,8 +14,10 @@ import { MapStackParamList } from '@/navigation/AppNavigator';
 import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { useTheme } from '@/hooks/useTheme';
+import { useFeatureFlag, FEATURE_CONFIGS, FREE_PLANT_LIMIT } from '@/hooks/useFeatureFlag';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -313,6 +315,10 @@ const MapScreen = (): React.JSX.Element => {
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
   const [showSizePicker,       setShowSizePicker]       = useState(false);
   const [showFabMenu,          setShowFabMenu]          = useState(false);
+  const [showUpgradeModal,     setShowUpgradeModal]     = useState(false);
+
+  const { enabled: canAddUnlimited } = useFeatureFlag('unlimited_plants');
+  const plantCount = garden?.plants.length ?? 0;
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
@@ -425,6 +431,10 @@ const MapScreen = (): React.JSX.Element => {
         species: correctionSpecies.trim() || (next.species ?? ''),
       };
       const g = ensureGarden();
+      if (!canAddUnlimited && g.plants.length >= FREE_PLANT_LIMIT) {
+        setShowUpgradeModal(true);
+        return;
+      }
       addPlant(makePlantFromScan(corrected, g.id, x, y, scanImageUri));
       setPlantsToPlace(rest);
       if (rest.length === 0) setScanImageUri(undefined);
@@ -449,7 +459,7 @@ const MapScreen = (): React.JSX.Element => {
         setShowModal(true);
       }
     }
-  }, [plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant, ensureGarden]);
+  }, [plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, updatePlant, ensureGarden, canAddUnlimited]);
 
   const handleDelete = useCallback((plant: Plant) => {
     Alert.alert('Verwijderen', `${plant.commonName} uit je tuin verwijderen?`, [
@@ -462,6 +472,11 @@ const MapScreen = (): React.JSX.Element => {
   const handleConfirmModal = () => {
     if (!pendingBounds || !modalName.trim()) return;
     const g = ensureGarden();
+    if (!canAddUnlimited && g.plants.length >= FREE_PLANT_LIMIT) {
+      setShowModal(false);
+      setShowUpgradeModal(true);
+      return;
+    }
     const id = newId();
     const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
     addPlant({
@@ -1165,6 +1180,14 @@ const MapScreen = (): React.JSX.Element => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <UpgradeModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureLabel={FEATURE_CONFIGS.unlimited_plants.label}
+        featureDescription={FEATURE_CONFIGS.unlimited_plants.description}
+        requiredTier="plus"
+      />
     </SafeAreaView>
   );
 };

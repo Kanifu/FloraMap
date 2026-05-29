@@ -15,6 +15,9 @@ import { Garden } from '@/models';
 import { useTheme } from '@/hooks/useTheme';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { ACHIEVEMENTS } from '@/data/achievements';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { FREE_PLANT_LIMIT, FEATURE_CONFIGS } from '@/hooks/useFeatureFlag';
+import type { Tier } from '@/constants/tiers';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -73,8 +76,11 @@ const AboutScreen = (): React.JSX.Element => {
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
   const currentStreak = useGardenStore((s) => s.currentStreak);
   const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
+  const userTier = useGardenStore((s) => s.userTier);
+  const setUserTier = useGardenStore((s) => s.setUserTier);
   const [importing, setImporting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const theme = useTheme();
 
   const styles = StyleSheet.create({
@@ -177,6 +183,39 @@ const AboutScreen = (): React.JSX.Element => {
     achievementEmoji: { fontSize: 24 },
     achievementTitle: { fontSize: 10, fontWeight: '700', color: theme.primaryDark, textAlign: 'center' },
     achievementDate: { fontSize: 9, color: theme.textMuted, textAlign: 'center' },
+    // Tier
+    tierCard: {
+      backgroundColor: theme.primaryBg, borderRadius: 16,
+      borderWidth: 1, borderColor: theme.borderLight,
+      padding: 16, gap: 10,
+    },
+    tierRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    tierBadge: {
+      fontSize: 13, fontWeight: '700', color: '#d97706',
+      backgroundColor: '#fef3c7', paddingHorizontal: 12, paddingVertical: 3, borderRadius: 20,
+    },
+    tierBadgePremium: { color: '#7c3aed', backgroundColor: '#ede9fe' },
+    tierBadgePlus: { color: '#d97706', backgroundColor: '#fef3c7' },
+    tierBadgeFree: { color: theme.primary, backgroundColor: theme.primaryLight },
+    tierLabel: { fontSize: 15, fontWeight: '700', color: theme.primaryDark },
+    tierSub: { fontSize: 12, color: theme.textSecondary },
+    tierProgress: {
+      height: 6, borderRadius: 3, backgroundColor: theme.border, overflow: 'hidden',
+    },
+    tierProgressFill: { height: '100%', backgroundColor: theme.primary, borderRadius: 3 },
+    tierUpgradeBtn: {
+      backgroundColor: theme.primary, borderRadius: 12,
+      paddingVertical: 12, alignItems: 'center',
+    },
+    tierUpgradeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+    tierDebugRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
+    tierDebugBtn: {
+      flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center',
+      borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card,
+    },
+    tierDebugBtnActive: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
+    tierDebugBtnText: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
+    tierDebugBtnTextActive: { color: theme.primary },
   });
 
   // ── Backup export ─────────────────────────────────────────────────────────
@@ -273,6 +312,59 @@ const AboutScreen = (): React.JSX.Element => {
           <Text style={styles.buildHash}>
             {`versionCode ${Constants.expoConfig?.android?.versionCode ?? '?'}`}
           </Text>
+        </View>
+
+        {/* Tier / subscription */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Abonnement</Text>
+          <View style={styles.tierCard}>
+            <View style={styles.tierRow}>
+              <Text style={[
+                styles.tierBadge,
+                userTier === 'premium' ? styles.tierBadgePremium :
+                userTier === 'plus' ? styles.tierBadgePlus : styles.tierBadgeFree,
+              ]}>
+                {userTier === 'premium' ? '💎 Premium' : userTier === 'plus' ? '⭐ Plus' : '🆓 Gratis'}
+              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tierLabel}>
+                  {userTier === 'free' ? 'Gratis tier' : userTier === 'plus' ? 'Plus-abonnement' : 'Premium-abonnement'}
+                </Text>
+              </View>
+            </View>
+            {userTier === 'free' && (
+              <>
+                <Text style={styles.tierSub}>
+                  Planten: {garden?.plants.length ?? 0} / {FREE_PLANT_LIMIT}
+                </Text>
+                <View style={styles.tierProgress}>
+                  <View style={[
+                    styles.tierProgressFill,
+                    { width: `${Math.min(100, ((garden?.plants.length ?? 0) / FREE_PLANT_LIMIT) * 100)}%` as any },
+                  ]} />
+                </View>
+                <TouchableOpacity
+                  style={styles.tierUpgradeBtn}
+                  onPress={() => setShowUpgradeModal(true)}>
+                  <Text style={styles.tierUpgradeBtnText}>Upgraden naar Plus →</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {/* Dev-only tier switcher — remove before production */}
+            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+            <View style={styles.tierDebugRow}>
+              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                  onPress={() => setUserTier(t)}>
+                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                    {t}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
 
         {/* Backup & Restore */}
@@ -423,6 +515,13 @@ const AboutScreen = (): React.JSX.Element => {
       </ScrollView>
 
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
+      <UpgradeModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureLabel={FEATURE_CONFIGS.unlimited_plants.label}
+        featureDescription="Upgrade naar Plus voor onbeperkt planten en meer."
+        requiredTier="plus"
+      />
     </SafeAreaView>
   );
 };
