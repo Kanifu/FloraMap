@@ -26,7 +26,7 @@ export const EMPTY_WEATHER: WeatherData = {
   weatherEmoji: '🌡️', dailyForecast: [],
 };
 
-const CACHE_MS = 30 * 60 * 1000; // 30 minutes
+const CACHE_MS = 15 * 60 * 1000; // 15 minutes (refresh more often for accuracy)
 let cachedData: WeatherData | null = null;
 let cachedAt = 0;
 
@@ -78,16 +78,32 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
     const todayMin  = Math.round(minTemps[0] ?? 0);
     const next3Rain = (rainSums.slice(0, 3) as number[]).reduce((s, v) => s + v, 0);
 
+    // rainExpected: today or tomorrow has a rain weather code (≥51) OR
+    // next 24h hourly total > 1mm. This aligns with what weather apps show.
+    const todayRainCode    = (wCodes[0] ?? 0) >= 51;
+    const tomorrowRainCode = (wCodes[1] ?? 0) >= 51;
+    const next24Mm = Math.round(
+      hourlyPrecip.slice(0, 24).reduce((s: number, v: number) => s + v, 0) * 10,
+    ) / 10;
+    const rainExpectedVal = todayRainCode || tomorrowRainCode || next24Mm > 1;
+
+    // droughtDays: start from TOMORROW (index 1) to avoid counting a
+    // rainy today as a dry day. A day is "dry" only when precipitation < 1mm
+    // AND the weather code shows no rain (< 51).
     const droughtDays = (() => {
       let count = 0;
-      for (const r of rainSums) { if ((r ?? 0) < 2) count++; else break; }
+      for (let i = 1; i < rainSums.length; i++) {
+        const hasMeaningfulRain = (rainSums[i] ?? 0) >= 1 || (wCodes[i] ?? 0) >= 51;
+        if (!hasMeaningfulRain) count++;
+        else break;
+      }
       return count;
     })();
 
     const result: WeatherData = {
       loaded: true,
-      rainExpected: totalMm > 4,
-      rainMm: totalMm,
+      rainExpected: rainExpectedVal,
+      rainMm: next24Mm,
       tempMax: todayMax,
       tempMin: todayMin,
       isDry: next3Rain < 2 && todayMax >= 20,

@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
-  ScrollView, Pressable, TextInput, Alert,
+  ScrollView, Pressable, TextInput,
 } from 'react-native';
 import { Plant, MaintenanceTaskType } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
@@ -58,46 +58,32 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
       p.species.toLowerCase() === newSpecies.toLowerCase()
     );
 
-    // Always close the edit UI first so the user sees the change immediately
     setIsEditingName(false);
 
-    if (match && (match.commonName.toLowerCase() !== plant.commonName.toLowerCase())) {
-      // Immediately save the new name so PlantCard and map reflect it right away
-      updatePlant({ ...plant, commonName: newName, species: newSpecies });
-
-      // Then ask if they also want to refresh care data
-      Alert.alert(
-        '🌱 Verzorgingsdata updaten?',
-        `We kennen ${match.commonName} — wil je ook de verzorgingstips en taakinstellingen bijwerken?`,
-        [
-          {
-            text: 'Ja, updaten',
-            onPress: () => {
-              const newTasks = createInitialTasksForPlant(plant.id, {
-                species: match.species,
-                commonName: match.commonName,
-                confidence: 1,
-                careTips: match.careTips,
-                waterIntervalDays: match.waterIntervalDays,
-                fertilizeIntervalDays: match.fertilizeIntervalDays,
-                harvestMonths: match.harvestMonths,
-                plantFamily: match.plantFamily,
-              });
-              updatePlant({
-                ...plant,
-                commonName: newName,
-                species: newSpecies || match.species,
-                careTips: match.careTips,
-                harvestMonths: match.harvestMonths,
-                plantFamily: match.plantFamily,
-                maintenanceTasks: newTasks.length > 0 ? newTasks : plant.maintenanceTasks,
-              });
-            },
-          },
-          { text: 'Alleen naam', style: 'cancel' },
-        ],
-      );
+    if (match) {
+      // Database match found — always apply name + species + care data.
+      // The user renamed to a known plant, so their specs should reflect that plant.
+      const newTasks = createInitialTasksForPlant(plant.id, {
+        species: match.species,
+        commonName: match.commonName,
+        confidence: 1,
+        careTips: match.careTips,
+        waterIntervalDays: match.waterIntervalDays,
+        fertilizeIntervalDays: match.fertilizeIntervalDays,
+        harvestMonths: match.harvestMonths,
+        plantFamily: match.plantFamily,
+      });
+      updatePlant({
+        ...plant,
+        commonName: newName,
+        species: newSpecies || match.species,
+        careTips: match.careTips,
+        harvestMonths: match.harvestMonths,
+        plantFamily: match.plantFamily,
+        maintenanceTasks: newTasks.length > 0 ? newTasks : plant.maintenanceTasks,
+      });
     } else {
+      // No database match — just update name and species
       updatePlant({ ...plant, commonName: newName, species: newSpecies });
     }
   }, [plant, editName, editSpecies, updatePlant]);

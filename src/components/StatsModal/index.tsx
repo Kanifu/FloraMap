@@ -4,6 +4,7 @@ import {
   ScrollView, Pressable,
 } from 'react-native';
 import { useGardenStore } from '@/store/gardenStore';
+import { ACHIEVEMENTS } from '@/data/achievements';
 
 interface Props {
   visible: boolean;
@@ -31,8 +32,9 @@ const TASK_ICON_LABEL: Record<string, { icon: string; label: string }> = {
 };
 
 export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
-  const garden      = useGardenStore((s) => s.garden);
-  const gardenStats = useGardenStore((s) => s.gardenStats);
+  const garden               = useGardenStore((s) => s.garden);
+  const gardenStats          = useGardenStore((s) => s.gardenStats);
+  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
 
   const plants = garden?.plants ?? [];
   const totalPlants    = plants.length;
@@ -79,26 +81,33 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
               </View>
             </View>
 
-            {/* Streak & badges */}
+            {/* Streak */}
             <View style={s.section}>
-              <Text style={s.sectionTitle}>🔥 Streak & badges</Text>
+              <Text style={s.sectionTitle}>🔥 Activiteit</Text>
               <View style={s.streakCard}>
                 <Text style={s.streakMain}>{gardenStats.currentStreak > 0 ? '🔥 ' : ''}{gardenStats.currentStreak} {gardenStats.currentStreak === 1 ? 'dag actief' : 'dagen actief'}</Text>
                 <Text style={s.streakSub}>Record: {gardenStats.longestStreak} dagen</Text>
                 <Text style={s.streakSub}>{gardenStats.totalTasksCompleted} taken afgerond</Text>
               </View>
-              {gardenStats.badges.length > 0 ? (
-                <View style={s.badgesWrap}>
-                  {gardenStats.badges.map((b) => (
-                    <View key={b.id} style={s.badgeChip}>
-                      <Text style={s.badgeEmoji}>{b.emoji}</Text>
-                      <Text style={s.badgeName}>{b.name}</Text>
+            </View>
+
+            {/* Achievements — full list with locked/unlocked state */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>🏆 Prestaties ({Object.keys(unlockedAchievements).length}/{ACHIEVEMENTS.length})</Text>
+              <View style={s.badgesWrap}>
+                {ACHIEVEMENTS.map((a) => {
+                  const unlocked = !!unlockedAchievements[a.id];
+                  return (
+                    <View key={a.id} style={[s.badgeChip, !unlocked && s.badgeChipLocked]}>
+                      <Text style={[s.badgeEmoji, !unlocked && s.badgeEmojiLocked]}>{a.emoji}</Text>
+                      <View>
+                        <Text style={[s.badgeName, !unlocked && s.badgeNameLocked]}>{a.title}</Text>
+                        <Text style={s.badgeDesc}>{a.description}</Text>
+                      </View>
                     </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={s.emptyHint}>Nog geen badges — rond je eerste taken af!</Text>
-              )}
+                  );
+                })}
+              </View>
             </View>
 
             {/* Oogstranking */}
@@ -167,11 +176,15 @@ const s = StyleSheet.create({
   streakCard:   { backgroundColor: '#d8f3dc', borderRadius: 10, padding: 12, gap: 4 },
   streakMain:   { fontSize: 18, fontWeight: '700', color: '#1b4332' },
   streakSub:    { fontSize: 13, color: '#2d6a4f' },
-  badgesWrap:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  badgeChip:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#b7e4c7', paddingHorizontal: 10, paddingVertical: 5 },
-  badgeEmoji:   { fontSize: 16 },
-  badgeName:    { fontSize: 12, fontWeight: '700', color: '#1b4332' },
-  emptyHint:    { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
+  badgesWrap:      { gap: 8 },
+  badgeChip:       { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f1f8f3', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7', paddingHorizontal: 12, paddingVertical: 8 },
+  badgeChipLocked: { backgroundColor: '#f8f9fa', borderColor: '#e9ecef', opacity: 0.6 },
+  badgeEmoji:      { fontSize: 22 },
+  badgeEmojiLocked:{ opacity: 0.35 },
+  badgeName:       { fontSize: 13, fontWeight: '700', color: '#1b4332' },
+  badgeNameLocked: { color: '#aaa' },
+  badgeDesc:       { fontSize: 11, color: '#6b705c', marginTop: 1 },
+  emptyHint:       { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
   rankRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#e9ecef' },
   rankNum:      { fontSize: 13, fontWeight: '700', color: '#aaa', width: 24 },
   rankEmoji:    { fontSize: 20 },

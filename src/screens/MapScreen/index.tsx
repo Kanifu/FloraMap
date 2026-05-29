@@ -942,17 +942,21 @@ const MapScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         )}
 
-        {/* FAB menu — scan is primary, assistant/zaadkast moved to drawer */}
+        {/* FAB menu — assistant is primary, scan secondary */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); navigation.navigate('Assistant'); }} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>💬</Text>
+              <Text style={styles.fabMenuLabel}>Assistent — tips & planten toevoegen</Text>
+            </TouchableOpacity>
+            <View style={styles.fabMenuDivider} />
             <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); handleScanPress(); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>📷</Text>
               <Text style={styles.fabMenuLabel}>Plant scannen / herkennen</Text>
             </TouchableOpacity>
-            <View style={styles.fabMenuDivider} />
             <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>✏️</Text>
-              <Text style={styles.fabMenuLabel}>Plant / zone toevoegen</Text>
+              <Text style={styles.fabMenuLabel}>Plant / zone handmatig toevoegen</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>🏡</Text>
@@ -1384,6 +1388,7 @@ const MapScreen = (): React.JSX.Element => {
         onOpenAchievements={() => setShowStatsModal(true)}
         onOpenTierComparison={() => setShowTierModal(true)}
         onOpenStats={() => setShowStatsModal(true)}
+        onOpenVirtualGarden={() => navigation.navigate('VirtualGarden')}
         onReportBug={() => setShowFeedback(true)}
         onClearGarden={handleClearGarden}
         onDeleteGarden={handleDeleteActiveGarden}

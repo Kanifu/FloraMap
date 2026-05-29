@@ -31,6 +31,7 @@ interface SideMenuProps {
   onOpenSeedInventory: () => void;
   onOpenAbout: () => void;
   onOpenStats: () => void;
+  onOpenVirtualGarden: () => void;
   onOpenTierComparison: () => void;
   onReportBug: () => void;
   onClearGarden: () => void;
@@ -50,7 +51,7 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
     visible, onClose, plantCount, showCompanion, showNames,
     onToggleCompanion, onToggleNames,
     onOpenAssistant, onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
-    onOpenStats, onOpenTierComparison,
+    onOpenStats, onOpenTierComparison, onOpenVirtualGarden,
     onReportBug, onClearGarden, onDeleteGarden,
     onCreateGarden, onOpenGardenPicker,
     unlockedBadgeCount, recentBadgeEmojis,
@@ -80,8 +81,8 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
       title: 'Ga naar',
       rows: [
         { icon: '📅', label: 'Plannen & onderhoud', sub: 'Taken, planning, log', onPress: run(onOpenMaintenance) },
-        { icon: '📊', label: 'Statistieken & prestaties', sub: 'Streak, badges, oogst', onPress: run(onOpenStats) },
         { icon: '🌱', label: 'Zaadkast', sub: 'Beheer je zaadvoorraad', onPress: run(onOpenSeedInventory) },
+        { icon: '🌳', label: 'Virtuele tuin', sub: 'Je digitale groeiende tuin', onPress: run(onOpenVirtualGarden) },
       ],
     },
     {
