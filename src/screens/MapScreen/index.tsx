@@ -64,7 +64,7 @@ const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] =
   }
 };
 
-const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: number, y: number): Plant => {
+const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: number, y: number, scanImageUri?: string): Plant => {
   const id = newId();
   const tasks = createInitialTasksForPlant(id, identified);
   if (tasks.length === 0) {
@@ -82,6 +82,8 @@ const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: num
     careTips: identified.careTips ?? [],
     harvestMonths: identified.harvestMonths,
     addedVia: 'scan',
+    imageUri: scanImageUri,
+    photoLog: scanImageUri ? [{ id: `photo-${Date.now()}`, uri: scanImageUri, date: new Date().toISOString(), note: 'Scan' }] : undefined,
   };
 };
 
@@ -325,6 +327,7 @@ const MapScreen = (): React.JSX.Element => {
   // ── scan state ────────────────────────────────────────────────────────────
   const [scanning,       setScanning]       = useState(false);
   const [plantsToPlace,  setPlantsToPlace]  = useState<IdentifiedPlant[]>([]);
+  const [scanImageUri,   setScanImageUri]   = useState<string | undefined>();
 
   // ── correction sheet state ────────────────────────────────────────────────
   const [showCorrectionSheet, setShowCorrectionSheet] = useState(false);
@@ -413,8 +416,9 @@ const MapScreen = (): React.JSX.Element => {
         species: correctionSpecies.trim() || (next.species ?? ''),
       };
       const g = ensureGarden();
-      addPlant(makePlantFromScan(corrected, g.id, x, y));
+      addPlant(makePlantFromScan(corrected, g.id, x, y, scanImageUri));
       setPlantsToPlace(rest);
+      if (rest.length === 0) setScanImageUri(undefined);
       return;
     }
     if (movingPlant) { updatePlant({ ...movingPlant, x, y }); setMovingPlant(null); return; }
@@ -483,6 +487,7 @@ const MapScreen = (): React.JSX.Element => {
       const response = await gardenAssistantService.chat('', result.assets[0].uri, [], gardenPlants);
       if (response.identifiedPlants && response.identifiedPlants.length > 0) {
         setPlantsToPlace(response.identifiedPlants);
+        setScanImageUri(result.assets[0].uri);
       } else {
         Alert.alert('Geen planten herkend', 'Probeer een duidelijkere foto.');
       }

@@ -15,6 +15,7 @@ import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
 import { getCachedLocation } from '@/utils/location';
 import { useTheme } from '@/hooks/useTheme';
+import { getMoonInfo } from '@/utils/moonPhase';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'geschiedenis';
@@ -390,6 +391,16 @@ const MaintenanceScreen = (): React.JSX.Element => {
     },
     harvestTitle: { fontSize: 13, fontWeight: '700', color: theme.primaryDark },
     harvestItem: { fontSize: 13, color: theme.text, lineHeight: 20 },
+    // Moon phase card
+    moonCard: {
+      backgroundColor: theme.cardAlt, borderRadius: 14, borderWidth: 1,
+      borderColor: theme.border, padding: 14, gap: 8, marginBottom: 14,
+    },
+    moonCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    moonEmoji: { fontSize: 32 },
+    moonPhaseLabel: { fontSize: 15, fontWeight: '700', color: theme.primaryDark },
+    moonElementLabel: { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
+    moonTip: { fontSize: 12, color: theme.textSecondary, fontStyle: 'italic', lineHeight: 18 },
     // Planning tab
     planningDayHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -582,6 +593,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   // ── Shared header pieces ──────────────────────────────────────────────────
   const seasonalTip = SEASONAL_TIPS[currentMonth];
+  const moonInfo = getMoonInfo();
 
   const infoHeader = (
     <>
@@ -751,6 +763,17 @@ const MaintenanceScreen = (): React.JSX.Element => {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.listContent}>
+            {/* Moon phase card */}
+            <View style={styles.moonCard}>
+              <View style={styles.moonCardLeft}>
+                <Text style={styles.moonEmoji}>{moonInfo.emoji}</Text>
+                <View>
+                  <Text style={styles.moonPhaseLabel}>{moonInfo.phaseLabel}</Text>
+                  <Text style={styles.moonElementLabel}>{moonInfo.elementLabel}</Text>
+                </View>
+              </View>
+              <Text style={styles.moonTip}>{moonInfo.gardening}</Text>
+            </View>
             {planningGroups.map(({ dateKey, label, tasks }) => {
               const dayWeather = weather.dailyForecast.find((d) => d.date === dateKey);
               return (
