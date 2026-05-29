@@ -9,7 +9,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { MaintenanceTaskType, PhotoLogEntry } from '@/models';
+import { MaintenanceTaskType, PhotoLogEntry, HarvestEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
 import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { useTheme } from '@/hooks/useTheme';
@@ -146,6 +146,38 @@ const PlantCardScreen = (): React.JSX.Element => {
     photoDate: { fontSize: 11, color: theme.textSecondary, textAlign: 'center' },
     photoHint: { fontSize: 11, color: theme.textMuted, fontStyle: 'italic' },
     emptyText: { fontSize: 14, color: theme.textMuted, fontStyle: 'italic', lineHeight: 20 },
+    harvestTotalCard: {
+      backgroundColor: theme.warningLight, borderRadius: 12, borderWidth: 1, borderColor: theme.warning,
+      padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10,
+    },
+    harvestTotalEmoji: { fontSize: 24 },
+    harvestTotalText: { fontSize: 15, fontWeight: '700', color: theme.primaryDark, flex: 1 },
+    harvestTotalSub: { fontSize: 12, color: theme.textSecondary },
+    harvestForm: {
+      backgroundColor: theme.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: theme.border,
+      padding: 12, gap: 8,
+    },
+    harvestFormRow: { flexDirection: 'row', gap: 8 },
+    harvestFormInput: {
+      flex: 1, backgroundColor: theme.card, borderRadius: 8, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: theme.text,
+    },
+    harvestFormInputFull: {
+      backgroundColor: theme.card, borderRadius: 8, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: theme.text,
+    },
+    harvestSaveBtn: {
+      backgroundColor: theme.primary, borderRadius: 8, padding: 11, alignItems: 'center',
+    },
+    harvestSaveBtnText: { color: theme.card, fontWeight: '700', fontSize: 14 },
+    harvestEntryRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: theme.cardAlt, borderRadius: 10, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 12, paddingVertical: 9, gap: 8,
+    },
+    harvestEntryDate: { fontSize: 12, color: theme.textSecondary, flex: 1 },
+    harvestEntryAmount: { fontSize: 13, fontWeight: '700', color: theme.primary },
+    harvestEntryNotes: { fontSize: 11, color: theme.textMuted, fontStyle: 'italic' },
     enrichBtn: {
       backgroundColor: theme.primaryBg, borderRadius: 12,
       borderWidth: 1, borderColor: theme.primary,
@@ -158,6 +190,8 @@ const PlantCardScreen = (): React.JSX.Element => {
   const garden                  = useGardenStore((s) => s.garden);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
+  const recordHarvest           = useGardenStore((s) => s.recordHarvest);
+  const deleteHarvestEntry      = useGardenStore((s) => s.deleteHarvestEntry);
 
   const plant = garden?.plants.find((p) => p.id === plantId);
   const now   = new Date().toISOString();
@@ -168,8 +202,12 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [editSpecies,  setEditSpecies]  = useState('');
   const [editNotes,    setEditNotes]    = useState('');
   const [editWater,    setEditWater]    = useState('');
-  const [showHistory,  setShowHistory]  = useState(false);
-  const [enriching,    setEnriching]    = useState(false);
+  const [showHistory,       setShowHistory]       = useState(false);
+  const [enriching,         setEnriching]         = useState(false);
+  const [showHarvestForm,   setShowHarvestForm]   = useState(false);
+  const [harvestWeight,     setHarvestWeight]     = useState('');
+  const [harvestCount,      setHarvestCount]      = useState('');
+  const [harvestNotes,      setHarvestNotes]      = useState('');
 
   const startEdit = () => {
     if (!plant) return;
@@ -283,6 +321,34 @@ const PlantCardScreen = (): React.JSX.Element => {
         text: 'Verwijderen', style: 'destructive',
         onPress: () => updatePlant({ ...plant, photoLog: (plant.photoLog ?? []).filter((e) => e.id !== entryId) }),
       },
+    ]);
+  };
+
+  // ── harvest ────────────────────────────────────────────────────────────────
+  const handleSaveHarvest = () => {
+    if (!plant) return;
+    const wg = harvestWeight ? parseFloat(harvestWeight) : undefined;
+    const cnt = harvestCount ? parseInt(harvestCount, 10) : undefined;
+    if (!wg && !cnt) return;
+    const entry: HarvestEntry = {
+      id: newId(),
+      date: new Date().toISOString(),
+      weightG: wg && !isNaN(wg) ? Math.round(wg) : undefined,
+      count: cnt && !isNaN(cnt) ? cnt : undefined,
+      notes: harvestNotes.trim() || undefined,
+    };
+    recordHarvest(plant.id, entry);
+    setShowHarvestForm(false);
+    setHarvestWeight('');
+    setHarvestCount('');
+    setHarvestNotes('');
+  };
+
+  const handleDeleteHarvest = (entryId: string) => {
+    if (!plant) return;
+    Alert.alert('Oogst verwijderen?', 'Dit kan niet ongedaan worden gemaakt.', [
+      { text: 'Annuleren', style: 'cancel' },
+      { text: 'Verwijderen', style: 'destructive', onPress: () => deleteHarvestEntry(plant.id, entryId) },
     ]);
   };
 
@@ -533,6 +599,91 @@ const PlantCardScreen = (): React.JSX.Element => {
               <Text style={s.photoHint}>Lang indrukken om foto te verwijderen</Text>
             )}
           </View>
+
+          {/* ── Harvest log ── */}
+          {plant.harvestMonths && plant.harvestMonths.length > 0 && (() => {
+            const log = [...(plant.harvestLog ?? [])].sort((a, b) => b.date.localeCompare(a.date));
+            const totalG = log.reduce((s, e) => s + (e.weightG ?? 0), 0);
+            const totalCount = log.reduce((s, e) => s + (e.count ?? 0), 0);
+            return (
+              <View style={s.section}>
+                <View style={s.sectionHeader}>
+                  <Text style={s.sectionTitle}>🍓 Oogst bijhouden</Text>
+                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn}>
+                    <Text style={s.addPhotoBtnText}>{showHarvestForm ? '✕ Sluiten' : '+ Oogst'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {(totalG > 0 || totalCount > 0) && (
+                  <View style={s.harvestTotalCard}>
+                    <Text style={s.harvestTotalEmoji}>🏆</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.harvestTotalText}>
+                        {totalG > 0 ? `${totalG}g` : ''}
+                        {totalG > 0 && totalCount > 0 ? ' · ' : ''}
+                        {totalCount > 0 ? `${totalCount}x` : ''}
+                        {' totaal geoogst'}
+                      </Text>
+                      <Text style={s.harvestTotalSub}>{log.length} {log.length === 1 ? 'oogst' : 'oogsten'} geregistreerd</Text>
+                    </View>
+                  </View>
+                )}
+
+                {showHarvestForm && (
+                  <View style={s.harvestForm}>
+                    <View style={s.harvestFormRow}>
+                      <TextInput
+                        style={s.harvestFormInput}
+                        placeholder="Gewicht (g)"
+                        placeholderTextColor={theme.textMuted}
+                        value={harvestWeight}
+                        onChangeText={setHarvestWeight}
+                        keyboardType="decimal-pad"
+                      />
+                      <TextInput
+                        style={s.harvestFormInput}
+                        placeholder="Aantal stuks"
+                        placeholderTextColor={theme.textMuted}
+                        value={harvestCount}
+                        onChangeText={setHarvestCount}
+                        keyboardType="number-pad"
+                      />
+                    </View>
+                    <TextInput
+                      style={s.harvestFormInputFull}
+                      placeholder="Notitie (optioneel)"
+                      placeholderTextColor={theme.textMuted}
+                      value={harvestNotes}
+                      onChangeText={setHarvestNotes}
+                    />
+                    <TouchableOpacity style={s.harvestSaveBtn} onPress={handleSaveHarvest}>
+                      <Text style={s.harvestSaveBtnText}>Opslaan</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {log.length === 0 ? (
+                  <Text style={s.emptyText}>Nog geen oogsten geregistreerd.</Text>
+                ) : (
+                  log.map((entry) => (
+                    <TouchableOpacity
+                      key={entry.id}
+                      style={s.harvestEntryRow}
+                      onLongPress={() => handleDeleteHarvest(entry.id)}
+                      activeOpacity={0.7}>
+                      <Text style={s.harvestEntryDate}>
+                        🌾 {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                      <Text style={s.harvestEntryAmount}>
+                        {[entry.weightG ? `${entry.weightG}g` : '', entry.count ? `${entry.count}x` : ''].filter(Boolean).join(' · ')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+                {log.length > 0 && <Text style={s.photoHint}>Lang indrukken om oogstregistratie te verwijderen</Text>}
+              </View>
+            );
+          })()}
 
         </ScrollView>
       </KeyboardAvoidingView>

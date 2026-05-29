@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, SoilProfile, SoilAmendment } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, SoilProfile, SoilAmendment, HarvestEntry } from '@/models';
 
 interface GardenState {
   garden: Garden | null;       // active garden (always in sync with gardens[activeGardenId])
@@ -30,6 +30,9 @@ interface GardenActions {
   acceptDiffProposal: (proposalId: string) => void;
   rejectDiffProposal: (proposalId: string) => void;
   setScanning: (isScanning: boolean) => void;
+  // Harvest tracking
+  recordHarvest: (plantId: string, entry: HarvestEntry) => void;
+  deleteHarvestEntry: (plantId: string, entryId: string) => void;
   // Soil health actions
   setSoilProfile: (profile: SoilProfile) => void;
   addSoilAmendment: (profileId: string, amendment: SoilAmendment) => void;
@@ -230,6 +233,30 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         set((state) => ({
           pendingDiffProposals: state.pendingDiffProposals.filter((p) => p.id !== proposalId),
         }));
+      },
+
+      recordHarvest: (plantId, entry) => {
+        const { garden } = get();
+        if (!garden) return;
+        const updated = {
+          ...garden,
+          plants: garden.plants.map((p) =>
+            p.id === plantId ? { ...p, harvestLog: [...(p.harvestLog ?? []), entry] } : p,
+          ),
+        };
+        set(syncActive(get(), updated));
+      },
+
+      deleteHarvestEntry: (plantId, entryId) => {
+        const { garden } = get();
+        if (!garden) return;
+        const updated = {
+          ...garden,
+          plants: garden.plants.map((p) =>
+            p.id === plantId ? { ...p, harvestLog: (p.harvestLog ?? []).filter((e) => e.id !== entryId) } : p,
+          ),
+        };
+        set(syncActive(get(), updated));
       },
 
       setScanning: (isScanning) => {

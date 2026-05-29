@@ -69,6 +69,7 @@ export interface Plant {
   notes?: string;
   addedVia?: PlantAddedVia;
   photoLog?: PhotoLogEntry[];
+  harvestLog?: HarvestEntry[];
 }
 
 export type GardenTaskUrgency = 'high' | 'medium' | 'low';
@@ -80,6 +81,14 @@ export interface GardenTask {
   completedDate?: string;
   urgency: GardenTaskUrgency;
   plantName?: string;
+}
+
+export interface HarvestEntry {
+  id: string;
+  date: string;
+  weightG?: number;
+  count?: number;
+  notes?: string;
 }
 
 export type SoilType = 'clay' | 'loam' | 'sand' | 'peat';
