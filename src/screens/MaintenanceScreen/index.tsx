@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, SectionList,
-  TouchableOpacity, ScrollView, FlatList, Alert,
+  TouchableOpacity, ScrollView, FlatList, Alert, Modal, TextInput,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -9,7 +9,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
-import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask } from '@/models';
+import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask, SoilProfile, SoilAmendment, SoilType } from '@/models';
 import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
@@ -18,7 +18,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { getMoonInfo } from '@/utils/moonPhase';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
-type Tab = 'taken' | 'planning' | 'geschiedenis';
+type Tab = 'taken' | 'planning' | 'geschiedenis' | 'bodem';
 
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Begieten',
@@ -56,6 +56,176 @@ const SEASONAL_TIPS: Record<number, string> = {
   9: '🍂 Oktober: Plant voorjaarsbollen. Verwijder afgestorven planten.',
   10: '🍁 November: Snoei klimplanten en struiken. Mulch kwetsbare wortels voor de winter.',
   11: '❄️ December: Rust voor de tuin. Maak gereedschap schoon en plan volgend jaar.',
+};
+
+// ── Soil health constants ─────────────────────────────────────────────────────
+
+const PH_PRESETS = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0];
+
+const SOIL_TYPES: { value: SoilType; label: string }[] = [
+  { value: 'loam', label: 'Leem' },
+  { value: 'clay', label: 'Klei' },
+  { value: 'sand', label: 'Zand' },
+  { value: 'peat', label: 'Veen' },
+];
+
+const SOIL_TYPE_LABELS: Record<SoilType, string> = {
+  loam: 'Leem', clay: 'Klei', sand: 'Zand', peat: 'Veen',
+};
+
+const AMENDMENT_PRESETS = ['Kalk', 'Compost', 'Tuinzwavel', 'Bloedmeel', 'Wormenhumus', 'Kunstmest'];
+
+const PLANT_PH_NEEDS: Record<string, { min: number; max: number }> = {
+  'tomaat': { min: 6.0, max: 6.8 }, 'tomaten': { min: 6.0, max: 6.8 },
+  'aardappel': { min: 5.0, max: 6.5 }, 'aardappelen': { min: 5.0, max: 6.5 },
+  'wortel': { min: 6.0, max: 6.8 }, 'wortelen': { min: 6.0, max: 6.8 },
+  'sla': { min: 6.0, max: 7.0 }, 'spinazie': { min: 6.5, max: 7.5 },
+  'kool': { min: 6.5, max: 7.5 }, 'spruitjes': { min: 6.5, max: 7.5 },
+  'ui': { min: 6.0, max: 7.0 }, 'uien': { min: 6.0, max: 7.0 },
+  'prei': { min: 6.5, max: 7.5 }, 'aardbei': { min: 5.5, max: 6.5 },
+  'aardbeien': { min: 5.5, max: 6.5 }, 'blauwe bes': { min: 4.5, max: 5.5 },
+  'frambozen': { min: 5.5, max: 6.5 }, 'framboos': { min: 5.5, max: 6.5 },
+  'roos': { min: 6.0, max: 7.0 }, 'rozen': { min: 6.0, max: 7.0 },
+  'lavendel': { min: 6.5, max: 7.5 }, 'zonnebloem': { min: 6.0, max: 7.5 },
+  'komkommer': { min: 6.0, max: 7.0 }, 'courgette': { min: 6.0, max: 7.0 },
+  'paprika': { min: 6.0, max: 6.8 }, 'basilicum': { min: 6.0, max: 7.5 },
+  'peterselie': { min: 6.0, max: 7.0 }, 'munt': { min: 6.0, max: 7.0 },
+  'tijm': { min: 6.0, max: 8.0 }, 'boon': { min: 6.0, max: 7.0 },
+  'bonen': { min: 6.0, max: 7.0 }, 'erwt': { min: 6.0, max: 7.5 },
+  'erwten': { min: 6.0, max: 7.5 },
+};
+
+const getPHInfo = (ph: number): { label: string; color: string } => {
+  if (ph < 5.5) return { label: 'Sterk zuur', color: '#e63946' };
+  if (ph < 6.5) return { label: 'Licht zuur', color: '#ffb703' };
+  if (ph < 7.5) return { label: 'Neutraal', color: '#2d6a4f' };
+  return { label: 'Alkalisch', color: '#3a86ff' };
+};
+
+const getPlantAdvice = (ph: number, plants: Plant[]): string[] => {
+  const seen = new Set<string>();
+  const advice: string[] = [];
+  for (const plant of plants) {
+    const key = plant.commonName.toLowerCase();
+    const needs = PLANT_PH_NEEDS[key];
+    if (!needs || seen.has(key)) continue;
+    seen.add(key);
+    if (ph < needs.min - 0.2) {
+      advice.push(`${plant.commonName} heeft pH ${needs.min}–${needs.max} nodig (bodem te zuur)`);
+    } else if (ph > needs.max + 0.2) {
+      advice.push(`${plant.commonName} heeft pH ${needs.min}–${needs.max} nodig (bodem te alkalisch)`);
+    }
+    if (advice.length >= 3) break;
+  }
+  return advice;
+};
+
+// ── SoilProfileCard ──────────────────────────────────────────────────────────
+
+interface SoilProfileCardProps {
+  profile: SoilProfile;
+  plants: Plant[];
+  onAddAmendment: (profileId: string) => void;
+  onDelete: (profileId: string) => void;
+}
+
+const SoilProfileCard = ({ profile, plants, onAddAmendment, onDelete }: SoilProfileCardProps): React.JSX.Element => {
+  const theme = useTheme();
+  const phInfo = profile.ph !== undefined ? getPHInfo(profile.ph) : null;
+  const advice = profile.ph !== undefined ? getPlantAdvice(profile.ph, plants) : [];
+  const recentAmendments = [...profile.amendments].reverse().slice(0, 3);
+
+  const s = StyleSheet.create({
+    card: { backgroundColor: theme.card, borderRadius: 14, borderWidth: 1, borderColor: theme.border, padding: 14, marginBottom: 12, gap: 10 },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    zoneName: { fontSize: 16, fontWeight: '700', color: theme.primaryDark, flex: 1 },
+    badgeRow: { flexDirection: 'row', gap: 6 },
+    phBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    phBadgeText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+    stBadge: { backgroundColor: theme.primaryBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: theme.borderLight },
+    stBadgeText: { fontSize: 12, color: theme.primary, fontWeight: '600' },
+    subText: { fontSize: 11, color: theme.textMuted },
+    divider: { height: 1, backgroundColor: theme.border },
+    sectionLabel: { fontSize: 12, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 },
+    adviceRow: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
+    adviceText: { fontSize: 12, color: theme.text, flex: 1, lineHeight: 18 },
+    okText: { fontSize: 12, color: theme.primary, fontStyle: 'italic' },
+    amendRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    amendText: { fontSize: 12, color: theme.text, flex: 1 },
+    amendDate: { fontSize: 11, color: theme.textMuted },
+    btnRow: { flexDirection: 'row', gap: 8 },
+    addBtn: { flex: 1, backgroundColor: theme.primaryBg, borderRadius: 8, borderWidth: 1, borderColor: theme.borderLight, padding: 10, alignItems: 'center' },
+    addBtnText: { fontSize: 13, fontWeight: '600', color: theme.primary },
+    delBtn: { backgroundColor: theme.dangerLight, borderRadius: 8, borderWidth: 1, borderColor: theme.danger, padding: 10, paddingHorizontal: 14, alignItems: 'center' },
+    delBtnText: { fontSize: 15 },
+  });
+
+  return (
+    <View style={s.card}>
+      <View style={s.cardHeader}>
+        <Text style={s.zoneName}>{profile.zoneName}</Text>
+        <View style={s.badgeRow}>
+          {phInfo && (
+            <View style={[s.phBadge, { backgroundColor: phInfo.color }]}>
+              <Text style={s.phBadgeText}>pH {profile.ph?.toFixed(1)}</Text>
+            </View>
+          )}
+          {profile.soilType && (
+            <View style={s.stBadge}>
+              <Text style={s.stBadgeText}>{SOIL_TYPE_LABELS[profile.soilType]}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {phInfo && (
+        <Text style={s.subText}>
+          {phInfo.label}
+          {profile.lastTestedDate
+            ? ` · getest: ${new Date(profile.lastTestedDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}`
+            : ' · testdatum onbekend'}
+        </Text>
+      )}
+
+      <View style={s.divider} />
+
+      <Text style={s.sectionLabel}>🧪 Advies</Text>
+      {profile.ph === undefined ? (
+        <Text style={s.okText}>Voer een pH-waarde in voor automatisch advies</Text>
+      ) : advice.length === 0 ? (
+        <Text style={s.okText}>✅ pH is geschikt voor je planten</Text>
+      ) : (
+        advice.map((tip, i) => (
+          <View key={i} style={s.adviceRow}>
+            <Text>⚠️</Text>
+            <Text style={s.adviceText}>{tip}</Text>
+          </View>
+        ))
+      )}
+
+      {recentAmendments.length > 0 && (
+        <>
+          <View style={s.divider} />
+          <Text style={s.sectionLabel}>Recente toevoegingen</Text>
+          {recentAmendments.map((a) => (
+            <View key={a.id} style={s.amendRow}>
+              <Text style={s.amendText}>🧴 {a.type}{a.notes ? ` — ${a.notes}` : ''}</Text>
+              <Text style={s.amendDate}>{new Date(a.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</Text>
+            </View>
+          ))}
+        </>
+      )}
+
+      <View style={s.btnRow}>
+        <TouchableOpacity style={s.addBtn} onPress={() => onAddAmendment(profile.id)}>
+          <Text style={s.addBtnText}>+ Toevoeging</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.delBtn} onPress={() => onDelete(profile.id)}>
+          <Text style={s.delBtnText}>🗑️</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 };
 
 interface DailyForecast { date: string; rainMm: number; tempMax: number; emoji: string; }
@@ -333,11 +503,24 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const completeGardenTask = useGardenStore((s) => s.completeGardenTask);
+  const setSoilProfile = useGardenStore((s) => s.setSoilProfile);
+  const addSoilAmendment = useGardenStore((s) => s.addSoilAmendment);
+  const deleteSoilProfile = useGardenStore((s) => s.deleteSoilProfile);
+  const soilProfiles = garden?.soilProfiles ?? [];
+
   const [weather, setWeather]               = useState<WeatherData>(EMPTY_WEATHER);
   const [activeTab, setActiveTab]           = useState<Tab>('taken');
   const [exporting, setExporting]           = useState(false);
   const [showAllTasks, setShowAllTasks]     = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showAddSoilModal, setShowAddSoilModal] = useState(false);
+  const [newZoneName, setNewZoneName] = useState('');
+  const [newZonePh, setNewZonePh] = useState(6.5);
+  const [newZoneSoilType, setNewZoneSoilType] = useState<SoilType | undefined>(undefined);
+  const [showAmendModal, setShowAmendModal] = useState(false);
+  const [amendProfileId, setAmendProfileId] = useState<string | null>(null);
+  const [amendType, setAmendType] = useState('');
+  const [amendNotes, setAmendNotes] = useState('');
 
   const currentMonth = new Date().getMonth();
 
@@ -366,7 +549,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
       borderBottomWidth: 2, borderBottomColor: 'transparent',
     },
     tabBtnActive: { borderBottomColor: theme.primary },
-    tabLabel: { fontSize: 14, fontWeight: '600', color: theme.textMuted },
+    tabLabel: { fontSize: 12, fontWeight: '600', color: theme.textMuted },
     tabLabelActive: { color: theme.primary },
     listContent: { padding: 12, gap: 4, paddingBottom: 32 },
     emptyScroll: { flexGrow: 1, padding: 12 },
@@ -474,6 +657,53 @@ const MaintenanceScreen = (): React.JSX.Element => {
       shadowOpacity: 0.22, shadowRadius: 4, elevation: 6,
     },
     toastText: { color: theme.card, fontWeight: '600', fontSize: 14, textAlign: 'center' },
+    // Soil tab
+    addZoneBtn: {
+      backgroundColor: theme.primaryBg, borderRadius: 10, borderWidth: 1, borderColor: theme.borderLight,
+      padding: 14, alignItems: 'center', marginBottom: 12,
+    },
+    addZoneBtnText: { fontSize: 14, fontWeight: '700', color: theme.primary },
+    // Modals
+    modalOverlay: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
+    modalCard: {
+      backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+      padding: 20, gap: 14, paddingBottom: 32,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: theme.primaryDark },
+    modalLabel: { fontSize: 13, fontWeight: '600', color: theme.textSecondary, marginBottom: 6 },
+    modalInput: {
+      backgroundColor: theme.cardAlt, borderRadius: 10, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: theme.text,
+    },
+    phPresetsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+    phPresetBtn: {
+      paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5,
+      borderColor: theme.border, backgroundColor: theme.cardAlt,
+    },
+    phPresetBtnActive: { borderColor: theme.primary, backgroundColor: theme.primaryLight },
+    phPresetText: { fontSize: 13, fontWeight: '600', color: theme.textSecondary },
+    phPresetTextActive: { color: theme.primaryDark },
+    soilTypesRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    soilTypeBtn: {
+      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5,
+      borderColor: theme.border, backgroundColor: theme.cardAlt,
+    },
+    soilTypeBtnActive: { borderColor: theme.primary, backgroundColor: theme.primaryLight },
+    soilTypeText: { fontSize: 13, fontWeight: '600', color: theme.textSecondary },
+    soilTypeTextActive: { color: theme.primaryDark },
+    amendPresetRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 },
+    amendPresetBtn: {
+      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1,
+      borderColor: theme.border, backgroundColor: theme.cardAlt,
+    },
+    amendPresetText: { fontSize: 12, color: theme.textSecondary },
+    modalSaveBtn: { backgroundColor: theme.primary, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 4 },
+    modalSaveBtnText: { color: theme.card, fontWeight: '700', fontSize: 16 },
+    modalCancelBtn: {
+      backgroundColor: theme.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: theme.border,
+      padding: 12, alignItems: 'center',
+    },
+    modalCancelBtnText: { color: theme.textSecondary, fontWeight: '600', fontSize: 15 },
   });
 
   useEffect(() => { fetchWeather().then(setWeather); }, []);
@@ -591,6 +821,47 @@ const MaintenanceScreen = (): React.JSX.Element => {
     }
   }, [garden]);
 
+  // ── Soil handlers ────────────────────────────────────────────────────────
+  const handleSaveSoilProfile = useCallback(() => {
+    if (!newZoneName.trim()) return;
+    const profile: SoilProfile = {
+      id: `soil-${Date.now()}`,
+      gardenId: garden?.id ?? '',
+      zoneName: newZoneName.trim(),
+      ph: newZonePh,
+      soilType: newZoneSoilType,
+      lastTestedDate: new Date().toISOString(),
+      amendments: [],
+    };
+    setSoilProfile(profile);
+    setShowAddSoilModal(false);
+    setNewZoneName('');
+    setNewZonePh(6.5);
+    setNewZoneSoilType(undefined);
+  }, [newZoneName, newZonePh, newZoneSoilType, garden, setSoilProfile]);
+
+  const handleSaveAmendment = useCallback(() => {
+    if (!amendType.trim() || !amendProfileId) return;
+    const amendment: SoilAmendment = {
+      id: `amend-${Date.now()}`,
+      date: new Date().toISOString(),
+      type: amendType.trim(),
+      notes: amendNotes.trim() || undefined,
+    };
+    addSoilAmendment(amendProfileId, amendment);
+    setShowAmendModal(false);
+    setAmendType('');
+    setAmendNotes('');
+    setAmendProfileId(null);
+  }, [amendType, amendNotes, amendProfileId, addSoilAmendment]);
+
+  const handleDeleteSoilProfile = useCallback((profileId: string) => {
+    Alert.alert('Zone verwijderen', 'Weet je zeker dat je dit bodemprofiel wilt verwijderen?', [
+      { text: 'Annuleren', style: 'cancel' },
+      { text: 'Verwijderen', style: 'destructive', onPress: () => deleteSoilProfile(profileId) },
+    ]);
+  }, [deleteSoilProfile]);
+
   // ── Shared header pieces ──────────────────────────────────────────────────
   const seasonalTip = SEASONAL_TIPS[currentMonth];
   const moonInfo = getMoonInfo();
@@ -682,13 +953,13 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
-        {(['taken', 'planning', 'geschiedenis'] as Tab[]).map((tab) => (
+        {(['taken', 'planning', 'geschiedenis', 'bodem'] as Tab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
             onPress={() => setActiveTab(tab)}>
             <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab === 'taken' ? 'Taken' : tab === 'planning' ? 'Planning' : 'Geschiedenis'}
+              {tab === 'taken' ? 'Taken' : tab === 'planning' ? 'Planning' : tab === 'geschiedenis' ? 'Logboek' : 'Bodem'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -852,6 +1123,143 @@ const MaintenanceScreen = (): React.JSX.Element => {
           />
         )
       )}
+
+      {/* ── Bodem tab ── */}
+      {activeTab === 'bodem' && (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          <TouchableOpacity style={styles.addZoneBtn} onPress={() => setShowAddSoilModal(true)}>
+            <Text style={styles.addZoneBtnText}>+ 🧪 Tuinzone toevoegen</Text>
+          </TouchableOpacity>
+          {soilProfiles.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🧪</Text>
+              <Text style={styles.emptyText}>
+                Nog geen bodemprofielen.{'\n'}Voeg een tuinzone toe om pH en bodemtype bij te houden.
+              </Text>
+            </View>
+          ) : (
+            soilProfiles.map((profile) => (
+              <SoilProfileCard
+                key={profile.id}
+                profile={profile}
+                plants={garden?.plants ?? []}
+                onAddAmendment={(id) => { setAmendProfileId(id); setShowAmendModal(true); }}
+                onDelete={handleDeleteSoilProfile}
+              />
+            ))
+          )}
+        </ScrollView>
+      )}
+
+      {/* Add soil zone modal */}
+      <Modal
+        visible={showAddSoilModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddSoilModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>🧪 Tuinzone toevoegen</Text>
+            <View>
+              <Text style={styles.modalLabel}>Naam van de zone</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="bijv. Moestuin, Borders, Kas"
+                placeholderTextColor={theme.textMuted}
+                value={newZoneName}
+                onChangeText={setNewZoneName}
+              />
+            </View>
+            <View>
+              <Text style={styles.modalLabel}>pH-waarde (huidige meting)</Text>
+              <View style={styles.phPresetsRow}>
+                {PH_PRESETS.map((p) => (
+                  <TouchableOpacity
+                    key={p}
+                    style={[styles.phPresetBtn, Math.abs(newZonePh - p) < 0.01 && styles.phPresetBtnActive]}
+                    onPress={() => setNewZonePh(p)}>
+                    <Text style={[styles.phPresetText, Math.abs(newZonePh - p) < 0.01 && styles.phPresetTextActive]}>
+                      {p.toFixed(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <View>
+              <Text style={styles.modalLabel}>Bodemtype</Text>
+              <View style={styles.soilTypesRow}>
+                {SOIL_TYPES.map(({ value, label }) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[styles.soilTypeBtn, newZoneSoilType === value && styles.soilTypeBtnActive]}
+                    onPress={() => setNewZoneSoilType(newZoneSoilType === value ? undefined : value)}>
+                    <Text style={[styles.soilTypeText, newZoneSoilType === value && styles.soilTypeTextActive]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveSoilProfile}>
+              <Text style={styles.modalSaveBtnText}>Opslaan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAddSoilModal(false)}>
+              <Text style={styles.modalCancelBtnText}>Annuleren</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add amendment modal */}
+      <Modal
+        visible={showAmendModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAmendModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>🧴 Toevoeging registreren</Text>
+            <View>
+              <Text style={styles.modalLabel}>Type toevoeging</Text>
+              <View style={styles.amendPresetRow}>
+                {AMENDMENT_PRESETS.map((preset) => (
+                  <TouchableOpacity
+                    key={preset}
+                    style={styles.amendPresetBtn}
+                    onPress={() => setAmendType(preset)}>
+                    <Text style={styles.amendPresetText}>{preset}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Of typ een andere toevoeging..."
+                placeholderTextColor={theme.textMuted}
+                value={amendType}
+                onChangeText={setAmendType}
+              />
+            </View>
+            <View>
+              <Text style={styles.modalLabel}>Notities (optioneel)</Text>
+              <TextInput
+                style={[styles.modalInput, { height: 80 }]}
+                placeholder="bijv. hoeveelheid, reden..."
+                placeholderTextColor={theme.textMuted}
+                value={amendNotes}
+                onChangeText={setAmendNotes}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+            <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveAmendment}>
+              <Text style={styles.modalSaveBtnText}>Opslaan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAmendModal(false)}>
+              <Text style={styles.modalCancelBtnText}>Annuleren</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Toast voor herhalende taken */}
       {toast !== null && (

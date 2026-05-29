@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask } from '@/models';
+import { Garden, Plant, DiffProposal, GardenTask, MaintenanceTask, SoilProfile, SoilAmendment } from '@/models';
 
 interface GardenState {
   garden: Garden | null;       // active garden (always in sync with gardens[activeGardenId])
@@ -23,6 +23,10 @@ interface GardenActions {
   acceptDiffProposal: (proposalId: string) => void;
   rejectDiffProposal: (proposalId: string) => void;
   setScanning: (isScanning: boolean) => void;
+  // Soil health actions
+  setSoilProfile: (profile: SoilProfile) => void;
+  addSoilAmendment: (profileId: string, amendment: SoilAmendment) => void;
+  deleteSoilProfile: (profileId: string) => void;
   // Multi-garden actions
   createGarden: (name: string) => Garden;
   switchGarden: (id: string) => void;
@@ -160,6 +164,37 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       setScanning: (isScanning) => set({ isScanning }),
+
+      setSoilProfile: (profile) => {
+        const { garden } = get();
+        if (!garden) return;
+        const profiles = garden.soilProfiles ?? [];
+        const exists = profiles.some((p) => p.id === profile.id);
+        const updated = {
+          ...garden,
+          soilProfiles: exists ? profiles.map((p) => p.id === profile.id ? profile : p) : [...profiles, profile],
+        };
+        set(syncActive(get(), updated));
+      },
+
+      addSoilAmendment: (profileId, amendment) => {
+        const { garden } = get();
+        if (!garden) return;
+        const updated = {
+          ...garden,
+          soilProfiles: (garden.soilProfiles ?? []).map((p) =>
+            p.id === profileId ? { ...p, amendments: [...p.amendments, amendment] } : p,
+          ),
+        };
+        set(syncActive(get(), updated));
+      },
+
+      deleteSoilProfile: (profileId) => {
+        const { garden } = get();
+        if (!garden) return;
+        const updated = { ...garden, soilProfiles: (garden.soilProfiles ?? []).filter((p) => p.id !== profileId) };
+        set(syncActive(get(), updated));
+      },
 
       createGarden: (name) => {
         const id = `garden-${Date.now()}-${Math.random().toString(36).slice(2)}`;

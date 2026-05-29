@@ -82,6 +82,25 @@ export interface GardenTask {
   plantName?: string;
 }
 
+export type SoilType = 'clay' | 'loam' | 'sand' | 'peat';
+
+export interface SoilAmendment {
+  id: string;
+  date: string;
+  type: string;
+  notes?: string;
+}
+
+export interface SoilProfile {
+  id: string;
+  gardenId: string;
+  zoneName: string;
+  ph?: number;
+  soilType?: SoilType;
+  lastTestedDate?: string;
+  amendments: SoilAmendment[];
+}
+
 export const ZONE_COLORS = [
   '#95d5b2', '#52b788', '#ffb703', '#e76f51',
   '#a8dadc', '#e9c46a', '#c9b1ff', '#ffd6e0',
@@ -113,6 +132,7 @@ export interface Garden {
   tasks?: GardenTask[];
   lastScannedAt?: string;
   northOrientationDeg?: number;
+  soilProfiles?: SoilProfile[];
 }
 
 export interface ScanResult {
