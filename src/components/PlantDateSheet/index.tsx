@@ -45,6 +45,7 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
   const now = new Date();
   const [customDate, setCustomDate] = useState('');
   const [showCustom, setShowCustom] = useState(false);
+  const [dateError, setDateError] = useState('');
 
   if (!plant) return null;
 
@@ -60,14 +61,17 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
   };
 
   const handleCustomSave = () => {
-    if (!customDate) return;
+    if (!customDate) { setDateError('Voer een datum in.'); return; }
     try {
-      const iso = fromDateInput(customDate);
+      const parsed = new Date(customDate);
+      if (isNaN(parsed.getTime())) throw new Error('invalid');
+      const iso = parsed.toISOString();
+      setDateError('');
       const updated = { ...plant, plantedDate: iso, maintenanceTasks: recalculateTasks(plant, iso) };
       onSave(updated);
       onClose();
     } catch {
-      // invalid date — ignore
+      setDateError('Ongeldige datum — gebruik formaat JJJJ-MM-DD (bijv. 2026-05-01)');
     }
   };
 
@@ -102,13 +106,14 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
             {showCustom && (
               <View style={s.customArea}>
                 <TextInput
-                  style={s.dateInput}
+                  style={[s.dateInput, dateError ? s.dateInputError : undefined]}
                   value={customDate}
-                  onChangeText={setCustomDate}
+                  onChangeText={(v) => { setCustomDate(v); if (dateError) setDateError(''); }}
                   placeholder="JJJJ-MM-DD"
                   placeholderTextColor="#aaa"
                   keyboardType="numbers-and-punctuation"
                 />
+                {dateError ? <Text style={s.dateErrorText}>{dateError}</Text> : null}
                 <TouchableOpacity style={s.saveBtn} onPress={handleCustomSave} activeOpacity={0.85}>
                   <Text style={s.saveBtnText}>Opslaan</Text>
                 </TouchableOpacity>
@@ -139,7 +144,9 @@ const s = StyleSheet.create({
   optionDate:   { fontSize: 13, color: '#aaa' },
   optionChevron:{ fontSize: 12, color: '#aaa' },
   customArea:   { paddingVertical: 10, gap: 8 },
-  dateInput:    { borderWidth: 1, borderColor: '#b7e4c7', borderRadius: 10, padding: 10, fontSize: 15, color: '#1b4332', backgroundColor: '#f8fdf9' },
+  dateInput:      { borderWidth: 1, borderColor: '#b7e4c7', borderRadius: 10, padding: 10, fontSize: 15, color: '#1b4332', backgroundColor: '#f8fdf9' },
+  dateInputError: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
+  dateErrorText:  { fontSize: 12, color: '#e63946', marginTop: 4, marginBottom: 4 },
   saveBtn:      { backgroundColor: '#2d6a4f', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
   saveBtnText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
   cancelBtn:    { marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderColor: '#e9ecef', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },

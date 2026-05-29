@@ -1381,7 +1381,7 @@ const MapScreen = (): React.JSX.Element => {
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
         onOpenAbout={() => navigation.navigate('About')}
-        onOpenAchievements={() => navigation.navigate('About')}
+        onOpenAchievements={() => setShowStatsModal(true)}
         onOpenTierComparison={() => setShowTierModal(true)}
         onOpenStats={() => setShowStatsModal(true)}
         onReportBug={() => setShowFeedback(true)}
