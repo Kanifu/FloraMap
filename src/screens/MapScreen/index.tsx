@@ -17,6 +17,8 @@ import { OnboardingModal, OnboardingResult } from '@/components/OnboardingModal'
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
 import { TodaySheet } from '@/components/TodaySheet';
 import { TierComparisonModal } from '@/components/TierComparisonModal';
+import { StatsModal } from '@/components/StatsModal';
+import { PlantDateSheet } from '@/components/PlantDateSheet';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { SideMenu } from '@/components/SideMenu';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
@@ -113,9 +115,10 @@ interface PlantMenuProps {
   onDelete: (p: Plant) => void;
   onChangeColor: (p: Plant, color: string) => void;
   onSaveNote: (p: Plant, notes: string) => void;
+  onChangePlantedDate: (p: Plant) => void;
 }
 
-const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, onSaveNote }: PlantMenuProps): React.JSX.Element | null => {
+const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, onSaveNote, onChangePlantedDate }: PlantMenuProps): React.JSX.Element | null => {
   const [showColors, setShowColors] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState('');
@@ -196,6 +199,11 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
               </TouchableOpacity>
             </View>
           )}
+
+          <TouchableOpacity style={menuStyles.item} onPress={() => { onChangePlantedDate(plant); onClose(); }}>
+            <Text style={menuStyles.itemIcon}>📅</Text>
+            <Text style={menuStyles.itemLabel}>Plantdatum wijzigen</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity style={[menuStyles.item, menuStyles.itemDanger]}
             onPress={() => { onDelete(plant); onClose(); }}>
@@ -280,6 +288,8 @@ const MapScreen = (): React.JSX.Element => {
 
   const [showFeedback,      setShowFeedback]      = useState(false);
   const [showTierModal,     setShowTierModal]     = useState(false);
+  const [showStatsModal,    setShowStatsModal]    = useState(false);
+  const [datePlant,         setDatePlant]         = useState<Plant | null>(null);
   const [showMenu,          setShowMenu]          = useState(false);
   const [showTodaySheet,    setShowTodaySheet]    = useState(false);
   const [showGardenPicker,  setShowGardenPicker]  = useState(false);
@@ -342,12 +352,13 @@ const MapScreen = (): React.JSX.Element => {
   }, [selectedBoundaryId]);
 
   // ── new-plant modal state ─────────────────────────────────────────────────
-  const [showModal,      setShowModal]      = useState(false);
-  const [modalName,      setModalName]      = useState('');
-  const [modalNotes,     setModalNotes]     = useState('');
-  const [modalColor,     setModalColor]     = useState(ZONE_COLORS[0]);
-  const [modalPlantType, setModalPlantType] = useState<PlantType>('plant');
-  const [pendingBounds,  setPendingBounds]  = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [showModal,       setShowModal]       = useState(false);
+  const [modalName,       setModalName]       = useState('');
+  const [modalNotes,      setModalNotes]      = useState('');
+  const [modalColor,      setModalColor]      = useState(ZONE_COLORS[0]);
+  const [modalPlantType,  setModalPlantType]  = useState<PlantType>('plant');
+  const [modalPlantedDate,setModalPlantedDate]= useState('');   // YYYY-MM-DD, empty = today
+  const [pendingBounds,   setPendingBounds]   = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // ── scan state ────────────────────────────────────────────────────────────
   const [scanning,       setScanning]       = useState(false);
@@ -642,8 +653,8 @@ const MapScreen = (): React.JSX.Element => {
       x: pendingBounds.x, y: pendingBounds.y, z: 0,
       width: pendingBounds.width, height: pendingBounds.height,
       color: isZone ? modalColor : undefined,
-      plantedDate: new Date().toISOString(),
-      sowDate: modalPlantType === 'seed' ? new Date().toISOString() : undefined,
+      plantedDate: modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
+      sowDate: modalPlantType === 'seed' ? (modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
       notes: modalNotes.trim() || undefined,
       addedVia: isZone ? 'manual' : modalPlantType as PlantAddedVia,
       maintenanceTasks: isZone
@@ -651,7 +662,7 @@ const MapScreen = (): React.JSX.Element => {
         : makeTasksForType(id, modalPlantType),
       identificationConfidence: 1,
     });
-    setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null);
+    setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null);
     
   };
 
@@ -906,13 +917,26 @@ const MapScreen = (): React.JSX.Element => {
           </Animated.View>
         </PinchGestureHandler>
 
-        {mapScale !== 1.0 && (
-          <TouchableOpacity
-            style={styles.zoomIndicator}
-            onPress={() => { setMapScale(1.0); lastMapScale.current = 1.0; }}>
-            <Text style={styles.zoomIndicatorText}>🔍 {Math.round(mapScale * 100)}%  ✕</Text>
+        {/* Zoom controls — always visible */}
+        <View style={styles.zoomControls}>
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => {
+            const next = Math.max(0.5, mapScale - 0.25);
+            lastMapScale.current = next; setMapScale(next);
+          }} activeOpacity={0.75}>
+            <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
-        )}
+          <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
+            lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
+          }} activeOpacity={0.75}>
+            <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => {
+            const next = Math.min(3.0, mapScale + 0.25);
+            lastMapScale.current = next; setMapScale(next);
+          }} activeOpacity={0.75}>
+            <Text style={styles.zoomBtnText}>＋</Text>
+          </TouchableOpacity>
+        </View>
 
         {!isInteractive && (
           <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
@@ -973,6 +997,7 @@ const MapScreen = (): React.JSX.Element => {
         onDelete={handleDelete}
         onChangeColor={(p, color) => updatePlant({ ...p, color })}
         onSaveNote={(p, notes) => updatePlant({ ...p, notes: notes.trim() || undefined })}
+        onChangePlantedDate={(p) => setDatePlant(p)}
       />
 
       {/* Plant quick sheet */}
@@ -1246,9 +1271,20 @@ const MapScreen = (): React.JSX.Element => {
               numberOfLines={2}
             />
 
+            {/* Plantdatum */}
+            <Text style={styles.colorLabel}>Plantdatum (optioneel)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder={`Vandaag (${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })})`}
+              placeholderTextColor="#aaa"
+              value={modalPlantedDate}
+              onChangeText={setModalPlantedDate}
+              keyboardType="numbers-and-punctuation"
+            />
+
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.modalCancelBtn}
-                onPress={() => { setShowModal(false); setModalName(''); setModalNotes(''); setPendingBounds(null);  }}>
+                onPress={() => { setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null); }}>
                 <Text style={styles.modalCancelText}>Annuleren</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1349,6 +1385,7 @@ const MapScreen = (): React.JSX.Element => {
         onOpenAbout={() => navigation.navigate('About')}
         onOpenAchievements={() => navigation.navigate('About')}
         onOpenTierComparison={() => setShowTierModal(true)}
+        onOpenStats={() => setShowStatsModal(true)}
         onReportBug={() => setShowFeedback(true)}
         onClearGarden={handleClearGarden}
         onDeleteGarden={handleDeleteActiveGarden}
@@ -1363,6 +1400,17 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Tier comparison modal */}
       <TierComparisonModal visible={showTierModal} onClose={() => setShowTierModal(false)} />
+
+      {/* Stats modal */}
+      <StatsModal visible={showStatsModal} onClose={() => setShowStatsModal(false)} />
+
+      {/* Plant date sheet */}
+      <PlantDateSheet
+        plant={datePlant}
+        visible={!!datePlant}
+        onClose={() => setDatePlant(null)}
+        onSave={(updated) => { updatePlant(updated); setDatePlant(null); }}
+      />
     </SafeAreaView>
   );
 };
@@ -1619,12 +1667,16 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   diseaseResultText: { fontSize: 15, color: '#1b4332', lineHeight: 23 },
-  zoomIndicator: {
-    position: 'absolute', bottom: 16, left: 12,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 5,
+  zoomControls: {
+    position: 'absolute', bottom: 80, left: 12,
+    flexDirection: 'row', gap: 4,
   },
-  zoomIndicatorText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  zoomBtn: {
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
+    width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
+  },
+  zoomBtnMid: { width: 52 },
+  zoomBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
 
 const menuStyles = StyleSheet.create({

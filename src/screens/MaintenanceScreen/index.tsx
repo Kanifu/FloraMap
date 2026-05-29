@@ -19,7 +19,7 @@ import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/u
 import { FeedbackModal } from '@/components/FeedbackModal';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
-type Tab = 'taken' | 'planning' | 'zaai' | 'stats' | 'geschiedenis';
+type Tab = 'taken' | 'planning' | 'zaai' | 'geschiedenis';
 
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Begieten',
@@ -532,20 +532,15 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
-        {(['taken', 'planning', 'zaai', 'stats', 'geschiedenis'] as Tab[]).map((tab) => (
+        {(['taken', 'planning', 'zaai', 'geschiedenis'] as Tab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
             onPress={() => setActiveTab(tab)}>
             <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab === 'taken'
-                ? 'Taken'
-                : tab === 'planning'
-                ? 'Planning'
-                : tab === 'zaai'
-                ? 'Zaaikal.'
-                : tab === 'stats'
-                ? 'Stats'
+              {tab === 'taken' ? 'Taken'
+                : tab === 'planning' ? 'Planning'
+                : tab === 'zaai' ? 'Zaaikal.'
                 : 'Log'}
             </Text>
           </TouchableOpacity>
@@ -723,8 +718,8 @@ const MaintenanceScreen = (): React.JSX.Element => {
         </ScrollView>
       )}
 
-      {/* ── Stats tab ── */}
-      {activeTab === 'stats' && (() => {
+      {/* Stats tab removed — use 📊 Statistieken in the drawer (StatsModal) */}
+      {(activeTab as string) === 'stats' && (() => {
         const PLANT_EMOJI_HINTS: Record<string, string> = {
           tomaat: '🍅', komkommer: '🥒', paprika: '🫑', sla: '🥬', wortel: '🥕',
           aardappel: '🥔', ui: '🧅', courgette: '🥒', basilicum: '🌿', aardbei: '🍓',
