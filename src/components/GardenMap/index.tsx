@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Pressable } from 'react-native';
-import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path } from 'react-native-svg';
+import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
@@ -152,6 +152,26 @@ const GardenMapBase = ({
       style={{ width: mapWidth, height: mapHeight }}>
       <Svg width={mapWidth} height={mapHeight}>
 
+        {/* SVG fill patterns for zones */}
+        <Defs>
+          <Pattern id="pat-grass" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+            <Line x1="0" y1="10" x2="10" y2="0" stroke="#2d6a4f" strokeWidth={1.5} opacity={0.55} />
+          </Pattern>
+          <Pattern id="pat-forest" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+            <Line x1="0" y1="8" x2="8" y2="0" stroke="#1b4332" strokeWidth={1.5} opacity={0.5} />
+            <Line x1="0" y1="0" x2="8" y2="8" stroke="#1b4332" strokeWidth={1.5} opacity={0.5} />
+          </Pattern>
+          <Pattern id="pat-gravel" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+            <Circle cx={2} cy={2} r={1.2} fill="#888" opacity={0.55} />
+            <Circle cx={6} cy={6} r={1.2} fill="#888" opacity={0.55} />
+            <Circle cx={6} cy={2} r={0.8} fill="#aaa" opacity={0.4} />
+            <Circle cx={2} cy={6} r={0.8} fill="#aaa" opacity={0.4} />
+          </Pattern>
+          <Pattern id="pat-water" x="0" y="0" width="20" height="8" patternUnits="userSpaceOnUse">
+            <Path d="M 0 4 Q 5 0 10 4 Q 15 8 20 4" stroke="#3a86ff" strokeWidth={1.5} fill="none" opacity={0.6} />
+          </Pattern>
+        </Defs>
+
         {/* Background */}
         <Rect x={0} y={0} width={mapWidth} height={mapHeight} fill="#eaf4ec" />
 
@@ -232,11 +252,19 @@ const GardenMapBase = ({
             const pillW = Math.min(label.length * labelFontSize * 0.62 + 16, zW - 8);
             const pillH = labelFontSize + 10;
 
+            const patId = plant.fillPattern && plant.fillPattern !== 'solid'
+              ? `pat-${plant.fillPattern}` : null;
+
             return (
               <G key={plant.id}>
                 {/* Subtle coloured background */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH}
-                  fill={color} opacity={isMoving ? 0.08 : 0.18} rx={10} />
+                  fill={color} opacity={isMoving ? 0.06 : 0.14} rx={10} />
+                {/* Fill pattern overlay */}
+                {patId && (
+                  <Rect x={zLeft} y={zTop} width={zW} height={zH}
+                    fill={`url(#${patId})`} opacity={isMoving ? 0.25 : 1} rx={10} />
+                )}
                 {/* Coloured border */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH}
                   fill="none" stroke={color} strokeWidth={isThirsty ? 0 : 2}

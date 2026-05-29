@@ -55,6 +55,7 @@ export interface Plant {
   width?: number;   // cells wide;  1 = single dot (default)
   height?: number;  // cells tall;  1 = single dot (default)
   color?: string;   // fill colour when width>1 or height>1
+  fillPattern?: 'solid' | 'grass' | 'forest' | 'gravel' | 'water'; // zone texture
   plantedDate?: string;
   sowDate?: string;
   lastMaintenanceDate?: string;

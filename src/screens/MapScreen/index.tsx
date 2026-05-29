@@ -87,6 +87,16 @@ const makePlantFromScan = (identified: IdentifiedPlant, gardenId: string, x: num
 
 // ── Plant action menu ─────────────────────────────────────────────────────────
 
+type FillPattern = 'solid' | 'grass' | 'forest' | 'gravel' | 'water';
+
+const FILL_PATTERNS: { type: FillPattern; icon: string; label: string }[] = [
+  { type: 'solid',  icon: '⬜', label: 'Effen' },
+  { type: 'grass',  icon: '🌾', label: 'Gras' },
+  { type: 'forest', icon: '🌲', label: 'Bos' },
+  { type: 'gravel', icon: '⬛', label: 'Grind' },
+  { type: 'water',  icon: '💧', label: 'Water' },
+];
+
 interface PlantMenuProps {
   plant: Plant | null;
   onClose: () => void;
@@ -94,12 +104,14 @@ interface PlantMenuProps {
   onResize: (p: Plant) => void;
   onDelete: (p: Plant) => void;
   onChangeColor: (p: Plant, color: string) => void;
+  onChangeFillPattern: (p: Plant, pattern: FillPattern) => void;
   onSaveNote: (p: Plant, notes: string) => void;
 }
 
-const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, onSaveNote }: PlantMenuProps): React.JSX.Element | null => {
+const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, onChangeFillPattern, onSaveNote }: PlantMenuProps): React.JSX.Element | null => {
   const theme = useTheme();
   const [showColors, setShowColors] = useState(false);
+  const [showPatterns, setShowPatterns] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState('');
 
@@ -134,6 +146,14 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
       backgroundColor: theme.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center',
     },
     noteSaveBtnText: { color: theme.card, fontWeight: '700', fontSize: 14 },
+    patternBtn: {
+      alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12,
+      borderRadius: 10, borderWidth: 1, borderColor: theme.border,
+      backgroundColor: theme.cardAlt, gap: 4, minWidth: 58,
+    },
+    patternBtnActive: { borderColor: theme.primary, backgroundColor: theme.primaryLight },
+    patternBtnLabel: { fontSize: 10, color: theme.textSecondary, fontWeight: '600' },
+    patternBtnLabelActive: { color: theme.primary },
     cancelBtn: {
       marginHorizontal: 20, marginTop: 8,
       backgroundColor: theme.primaryBg, borderRadius: 14,
@@ -145,6 +165,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
 
   const handleOpen = () => {
     setShowColors(false);
+    setShowPatterns(false);
     setShowNote(false);
     setNoteText(plant?.notes ?? '');
   };
@@ -173,7 +194,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
           </TouchableOpacity>
 
           {isZone && (
-            <TouchableOpacity style={menuStyles.item} onPress={() => { setShowNote(false); setShowColors((v) => !v); }}>
+            <TouchableOpacity style={menuStyles.item} onPress={() => { setShowNote(false); setShowPatterns(false); setShowColors((v) => !v); }}>
               <View style={[menuStyles.colorDot, { backgroundColor: plant.color ?? ZONE_COLORS[0] }]} />
               <Text style={menuStyles.itemLabel}>Kleur wijzigen</Text>
               <Text style={menuStyles.chevron}>{showColors ? '▲' : '▼'}</Text>
@@ -192,8 +213,32 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
             </ScrollView>
           )}
 
+          {isZone && (
+            <TouchableOpacity style={menuStyles.item} onPress={() => { setShowNote(false); setShowColors(false); setShowPatterns((v) => !v); }}>
+              <Text style={menuStyles.itemIcon}>🎨</Text>
+              <Text style={menuStyles.itemLabel}>Vulpatroon</Text>
+              <Text style={menuStyles.chevron}>{showPatterns ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+          )}
+
+          {isZone && showPatterns && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={menuStyles.colorRow}
+              contentContainerStyle={menuStyles.colorRowContent}>
+              {FILL_PATTERNS.map(({ type, icon, label }) => {
+                const active = (plant.fillPattern ?? 'solid') === type;
+                return (
+                  <TouchableOpacity key={type} style={[menuStyles.patternBtn, active && menuStyles.patternBtnActive]}
+                    onPress={() => { onChangeFillPattern(plant, type); onClose(); }}>
+                    <Text style={{ fontSize: 20 }}>{icon}</Text>
+                    <Text style={[menuStyles.patternBtnLabel, active && menuStyles.patternBtnLabelActive]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+
           {/* Notitie */}
-          <TouchableOpacity style={menuStyles.item} onPress={() => { setShowColors(false); setShowNote((v) => !v); }}>
+          <TouchableOpacity style={menuStyles.item} onPress={() => { setShowColors(false); setShowPatterns(false); setShowNote((v) => !v); }}>
             <Text style={menuStyles.itemIcon}>📝</Text>
             <Text style={menuStyles.itemLabel}>
               {plant.notes ? 'Notitie bewerken' : 'Notitie toevoegen'}
@@ -852,6 +897,7 @@ const MapScreen = (): React.JSX.Element => {
         onResize={(p) => { setDrawTarget(p); setDrawStep('first'); }}
         onDelete={handleDelete}
         onChangeColor={(p, color) => updatePlant({ ...p, color })}
+        onChangeFillPattern={(p, fillPattern) => updatePlant({ ...p, fillPattern: fillPattern === 'solid' ? undefined : fillPattern })}
         onSaveNote={(p, notes) => updatePlant({ ...p, notes: notes.trim() || undefined })}
       />
 
