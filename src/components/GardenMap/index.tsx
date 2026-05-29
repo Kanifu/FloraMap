@@ -122,6 +122,7 @@ const GardenMapBase = ({
   showCompanionOverlay = false,
   thirstyPlantIds = [],
   showNames = true,
+  renderScale = 1,
 }: GardenMapProps): React.JSX.Element => {
 
   const effCols   = garden.gridCols ?? GRID_COLS;
@@ -149,8 +150,9 @@ const GardenMapBase = ({
   // ── Background tap (place/move mode) ────────────────────────────────────────
   const handleBgTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
     if (!onMapPress) return;
-    const gridX = Math.max(1, Math.min(Math.round(e.nativeEvent.locationX / SCALE), effCols));
-    const gridY = Math.max(1, Math.min(Math.round(e.nativeEvent.locationY / SCALE), effRows));
+    // Divide by renderScale to convert screen pixels → logical SVG pixels
+    const gridX = Math.max(1, Math.min(Math.round(e.nativeEvent.locationX / (SCALE * renderScale)), effCols));
+    const gridY = Math.max(1, Math.min(Math.round(e.nativeEvent.locationY / (SCALE * renderScale)), effRows));
     onMapPress(gridX, gridY);
   };
 
@@ -158,8 +160,11 @@ const GardenMapBase = ({
 
   return (
     <Pressable onPress={isInteractive ? handleBgTap : undefined}
-      style={{ width: mapWidth, height: mapHeight }}>
-      <Svg width={mapWidth} height={mapHeight}>
+      style={{ width: mapWidth * renderScale, height: mapHeight * renderScale }}>
+      <Svg
+        width={mapWidth * renderScale}
+        height={mapHeight * renderScale}
+        viewBox={`0 0 ${mapWidth} ${mapHeight}`}>
 
         {/* SVG fill patterns for zones */}
         <Defs>

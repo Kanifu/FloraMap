@@ -792,9 +792,7 @@ const MapScreen = (): React.JSX.Element => {
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.scanBtn} onPress={handleScanPress} disabled={scanning}>
-            {scanning ? <ActivityIndicator size="small" color="#2d6a4f" /> : <Text style={styles.scanBtnText}>📷</Text>}
-          </TouchableOpacity>
+          {scanning && <ActivityIndicator size="small" color="#2d6a4f" style={{ marginRight: 4 }} />}
           <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}>
             <Text style={styles.menuBtnText}>☰</Text>
           </TouchableOpacity>

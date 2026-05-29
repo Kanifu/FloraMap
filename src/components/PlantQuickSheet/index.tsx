@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
-  ScrollView, Pressable, TextInput,
+  ScrollView, Pressable, TextInput, Alert,
 } from 'react-native';
 import { Plant, MaintenanceTaskType } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
@@ -58,11 +58,17 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
       p.species.toLowerCase() === newSpecies.toLowerCase()
     );
 
+    // Always close the edit UI first so the user sees the change immediately
+    setIsEditingName(false);
+
     if (match && (match.commonName.toLowerCase() !== plant.commonName.toLowerCase())) {
-      const { Alert } = require('react-native');
+      // Immediately save the new name so PlantCard and map reflect it right away
+      updatePlant({ ...plant, commonName: newName, species: newSpecies });
+
+      // Then ask if they also want to refresh care data
       Alert.alert(
         '🌱 Verzorgingsdata updaten?',
-        `We kennen ${match.commonName} — wil je de verzorgingstips en taakinstellingen bijwerken?`,
+        `We kennen ${match.commonName} — wil je ook de verzorgingstips en taakinstellingen bijwerken?`,
         [
           {
             text: 'Ja, updaten',
@@ -88,17 +94,12 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
               });
             },
           },
-          {
-            text: 'Alleen naam',
-            onPress: () => updatePlant({ ...plant, commonName: newName, species: newSpecies }),
-          },
+          { text: 'Alleen naam', style: 'cancel' },
         ],
       );
     } else {
       updatePlant({ ...plant, commonName: newName, species: newSpecies });
     }
-
-    setIsEditingName(false);
   }, [plant, editName, editSpecies, updatePlant]);
 
   const handleCancelEdit = useCallback(() => {

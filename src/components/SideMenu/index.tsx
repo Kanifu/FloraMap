@@ -1,9 +1,5 @@
 /**
- * SideMenu — drawer / zijmenu (#60)
- *
- * Alles is centraal bereikbaar vanuit de tuin-tab. Eén ☰ knop opent dit
- * zijmenu met alle secundaire acties, weergave-toggles en navigatie, zodat
- * de tuin-header niet langer volstaat met losse knoppen.
+ * SideMenu — drawer / zijmenu
  */
 import React, { useEffect, useRef } from 'react';
 import {
@@ -30,14 +26,12 @@ interface SideMenuProps {
   showNames: boolean;
   onToggleCompanion: () => void;
   onToggleNames: () => void;
-  onScan: () => void;
   onOpenAssistant: () => void;
   onOpenMaintenance: () => void;
   onOpenSeedInventory: () => void;
   onOpenAbout: () => void;
-  onOpenAchievements: () => void;
-  onOpenTierComparison: () => void;
   onOpenStats: () => void;
+  onOpenTierComparison: () => void;
   onReportBug: () => void;
   onClearGarden: () => void;
   onDeleteGarden: () => void;
@@ -45,14 +39,20 @@ interface SideMenuProps {
   onOpenGardenPicker: () => void;
   unlockedBadgeCount: number;
   recentBadgeEmojis: string[];
+  // kept for backward compat — badge chip now opens stats
+  onOpenAchievements: () => void;
+  // kept for backward compat — scan moved to FAB
+  onScan?: () => void;
 }
 
 export function SideMenu(props: SideMenuProps): React.JSX.Element {
   const {
     visible, onClose, plantCount, showCompanion, showNames,
-    onToggleCompanion, onToggleNames, onScan, onOpenAssistant,
-    onOpenMaintenance, onOpenSeedInventory, onOpenAbout, onOpenAchievements, onOpenTierComparison, onOpenStats,
-    onReportBug, onClearGarden, onDeleteGarden, onCreateGarden, onOpenGardenPicker,
+    onToggleCompanion, onToggleNames,
+    onOpenAssistant, onOpenMaintenance, onOpenAbout,
+    onOpenStats, onOpenTierComparison,
+    onReportBug, onClearGarden, onDeleteGarden,
+    onCreateGarden, onOpenGardenPicker,
     unlockedBadgeCount, recentBadgeEmojis,
   } = props;
 
@@ -66,7 +66,6 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
     }).start();
   }, [visible, slide]);
 
-  // Run a menu action then close the drawer
   const run = (fn: () => void) => () => { onClose(); setTimeout(fn, 180); };
 
   const sections: { title: string; rows: MenuRow[] }[] = [
@@ -78,28 +77,26 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
       ],
     },
     {
-      title: 'Acties',
-      rows: [
-        { icon: '📷', label: 'Plant scannen', sub: 'Camera, galerij of database', onPress: run(onScan) },
-        { icon: '🌱', label: 'Zaadkast', sub: 'Beheer je zaden', onPress: run(onOpenSeedInventory) },
-      ],
-    },
-    {
       title: 'Ga naar',
       rows: [
-        { icon: '📅', label: 'Plannen & onderhoud', sub: 'Taken, planning, geschiedenis', onPress: run(onOpenMaintenance) },
-        { icon: '📊', label: 'Statistieken', sub: 'Oogst, taken, streak & badges', onPress: run(onOpenStats) },
+        { icon: '💬', label: 'Assistent', sub: 'Planten toevoegen, tips, vragen', onPress: run(onOpenAssistant) },
+        { icon: '📅', label: 'Plannen & onderhoud', sub: 'Taken, planning, log', onPress: run(onOpenMaintenance) },
+        { icon: '📊', label: 'Statistieken & prestaties', sub: 'Streak, badges, oogst', onPress: run(onOpenStats) },
         { icon: '💎', label: 'Abonnementen', sub: 'Gratis · Plus · Premium', onPress: run(onOpenTierComparison) },
         { icon: 'ℹ️', label: 'Over FloraMap', sub: 'Versie, backup & info', onPress: run(onOpenAbout) },
       ],
     },
     {
-      title: 'Overig',
+      title: 'Tuinbeheer',
       rows: [
-        { icon: '💬', label: 'Assistent', sub: 'Vraag de AI-tuinhulp', onPress: run(onOpenAssistant) },
-        { icon: '🐛', label: 'Bug melden', sub: 'Stuur feedback of een foutmelding', onPress: run(onReportBug) },
         { icon: '🔄', label: 'Wissel van tuin', sub: 'Beheer en wissel tuinen', onPress: run(onOpenGardenPicker) },
         { icon: '🌿', label: 'Nieuwe tuin', sub: 'Balkon, moestuin, siertuin…', onPress: run(onCreateGarden) },
+      ],
+    },
+    {
+      title: 'Overig',
+      rows: [
+        { icon: '🐛', label: 'Bug melden', sub: 'Stuur feedback of een foutmelding', onPress: run(onReportBug) },
         { icon: '🧹', label: 'Tuin leegmaken', sub: 'Verwijder alle planten', onPress: run(onClearGarden), danger: true },
         { icon: '🗑️', label: 'Tuin verwijderen', sub: 'Definitief verwijderen', onPress: run(onDeleteGarden), danger: true },
       ],
@@ -111,6 +108,7 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
       <Pressable style={s.backdrop} onPress={onClose}>
         <Animated.View style={[s.panel, { transform: [{ translateX: slide }] }]}>
           <Pressable style={s.panelInner} onPress={() => {}}>
+            {/* Header */}
             <View style={s.header}>
               <Text style={s.headerIcon}>🌻</Text>
               <View style={{ flex: 1 }}>
@@ -118,14 +116,19 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
                 <Text style={s.headerSub}>{plantCount} {plantCount === 1 ? 'plant' : 'planten'}</Text>
               </View>
               {unlockedBadgeCount > 0 && (
-                <TouchableOpacity style={s.badgeChip} onPress={run(onOpenAchievements)} activeOpacity={0.8}>
+                <TouchableOpacity style={s.badgeChip} onPress={run(onOpenStats)} activeOpacity={0.8}>
                   <Text style={s.badgeChipEmojis}>{recentBadgeEmojis.slice(0, 3).join('')}</Text>
-                  <Text style={s.badgeChipCount}>{unlockedBadgeCount}</Text>
+                  <Text style={s.badgeChipCount}>{unlockedBadgeCount} 🏆</Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+            {/* Scrollable content — flex:1 ensures it fills remaining space */}
+            <ScrollView
+              style={s.scrollView}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={s.scroll}
+              bounces={false}>
               {sections.map((section) => (
                 <View key={section.title} style={s.section}>
                   <Text style={s.sectionLabel}>{section.title}</Text>
@@ -160,29 +163,30 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
 }
 
 const s = StyleSheet.create({
-  backdrop:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', flexDirection: 'row' },
-  panel:       { width: PANEL_WIDTH, height: '100%' },
-  panelInner:  { flex: 1, backgroundColor: '#fff' },
-  header:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1b4332', paddingTop: 56, paddingBottom: 18, paddingHorizontal: 20 },
-  headerIcon:  { fontSize: 34 },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  headerSub:   { fontSize: 13, color: '#b7e4c7', marginTop: 2 },
-  badgeChip:   { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  backdrop:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', flexDirection: 'row' },
+  panel:           { width: PANEL_WIDTH, height: '100%' },
+  panelInner:      { flex: 1, backgroundColor: '#fff' },
+  header:          { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1b4332', paddingTop: 56, paddingBottom: 18, paddingHorizontal: 20 },
+  headerIcon:      { fontSize: 34 },
+  headerTitle:     { fontSize: 20, fontWeight: '700', color: '#fff' },
+  headerSub:       { fontSize: 13, color: '#b7e4c7', marginTop: 2 },
+  badgeChip:       { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
   badgeChipEmojis: { fontSize: 14 },
   badgeChipCount:  { fontSize: 11, color: '#b7e4c7', fontWeight: '700', marginTop: 1 },
-  scroll:      { paddingVertical: 8, paddingBottom: 40 },
-  section:     { marginTop: 12 },
-  sectionLabel:{ fontSize: 11, fontWeight: '700', color: '#95a99c', textTransform: 'uppercase', letterSpacing: 0.7, paddingHorizontal: 20, marginBottom: 4 },
-  row:         { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 13 },
-  rowActive:   { backgroundColor: '#f1f8f3' },
-  rowIcon:     { fontSize: 22, width: 26, textAlign: 'center' },
-  rowText:     { flex: 1 },
-  rowLabel:    { fontSize: 15, fontWeight: '600', color: '#1b4332' },
-  rowLabelActive: { color: '#2d6a4f' },
-  rowLabelDanger: { color: '#c1121f' },
-  rowSub:      { fontSize: 12, color: '#8a958c', marginTop: 1 },
-  toggle:      { width: 40, height: 24, borderRadius: 12, backgroundColor: '#d8e3da', padding: 2, justifyContent: 'center' },
-  toggleOn:    { backgroundColor: '#2d6a4f' },
-  knob:        { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
-  knobOn:      { alignSelf: 'flex-end' },
+  scrollView:      { flex: 1 },   // ← critical: lets ScrollView fill remaining height
+  scroll:          { paddingVertical: 8, paddingBottom: 48 },
+  section:         { marginTop: 12 },
+  sectionLabel:    { fontSize: 11, fontWeight: '700', color: '#95a99c', textTransform: 'uppercase', letterSpacing: 0.7, paddingHorizontal: 20, marginBottom: 4 },
+  row:             { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 13 },
+  rowActive:       { backgroundColor: '#f1f8f3' },
+  rowIcon:         { fontSize: 22, width: 26, textAlign: 'center' },
+  rowText:         { flex: 1 },
+  rowLabel:        { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  rowLabelActive:  { color: '#2d6a4f' },
+  rowLabelDanger:  { color: '#c1121f' },
+  rowSub:          { fontSize: 12, color: '#8a958c', marginTop: 1 },
+  toggle:          { width: 40, height: 24, borderRadius: 12, backgroundColor: '#d8e3da', padding: 2, justifyContent: 'center' },
+  toggleOn:        { backgroundColor: '#2d6a4f' },
+  knob:            { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
+  knobOn:          { alignSelf: 'flex-end' },
 });
