@@ -8,6 +8,7 @@ import AssistantScreen from '@/screens/AssistantScreen';
 import MaintenanceScreen from '@/screens/MaintenanceScreen';
 import PlantCardScreen from '@/screens/PlantCardScreen';
 import AboutScreen from '@/screens/AboutScreen';
+import VirtualGardenScreen from '@/screens/VirtualGardenScreen';
 
 export type RootTabParamList = {
   MapTab: undefined;
@@ -28,6 +29,7 @@ export type MaintenanceStackParamList = {
   Maintenance: undefined;
   PlantCard: { plantId: string };
   About: undefined;
+  VirtualGarden: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -53,6 +55,7 @@ const MaintenanceStackNavigator = (): React.JSX.Element => (
     <MaintenanceStack.Screen name="Maintenance" component={MaintenanceScreen} />
     <MaintenanceStack.Screen name="PlantCard" component={PlantCardScreen} />
     <MaintenanceStack.Screen name="About" component={AboutScreen} />
+    <MaintenanceStack.Screen name="VirtualGarden" component={VirtualGardenScreen} />
   </MaintenanceStack.Navigator>
 );
 

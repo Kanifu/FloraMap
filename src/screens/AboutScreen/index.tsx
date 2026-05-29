@@ -4,6 +4,8 @@ import {
   ScrollView, TouchableOpacity, Linking, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import Constants from 'expo-constants';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
@@ -65,7 +67,7 @@ const LINKS = [
 ];
 
 const AboutScreen = (): React.JSX.Element => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<MaintenanceStackParamList>>();
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
@@ -300,6 +302,18 @@ const AboutScreen = (): React.JSX.Element => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Virtual garden entry */}
+        <TouchableOpacity
+          style={styles.feedbackBtn}
+          onPress={() => navigation.navigate('VirtualGarden')}>
+          <Text style={styles.feedbackBtnIcon}>🌱</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.feedbackBtnTitle}>Virtuele tuin</Text>
+            <Text style={styles.feedbackBtnSub}>Bekijk hoe je plant groeit met je activiteit</Text>
+          </View>
+          <Text style={styles.linkChevron}>›</Text>
+        </TouchableOpacity>
 
         {/* Achievements */}
         <View style={styles.section}>
