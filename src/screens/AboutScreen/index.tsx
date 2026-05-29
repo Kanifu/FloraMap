@@ -11,6 +11,7 @@ import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
 import { useTheme } from '@/hooks/useTheme';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -67,6 +68,7 @@ const AboutScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
   const [importing, setImporting] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const theme = useTheme();
 
   const styles = StyleSheet.create({
@@ -134,6 +136,15 @@ const AboutScreen = (): React.JSX.Element => {
     rowSub: { fontSize: 12, color: theme.textMuted },
     rowValue: { fontSize: 14, color: theme.textSecondary, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
     linkChevron: { fontSize: 20, color: theme.textMuted },
+    feedbackBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      backgroundColor: theme.primaryBg, borderRadius: 16,
+      borderWidth: 1, borderColor: theme.borderLight,
+      paddingHorizontal: 18, paddingVertical: 16, marginBottom: 8,
+    },
+    feedbackBtnIcon: { fontSize: 28 },
+    feedbackBtnTitle: { fontSize: 15, fontWeight: '700', color: theme.primaryDark },
+    feedbackBtnSub: { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
     footer: {
       fontSize: 12,
       color: theme.textMuted,
@@ -319,11 +330,23 @@ const AboutScreen = (): React.JSX.Element => {
           </View>
         </View>
 
+        {/* Feedback button */}
+        <TouchableOpacity style={styles.feedbackBtn} onPress={() => setShowFeedback(true)}>
+          <Text style={styles.feedbackBtnIcon}>📣</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.feedbackBtnTitle}>Feedback of bug melden</Text>
+            <Text style={styles.feedbackBtnSub}>Helpt ons FloraMap te verbeteren</Text>
+          </View>
+          <Text style={styles.linkChevron}>›</Text>
+        </TouchableOpacity>
+
         <Text style={styles.footer}>
           FloraMap gebruikt AI om planten te herkennen en verzorgingsadvies te geven.
           Controleer altijd zelf of informatie klopt voor jouw specifieke situatie.
         </Text>
       </ScrollView>
+
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
     </SafeAreaView>
   );
 };
