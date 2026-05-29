@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useGardenStore } from '@/store/gardenStore';
@@ -167,11 +168,27 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Camera toegang nodig',
+        'Sta camera-toegang toe in je apparaatinstellingen om planten te scannen.',
+      );
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
 
   const handlePickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Galerij toegang nodig',
+        'Sta toegang tot je foto\'s toe in de apparaatinstellingen.',
+      );
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };

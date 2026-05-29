@@ -503,7 +503,9 @@ const MapScreen = (): React.JSX.Element => {
             </Text>
           </View>
           {companionCounts.good === 0 && companionCounts.bad === 0 && (
-            <Text style={styles.legendHint}>Voeg meer planten toe om relaties te zien</Text>
+            <Text style={styles.legendHint}>
+              Geen bekende companions gevonden. Probeer tomaat, basilicum, komkommer of wortel.
+            </Text>
           )}
         </View>
       )}
@@ -519,8 +521,9 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Map */}
       <View style={styles.mapWrapper}>
-        <ScrollView horizontal style={styles.scrollOuter} bounces={false}>
-          <ScrollView bounces={false}>
+        <ScrollView horizontal style={styles.scrollOuter} bounces={false}
+          removeClippedSubviews={false} scrollEventThrottle={16}>
+          <ScrollView bounces={false} removeClippedSubviews={false}>
             <GardenMap
               garden={currentGarden}
               onPlantPress={(p) => navigation.navigate('PlantCard', { plantId: p.id })}

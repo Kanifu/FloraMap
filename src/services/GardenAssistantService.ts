@@ -186,14 +186,18 @@ Beide regels mogen tegelijk aanwezig zijn. Laat een regel weg als die niet van t
         try {
           const parsed = JSON.parse(trimmed.slice(7));
           identifiedPlants = Array.isArray(parsed) ? parsed : [parsed];
-        } catch { /* ignore parse error */ }
+        } catch (err) {
+          console.warn('[GardenAssistant] PLANTS parse error:', err, '| raw:', trimmed.slice(7, 80));
+        }
         return false;
       }
       if (trimmed.startsWith('TASKS:')) {
         try {
           const parsed = JSON.parse(trimmed.slice(6));
           detectedTasks = Array.isArray(parsed) ? parsed : [parsed];
-        } catch { /* ignore parse error */ }
+        } catch (err) {
+          console.warn('[GardenAssistant] TASKS parse error:', err, '| raw:', trimmed.slice(6, 80));
+        }
         return false;
       }
       return true;

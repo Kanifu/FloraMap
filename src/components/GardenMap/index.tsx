@@ -104,7 +104,7 @@ interface GardenMapProps {
 const LONG_PRESS_MS = 300;
 const EMOJI_STEP    = 38;   // px between emoji centres in zone grid
 
-export const GardenMap = ({
+const GardenMapBase = ({
   garden,
   onPlantPress,
   onPlantLongPress,
@@ -177,11 +177,11 @@ export const GardenMap = ({
           const mx = (x1 + x2) / 2; const my = (y1 + y2) / 2;
           return (
             <G key={`cp-${idx}`}>
-              <Path d={arcPath(x1, y1, x2, y2)} stroke={col} strokeWidth={2}
-                strokeDasharray={pair.relation === 'good' ? '6,4' : '3,3'}
-                fill="none" opacity={0.7} />
-              <Circle cx={mx} cy={my} r={8} fill={col} opacity={0.9} />
-              <SvgText x={mx} y={my + 4} textAnchor="middle" fontSize={9} fontWeight="700" fill="#fff">
+              <Path d={arcPath(x1, y1, x2, y2)} stroke={col} strokeWidth={3}
+                strokeDasharray={pair.relation === 'good' ? '8,4' : '4,3'}
+                fill="none" opacity={0.9} />
+              <Circle cx={mx} cy={my} r={10} fill={col} opacity={0.95} />
+              <SvgText x={mx} y={my + 4} textAnchor="middle" fontSize={11} fontWeight="700" fill="#fff">
                 {pair.relation === 'good' ? '♥' : '✕'}
               </SvgText>
             </G>
@@ -330,6 +330,8 @@ export const GardenMap = ({
     </Pressable>
   );
 };
+
+export const GardenMap = React.memo(GardenMapBase);
 
 const styles = StyleSheet.create({
   pressable: { width: MAP_WIDTH, height: MAP_HEIGHT },
