@@ -10,6 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
+import { useTheme } from '@/hooks/useTheme';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -66,6 +67,81 @@ const AboutScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
   const [importing, setImporting] = useState(false);
+  const theme = useTheme();
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    backBtn: { width: 70 },
+    backText: { fontSize: 16, color: theme.primary, fontWeight: '600' },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: theme.primaryDark },
+    content: { padding: 20, gap: 20, paddingBottom: 40 },
+    hero: { alignItems: 'center', gap: 6, paddingVertical: 12 },
+    heroIcon: { fontSize: 56 },
+    heroName: { fontSize: 28, fontWeight: '800', color: theme.primaryDark },
+    heroTagline: { fontSize: 14, color: theme.textSecondary },
+    versionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+    versionPill: {
+      backgroundColor: theme.primaryLight,
+      paddingHorizontal: 14,
+      paddingVertical: 4,
+      borderRadius: 20,
+    },
+    versionPillText: { fontSize: 13, fontWeight: '700', color: theme.primary },
+    buildPill: {
+      backgroundColor: theme.primaryDark,
+      paddingHorizontal: 14,
+      paddingVertical: 4,
+      borderRadius: 20,
+    },
+    buildPillText: { fontSize: 13, fontWeight: '700', color: theme.primaryLight },
+    buildDate: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
+    buildHash: { fontSize: 11, color: theme.textMuted, fontFamily: 'monospace' },
+    section: { gap: 8 },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      paddingHorizontal: 4,
+    },
+    card: {
+      backgroundColor: theme.cardAlt,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      overflow: 'hidden',
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    rowLeft: { flex: 1, gap: 2 },
+    rowBorder: { borderBottomWidth: 1, borderBottomColor: theme.border },
+    rowLabel: { fontSize: 14, color: theme.primaryDark, fontWeight: '500' },
+    rowSub: { fontSize: 12, color: theme.textMuted },
+    rowValue: { fontSize: 14, color: theme.textSecondary, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
+    linkChevron: { fontSize: 20, color: theme.textMuted },
+    footer: {
+      fontSize: 12,
+      color: theme.textMuted,
+      textAlign: 'center',
+      lineHeight: 18,
+      paddingHorizontal: 8,
+    },
+  });
 
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -251,79 +327,5 @@ const AboutScreen = (): React.JSX.Element => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  backBtn: { width: 70 },
-  backText: { fontSize: 16, color: '#2d6a4f', fontWeight: '600' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#1b4332' },
-  content: { padding: 20, gap: 20, paddingBottom: 40 },
-  hero: { alignItems: 'center', gap: 6, paddingVertical: 12 },
-  heroIcon: { fontSize: 56 },
-  heroName: { fontSize: 28, fontWeight: '800', color: '#1b4332' },
-  heroTagline: { fontSize: 14, color: '#6b705c' },
-  versionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  versionPill: {
-    backgroundColor: '#d8f3dc',
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  versionPillText: { fontSize: 13, fontWeight: '700', color: '#2d6a4f' },
-  buildPill: {
-    backgroundColor: '#1b4332',
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  buildPillText: { fontSize: 13, fontWeight: '700', color: '#d8f3dc' },
-  buildDate: { fontSize: 12, color: '#aaa', marginTop: 2 },
-  buildHash: { fontSize: 11, color: '#ccc', fontFamily: 'monospace' },
-  section: { gap: 8 },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#aaa',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    paddingHorizontal: 4,
-  },
-  card: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  rowLeft: { flex: 1, gap: 2 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
-  rowLabel: { fontSize: 14, color: '#1b4332', fontWeight: '500' },
-  rowSub: { fontSize: 12, color: '#aaa' },
-  rowValue: { fontSize: 14, color: '#6b705c', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
-  linkChevron: { fontSize: 20, color: '#aaa' },
-  footer: {
-    fontSize: 12,
-    color: '#aaa',
-    textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 8,
-  },
-});
 
 export default AboutScreen;

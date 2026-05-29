@@ -1,8 +1,8 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
+import { Text, useColorScheme } from 'react-native';
 import MapScreen from '@/screens/MapScreen';
 import AssistantScreen from '@/screens/AssistantScreen';
 import MaintenanceScreen from '@/screens/MaintenanceScreen';
@@ -56,13 +56,20 @@ const MaintenanceStackNavigator = (): React.JSX.Element => (
   </MaintenanceStack.Navigator>
 );
 
-export const AppNavigator = (): React.JSX.Element => (
-  <NavigationContainer>
+export const AppNavigator = (): React.JSX.Element => {
+  const scheme = useColorScheme();
+  const navTheme = scheme === 'dark'
+    ? { ...DarkTheme,    colors: { ...DarkTheme.colors,    background: '#0f1a0f', card: '#1a2d1a', border: '#2a3d2a' } }
+    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '#f5f7f2', card: '#ffffff', border: '#e9ecef' } };
+
+  return (
+  <NavigationContainer theme={navTheme}>
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2d6a4f',
-        tabBarInactiveTintColor: '#aaa',
+        tabBarActiveTintColor:   scheme === 'dark' ? '#52b788' : '#2d6a4f',
+        tabBarInactiveTintColor: scheme === 'dark' ? '#5a7a5c' : '#aaa',
+        tabBarStyle: { backgroundColor: scheme === 'dark' ? '#1a2d1a' : '#ffffff' },
       }}>
       <Tab.Screen
         name="MapTab"
@@ -90,4 +97,5 @@ export const AppNavigator = (): React.JSX.Element => (
       />
     </Tab.Navigator>
   </NavigationContainer>
-);
+  );
+};

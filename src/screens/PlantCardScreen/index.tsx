@@ -12,6 +12,7 @@ import { MapStackParamList } from '@/navigation/AppNavigator';
 import { MaintenanceTaskType, PhotoLogEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
 import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { useTheme } from '@/hooks/useTheme';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
@@ -41,9 +42,118 @@ const LIGHT_LABELS: Record<string, string> = {
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 const PlantCardScreen = (): React.JSX.Element => {
+  const theme = useTheme();
   const route      = useRoute<PlantCardRouteProp>();
   const navigation = useNavigation<PlantCardNavProp>();
   const { plantId } = route.params;
+
+  const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.border, gap: 10,
+    },
+    backRow: { paddingRight: 4 },
+    backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
+    headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: theme.primaryDark },
+    editActions: { flexDirection: 'row', gap: 8 },
+    editActionBtn: { paddingHorizontal: 10, paddingVertical: 6 },
+    editCancelText: { fontSize: 14, color: theme.textMuted, fontWeight: '600' },
+    editSaveBtn: { backgroundColor: theme.primary, borderRadius: 8 },
+    editSaveText: { fontSize: 14, color: theme.card, fontWeight: '700' },
+    editStartText: { fontSize: 14, color: theme.primary, fontWeight: '600' },
+    scroll: { padding: 16, gap: 20, paddingBottom: 40 },
+    card: { backgroundColor: theme.cardAlt, borderRadius: 16, padding: 20, gap: 10 },
+    plantName: { fontSize: 26, fontWeight: '700', color: theme.primaryDark },
+    plantSpecies: { fontSize: 15, fontStyle: 'italic', color: theme.textSecondary },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+    metaChip: {
+      backgroundColor: theme.primaryLight, borderRadius: 20,
+      paddingHorizontal: 10, paddingVertical: 4,
+    },
+    metaChipText: { fontSize: 12, color: theme.primary, fontWeight: '600' },
+    section: { gap: 8 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 15, fontWeight: '700', color: theme.primaryDark },
+    fieldLabel: { fontSize: 12, color: theme.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+    input: {
+      backgroundColor: theme.cardAlt, borderRadius: 10,
+      borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 14, paddingVertical: 10,
+      fontSize: 15, color: theme.primaryDark,
+    },
+    inputMulti: { minHeight: 72, textAlignVertical: 'top' },
+    notesCard: {
+      backgroundColor: theme.warningLight, borderRadius: 12,
+      padding: 14, borderWidth: 1, borderColor: theme.warning,
+    },
+    notesText: { fontSize: 14, color: theme.text, lineHeight: 21 },
+    tipsCard: {
+      backgroundColor: theme.primaryBg, borderRadius: 12,
+      padding: 14, gap: 8, borderWidth: 1, borderColor: theme.borderLight,
+    },
+    tipRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+    tipBullet: { fontSize: 16, color: theme.primary, marginTop: 1 },
+    tipText: { flex: 1, fontSize: 14, color: theme.primaryDark, lineHeight: 20 },
+    taskRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: theme.cardAlt, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.border,
+      padding: 13, gap: 10,
+    },
+    taskRowOverdue: { borderColor: theme.danger, backgroundColor: theme.dangerLight },
+    taskIcon: { fontSize: 20 },
+    taskBody: { flex: 1, gap: 2 },
+    taskNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    taskLabel: { fontSize: 14, fontWeight: '600', color: theme.primaryDark },
+    taskNote: { fontSize: 12, color: theme.textSecondary, fontStyle: 'italic' },
+    taskDue: { fontSize: 13, color: theme.textSecondary, fontWeight: '500' },
+    textOverdue: { color: theme.danger },
+    recurBadge: {
+      fontSize: 10, color: theme.primary, backgroundColor: theme.primaryLight,
+      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, fontWeight: '600', overflow: 'hidden',
+    },
+    doneBtn: {
+      backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 7,
+      borderRadius: 8, marginLeft: 6,
+    },
+    doneBtnEditing: { backgroundColor: theme.textMuted },
+    doneBtnText: { color: theme.card, fontWeight: '700', fontSize: 13 },
+    historyToggle: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 2,
+    },
+    chevron: { fontSize: 12, color: theme.textMuted },
+    historyRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: theme.cardAlt, borderRadius: 10,
+      borderWidth: 1, borderColor: theme.border,
+      padding: 12, gap: 10, opacity: 0.75,
+    },
+    historyDate: { fontSize: 12, color: theme.textMuted, marginTop: 1 },
+    checkMark: { fontSize: 18, color: theme.primary, fontWeight: '700' },
+    addPhotoBtn: {
+      backgroundColor: theme.primaryBg, borderRadius: 10,
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderWidth: 1, borderColor: theme.borderLight,
+    },
+    addPhotoBtnText: { fontSize: 13, color: theme.primary, fontWeight: '700' },
+    photoScroll: { marginTop: 4 },
+    photoEntry: { marginRight: 12, alignItems: 'center', gap: 4 },
+    photoThumb: { width: 80, height: 80, borderRadius: 12 },
+    photoDate: { fontSize: 11, color: theme.textSecondary, textAlign: 'center' },
+    photoHint: { fontSize: 11, color: theme.textMuted, fontStyle: 'italic' },
+    emptyText: { fontSize: 14, color: theme.textMuted, fontStyle: 'italic', lineHeight: 20 },
+    enrichBtn: {
+      backgroundColor: theme.primaryBg, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.primary,
+      paddingVertical: 13, alignItems: 'center',
+      marginTop: 4,
+    },
+    enrichBtnText: { fontSize: 14, color: theme.primary, fontWeight: '700' },
+  });
 
   const garden                  = useGardenStore((s) => s.garden);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
@@ -238,7 +348,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                 <TextInput style={s.input} value={editName} onChangeText={setEditName} />
                 <Text style={s.fieldLabel}>Soort (wetenschappelijk)</Text>
                 <TextInput style={s.input} value={editSpecies} onChangeText={setEditSpecies}
-                  placeholder="bijv. Solanum lycopersicum" placeholderTextColor="#aaa" />
+                  placeholder="bijv. Solanum lycopersicum" placeholderTextColor={theme.textMuted} />
               </>
             ) : (
               <>
@@ -276,7 +386,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                 value={editNotes}
                 onChangeText={setEditNotes}
                 placeholder="Voeg een notitie toe…"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={3}
               />
@@ -296,7 +406,7 @@ const PlantCardScreen = (): React.JSX.Element => {
               onPress={handleEnrichWithAI}
               disabled={enriching}>
               {enriching
-                ? <ActivityIndicator size="small" color="#2d6a4f" />
+                ? <ActivityIndicator size="small" color={theme.primary} />
                 : <Text style={s.enrichBtnText}>🌿 Vul plantinfo aan via AI</Text>}
             </TouchableOpacity>
           )}
@@ -364,7 +474,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                 value={editWater}
                 onChangeText={setEditWater}
                 placeholder="bijv. 3"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="number-pad"
               />
             </View>
@@ -429,113 +539,5 @@ const PlantCardScreen = (): React.JSX.Element => {
     </SafeAreaView>
   );
 };
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef', gap: 10,
-  },
-  backRow: { paddingRight: 4 },
-  backText: { color: '#2d6a4f', fontSize: 16, fontWeight: '600' },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#1b4332' },
-  editActions: { flexDirection: 'row', gap: 8 },
-  editActionBtn: { paddingHorizontal: 10, paddingVertical: 6 },
-  editCancelText: { fontSize: 14, color: '#aaa', fontWeight: '600' },
-  editSaveBtn: { backgroundColor: '#2d6a4f', borderRadius: 8 },
-  editSaveText: { fontSize: 14, color: '#fff', fontWeight: '700' },
-  editStartText: { fontSize: 14, color: '#2d6a4f', fontWeight: '600' },
-  scroll: { padding: 16, gap: 20, paddingBottom: 40 },
-  card: { backgroundColor: '#f8f9fa', borderRadius: 16, padding: 20, gap: 10 },
-  plantName: { fontSize: 26, fontWeight: '700', color: '#1b4332' },
-  plantSpecies: { fontSize: 15, fontStyle: 'italic', color: '#6b705c' },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  metaChip: {
-    backgroundColor: '#d8f3dc', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  metaChipText: { fontSize: 12, color: '#2d6a4f', fontWeight: '600' },
-  section: { gap: 8 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1b4332' },
-  fieldLabel: { fontSize: 12, color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
-  input: {
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 15, color: '#1b4332',
-  },
-  inputMulti: { minHeight: 72, textAlignVertical: 'top' },
-  notesCard: {
-    backgroundColor: '#fff9e6', borderRadius: 12,
-    padding: 14, borderWidth: 1, borderColor: '#ffe08a',
-  },
-  notesText: { fontSize: 14, color: '#5a4000', lineHeight: 21 },
-  tipsCard: {
-    backgroundColor: '#f1f8f3', borderRadius: 12,
-    padding: 14, gap: 8, borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  tipRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  tipBullet: { fontSize: 16, color: '#2d6a4f', marginTop: 1 },
-  tipText: { flex: 1, fontSize: 14, color: '#1b4332', lineHeight: 20 },
-  taskRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 12,
-    borderWidth: 1, borderColor: '#e9ecef',
-    padding: 13, gap: 10,
-  },
-  taskRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
-  taskIcon: { fontSize: 20 },
-  taskBody: { flex: 1, gap: 2 },
-  taskNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  taskLabel: { fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  taskNote: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
-  taskDue: { fontSize: 13, color: '#6b705c', fontWeight: '500' },
-  textOverdue: { color: '#e63946' },
-  recurBadge: {
-    fontSize: 10, color: '#2d6a4f', backgroundColor: '#d8f3dc',
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, fontWeight: '600', overflow: 'hidden',
-  },
-  doneBtn: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: 8, marginLeft: 6,
-  },
-  doneBtnEditing: { backgroundColor: '#ccc' },
-  doneBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  historyToggle: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 2,
-  },
-  chevron: { fontSize: 12, color: '#aaa' },
-  historyRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
-    padding: 12, gap: 10, opacity: 0.75,
-  },
-  historyDate: { fontSize: 12, color: '#aaa', marginTop: 1 },
-  checkMark: { fontSize: 18, color: '#2d6a4f', fontWeight: '700' },
-  addPhotoBtn: {
-    backgroundColor: '#f1f8f3', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  addPhotoBtnText: { fontSize: 13, color: '#2d6a4f', fontWeight: '700' },
-  photoScroll: { marginTop: 4 },
-  photoEntry: { marginRight: 12, alignItems: 'center', gap: 4 },
-  photoThumb: { width: 80, height: 80, borderRadius: 12 },
-  photoDate: { fontSize: 11, color: '#6b705c', textAlign: 'center' },
-  photoHint: { fontSize: 11, color: '#aaa', fontStyle: 'italic' },
-  emptyText: { fontSize: 14, color: '#aaa', fontStyle: 'italic', lineHeight: 20 },
-  enrichBtn: {
-    backgroundColor: '#f1f8f3', borderRadius: 12,
-    borderWidth: 1, borderColor: '#2d6a4f',
-    paddingVertical: 13, alignItems: 'center',
-    marginTop: 4,
-  },
-  enrichBtnText: { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
-});
 
 export default PlantCardScreen;

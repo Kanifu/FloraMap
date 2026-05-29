@@ -15,6 +15,7 @@ import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
+import { useTheme } from '@/hooks/useTheme';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -97,9 +98,50 @@ interface PlantMenuProps {
 }
 
 const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, onSaveNote }: PlantMenuProps): React.JSX.Element | null => {
+  const theme = useTheme();
   const [showColors, setShowColors] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState('');
+
+  const menuStyles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
+    sheet: { backgroundColor: theme.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 28, overflow: 'hidden' },
+    header: { backgroundColor: theme.primaryDark, paddingHorizontal: 20, paddingVertical: 16, marginBottom: 6 },
+    plantName: { fontSize: 18, fontWeight: '700', color: theme.card },
+    plantSpecies: { fontSize: 13, color: theme.borderLight, fontStyle: 'italic', marginTop: 2 },
+    item: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border, gap: 14,
+    },
+    itemDanger: { borderBottomWidth: 0 },
+    itemIcon: { fontSize: 20, width: 28, textAlign: 'center' },
+    colorDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.border },
+    itemLabel: { fontSize: 16, color: theme.primaryDark, fontWeight: '500', flex: 1 },
+    itemLabelDanger: { fontSize: 16, color: theme.danger, fontWeight: '500', flex: 1 },
+    chevron: { fontSize: 12, color: theme.textMuted },
+    colorRow: { marginLeft: 20, marginBottom: 4 },
+    colorRowContent: { paddingRight: 20, gap: 10, paddingVertical: 8 },
+    swatch: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: 'transparent' },
+    swatchSelected: { borderColor: theme.primaryDark, transform: [{ scale: 1.2 }] },
+    noteArea: { marginHorizontal: 20, marginBottom: 4, gap: 8 },
+    noteInput: {
+      backgroundColor: theme.cardAlt, borderRadius: 10, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: theme.primaryDark,
+      minHeight: 72, textAlignVertical: 'top',
+    },
+    noteSaveBtn: {
+      backgroundColor: theme.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center',
+    },
+    noteSaveBtnText: { color: theme.card, fontWeight: '700', fontSize: 14 },
+    cancelBtn: {
+      marginHorizontal: 20, marginTop: 8,
+      backgroundColor: theme.primaryBg, borderRadius: 14,
+      paddingVertical: 16, alignItems: 'center',
+      borderWidth: 1, borderColor: theme.borderLight,
+    },
+    cancelText: { fontSize: 16, color: theme.primary, fontWeight: '700' },
+  });
 
   const handleOpen = () => {
     setShowColors(false);
@@ -166,7 +208,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
                 value={noteText}
                 onChangeText={setNoteText}
                 placeholder="Voeg een notitie toe…"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={3}
               />
@@ -196,6 +238,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 const MapScreen = (): React.JSX.Element => {
+  const theme = useTheme();
   const navigation = useNavigation<MapNavProp>();
   const garden      = useGardenStore((s) => s.garden);
   const setGarden   = useGardenStore((s) => s.setGarden);
@@ -419,6 +462,201 @@ const MapScreen = (): React.JSX.Element => {
     setDrawStep('first');
   };
 
+  // ── styles ────────────────────────────────────────────────────────────────
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    emptyContainer: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: theme.background, padding: 32, gap: 14,
+    },
+    emptyIcon: { fontSize: 64 },
+    emptyTitle: { fontSize: 22, fontWeight: '700', color: theme.primaryDark },
+    emptySubtitle: { fontSize: 15, color: theme.textSecondary, textAlign: 'center', lineHeight: 22 },
+    emptyScanBtn: {
+      backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 14,
+      borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center',
+    },
+    emptyScanBtnText: { color: theme.card, fontWeight: '700', fontSize: 16 },
+    emptyManualBtn: {
+      backgroundColor: theme.primaryBg, paddingHorizontal: 24, paddingVertical: 14,
+      borderRadius: 14, minWidth: 200, alignItems: 'center',
+      borderWidth: 1, borderColor: theme.borderLight,
+    },
+    emptyManualBtnText: { color: theme.primary, fontWeight: '700', fontSize: 16 },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    gardenName: { fontSize: 20, fontWeight: '700', color: theme.primaryDark },
+    plantCount: { fontSize: 13, color: theme.textSecondary, marginTop: 2 },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    badge: { backgroundColor: theme.warning, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+    badgeText: { color: theme.text, fontWeight: '700', fontSize: 13 },
+    companionBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: theme.primaryBg, alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1, borderColor: theme.borderLight,
+    },
+    companionBtnActive: {
+      backgroundColor: theme.primary, borderColor: theme.primary,
+    },
+    companionBtnText: { fontSize: 20 },
+    waterBanner: {
+      backgroundColor: theme.infoLight, paddingHorizontal: 16, paddingVertical: 8,
+      borderBottomWidth: 1, borderBottomColor: theme.info,
+    },
+    waterBannerText: { fontSize: 13, fontWeight: '600', color: theme.info },
+    sizeBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: theme.primaryBg, alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1, borderColor: theme.borderLight,
+    },
+    sizeBtnText: { fontSize: 18 },
+    companionLegend: {
+      flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
+      paddingHorizontal: 16, paddingVertical: 8,
+      backgroundColor: theme.primaryBg,
+      borderBottomWidth: 1, borderBottomColor: theme.borderLight,
+      gap: 16,
+    },
+    companionChipsRow: {
+      backgroundColor: theme.primaryBg,
+      borderBottomWidth: 1, borderBottomColor: theme.borderLight,
+      maxHeight: 40,
+    },
+    companionChipsContent: {
+      paddingHorizontal: 12, paddingVertical: 6, gap: 8,
+    },
+    companionChip: {
+      paddingHorizontal: 10, paddingVertical: 4,
+      borderRadius: 12, borderWidth: 1,
+    },
+    chipGood: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
+    chipBad:  { backgroundColor: theme.dangerLight, borderColor: theme.danger },
+    companionChipText: { fontSize: 11, fontWeight: '600' },
+    chipTextGood: { color: theme.primaryDark },
+    chipTextBad:  { color: theme.danger },
+    sizeOption: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingVertical: 14, paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border,
+      gap: 12,
+    },
+    sizeOptionActive: { backgroundColor: theme.primaryBg },
+    sizeOptionLabel: { fontSize: 16, fontWeight: '600', color: theme.primaryDark, width: 110 },
+    sizeOptionLabelActive: { color: theme.primary },
+    sizeOptionDesc: { flex: 1, fontSize: 13, color: theme.textSecondary },
+    sizeOptionDescActive: { color: theme.primary },
+    sizeCheck: { fontSize: 16, color: theme.primary, fontWeight: '700' },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendDash: { width: 22, height: 3, borderRadius: 2 },
+    legendGood: { backgroundColor: theme.primary },
+    legendBad:  { backgroundColor: theme.danger },
+    legendText: { fontSize: 12, color: theme.primaryDark, fontWeight: '600' },
+    legendHint: { fontSize: 11, color: theme.textSecondary, fontStyle: 'italic' },
+    banner: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: theme.primaryLight, paddingHorizontal: 16, paddingVertical: 10,
+      borderBottomWidth: 1, borderBottomColor: theme.primary, gap: 8,
+    },
+    bannerLeft: { flex: 1 },
+    bannerText: { fontSize: 13, color: theme.primaryDark, fontWeight: '600' },
+    bannerExtra: { fontSize: 11, color: theme.primary, marginTop: 1 },
+    bannerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    bannerSkip: { fontSize: 13, color: theme.textSecondary, fontWeight: '600' },
+    bannerCancel: { fontSize: 18, color: theme.danger, fontWeight: '700' },
+    hintBar: {
+      paddingHorizontal: 16, paddingVertical: 6,
+      backgroundColor: theme.cardAlt, borderBottomWidth: 1, borderBottomColor: theme.border,
+    },
+    hintText: { fontSize: 11, color: theme.textMuted, textAlign: 'center' },
+    mapWrapper: { flex: 1, overflow: 'hidden' },
+    scrollOuter: { flex: 1 },
+    fab: {
+      position: 'absolute', bottom: 20, right: 20,
+      width: 52, height: 52, borderRadius: 26,
+      backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center',
+      elevation: 4,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
+    },
+    fabActive: { backgroundColor: theme.danger },
+    fabText: { color: theme.card, fontSize: 28, fontWeight: '300', lineHeight: 34 },
+    fabBackdrop: {
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    },
+    fabMenu: {
+      position: 'absolute', bottom: 82, right: 20,
+      backgroundColor: theme.card, borderRadius: 16,
+      borderWidth: 1, borderColor: theme.border,
+      elevation: 6, shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8,
+      overflow: 'hidden', minWidth: 200,
+    },
+    fabMenuItem: {
+      paddingHorizontal: 18, paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border,
+    },
+    fabMenuItemDanger: { borderBottomWidth: 0 },
+    fabMenuItemText: { fontSize: 15, color: theme.primaryDark, fontWeight: '600' },
+    fabMenuItemTextDanger: { color: theme.danger },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+    modalSheet: {
+      backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+      padding: 24, gap: 14, paddingBottom: 36,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: theme.primaryDark },
+    modalSubtitle: { fontSize: 13, color: theme.textSecondary, marginTop: -8 },
+    modalInput: {
+      backgroundColor: theme.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: theme.primaryDark,
+    },
+    modalInputNotes: { fontSize: 14, minHeight: 60, textAlignVertical: 'top' },
+    typeRow: { flexDirection: 'row', gap: 8 },
+    typeBtn: {
+      flex: 1, alignItems: 'center', paddingVertical: 10,
+      borderRadius: 12, borderWidth: 1, borderColor: theme.border,
+      backgroundColor: theme.cardAlt, gap: 4,
+    },
+    typeBtnActive: { borderColor: theme.primary, backgroundColor: theme.primaryLight },
+    typeBtnIcon: { fontSize: 18 },
+    typeBtnLabel: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
+    typeBtnLabelActive: { color: theme.primary },
+    colorLabel: { fontSize: 13, fontWeight: '600', color: theme.textSecondary },
+    colorSwatch: {
+      width: 36, height: 36, borderRadius: 18, marginRight: 10,
+      borderWidth: 2, borderColor: 'transparent',
+    },
+    colorSwatchSelected: { borderColor: theme.primaryDark, transform: [{ scale: 1.2 }] },
+    modalButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
+    modalCancelBtn: {
+      flex: 1, borderWidth: 1, borderColor: theme.border, borderRadius: 12,
+      paddingVertical: 14, alignItems: 'center',
+    },
+    modalCancelText: { color: theme.textSecondary, fontWeight: '600', fontSize: 15 },
+    modalConfirmBtn: {
+      flex: 2, backgroundColor: theme.primary, borderRadius: 12,
+      paddingVertical: 14, alignItems: 'center',
+    },
+    modalConfirmBtnDisabled: { backgroundColor: theme.textMuted },
+    modalConfirmText: { color: theme.card, fontWeight: '700', fontSize: 15 },
+  });
+
+  const corrStyles = StyleSheet.create({
+    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, maxHeight: '70%' },
+    handle: { width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+    title: { fontSize: 18, fontWeight: '700', color: theme.primaryDark, marginBottom: 4 },
+    lowConf: { fontSize: 12, color: theme.warning, marginBottom: 12, backgroundColor: theme.warningLight, padding: 8, borderRadius: 8 },
+    label: { fontSize: 12, fontWeight: '600', color: theme.textSecondary, marginTop: 8, marginBottom: 4 },
+    input: { borderWidth: 1, borderColor: theme.borderLight, borderRadius: 10, padding: 10, fontSize: 15, color: theme.primaryDark, backgroundColor: theme.cardAlt },
+    confirmBtn: { marginTop: 16, backgroundColor: theme.primary, borderRadius: 12, padding: 14, alignItems: 'center' },
+    confirmText: { color: theme.card, fontWeight: '700', fontSize: 14 },
+    skipBtn: { marginTop: 8, alignItems: 'center', padding: 8 },
+    skipText: { color: theme.textMuted, fontSize: 13 },
+  });
+
   // ── empty state ───────────────────────────────────────────────────────────
   if (!showMap) {
     return (
@@ -430,7 +668,7 @@ const MapScreen = (): React.JSX.Element => {
         </Text>
         <TouchableOpacity style={styles.emptyScanBtn} onPress={handleScanPress} disabled={scanning}>
           {scanning
-            ? <ActivityIndicator color="#fff" />
+            ? <ActivityIndicator color={theme.card} />
             : <Text style={styles.emptyScanBtnText}>📷 Scan planten</Text>}
         </TouchableOpacity>
         <TouchableOpacity style={styles.emptyManualBtn} onPress={startManualAdd}>
@@ -457,7 +695,7 @@ const MapScreen = (): React.JSX.Element => {
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
             </View>
           )}
-          {scanning && <ActivityIndicator size="small" color="#2d6a4f" />}
+          {scanning && <ActivityIndicator size="small" color={theme.primary} />}
           <TouchableOpacity
             style={[styles.companionBtn, showCompanionOverlay && styles.companionBtnActive]}
             onPress={() => setShowCompanionOverlay((v) => !v)}>
@@ -564,6 +802,9 @@ const MapScreen = (): React.JSX.Element => {
         {!isInteractive && (
           <>
             {showFabMenu && (
+              <Pressable style={styles.fabBackdrop} onPress={() => setShowFabMenu(false)} />
+            )}
+            {showFabMenu && (
               <View style={styles.fabMenu}>
                 <TouchableOpacity style={styles.fabMenuItem}
                   onPress={() => { setShowFabMenu(false); handleScanPress(); }}>
@@ -638,7 +879,7 @@ const MapScreen = (): React.JSX.Element => {
                 value={correctionName}
                 onChangeText={setCorrectionName}
                 placeholder="Naam van de plant"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
               />
               <Text style={corrStyles.label}>Soort (optioneel)</Text>
               <TextInput
@@ -646,7 +887,7 @@ const MapScreen = (): React.JSX.Element => {
                 value={correctionSpecies}
                 onChangeText={setCorrectionSpecies}
                 placeholder="Latijnse naam"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
               />
               <TouchableOpacity
                 style={corrStyles.confirmBtn}
@@ -720,7 +961,7 @@ const MapScreen = (): React.JSX.Element => {
             <TextInput
               style={styles.modalInput}
               placeholder="Naam…"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={theme.textMuted}
               value={modalName}
               onChangeText={setModalName}
               autoFocus
@@ -761,7 +1002,7 @@ const MapScreen = (): React.JSX.Element => {
             <TextInput
               style={[styles.modalInput, styles.modalInputNotes]}
               placeholder="Notitie (optioneel)…"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={theme.textMuted}
               value={modalNotes}
               onChangeText={setModalNotes}
               multiline
@@ -785,235 +1026,5 @@ const MapScreen = (): React.JSX.Element => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  emptyContainer: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', padding: 32, gap: 14,
-  },
-  emptyIcon: { fontSize: 64 },
-  emptyTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
-  emptySubtitle: { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
-  emptyScanBtn: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14,
-    borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center',
-  },
-  emptyScanBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  emptyManualBtn: {
-    backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 14,
-    borderRadius: 14, minWidth: 200, alignItems: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  emptyManualBtnText: { color: '#2d6a4f', fontWeight: '700', fontSize: 16 },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef',
-  },
-  gardenName: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  plantCount: { fontSize: 13, color: '#6b705c', marginTop: 2 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
-  companionBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  companionBtnActive: {
-    backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
-  },
-  companionBtnText: { fontSize: 20 },
-  waterBanner: {
-    backgroundColor: '#e0f0ff', paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#90c8f0',
-  },
-  waterBannerText: { fontSize: 13, fontWeight: '600', color: '#0a558c' },
-  sizeBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  sizeBtnText: { fontSize: 18 },
-  companionLegend: {
-    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
-    paddingHorizontal: 16, paddingVertical: 8,
-    backgroundColor: '#f0faf4',
-    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
-    gap: 16,
-  },
-  companionChipsRow: {
-    backgroundColor: '#f0faf4',
-    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
-    maxHeight: 40,
-  },
-  companionChipsContent: {
-    paddingHorizontal: 12, paddingVertical: 6, gap: 8,
-  },
-  companionChip: {
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 12, borderWidth: 1,
-  },
-  chipGood: { backgroundColor: '#d8f3dc', borderColor: '#2d6a4f' },
-  chipBad:  { backgroundColor: '#ffe5e5', borderColor: '#e63946' },
-  companionChipText: { fontSize: 11, fontWeight: '600' },
-  chipTextGood: { color: '#1b4332' },
-  chipTextBad:  { color: '#9b1c1c' },
-  sizeOption: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef',
-    gap: 12,
-  },
-  sizeOptionActive: { backgroundColor: '#f0faf4' },
-  sizeOptionLabel: { fontSize: 16, fontWeight: '600', color: '#1b4332', width: 110 },
-  sizeOptionLabelActive: { color: '#2d6a4f' },
-  sizeOptionDesc: { flex: 1, fontSize: 13, color: '#6b705c' },
-  sizeOptionDescActive: { color: '#2d6a4f' },
-  sizeCheck: { fontSize: 16, color: '#2d6a4f', fontWeight: '700' },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDash: { width: 22, height: 3, borderRadius: 2 },
-  legendGood: { backgroundColor: '#2d6a4f' },
-  legendBad:  { backgroundColor: '#e63946' },
-  legendText: { fontSize: 12, color: '#1b4332', fontWeight: '600' },
-  legendHint: { fontSize: 11, color: '#6b705c', fontStyle: 'italic' },
-  banner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#d8f3dc', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#2d6a4f', gap: 8,
-  },
-  bannerLeft: { flex: 1 },
-  bannerText: { fontSize: 13, color: '#1b4332', fontWeight: '600' },
-  bannerExtra: { fontSize: 11, color: '#2d6a4f', marginTop: 1 },
-  bannerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  bannerSkip: { fontSize: 13, color: '#6b705c', fontWeight: '600' },
-  bannerCancel: { fontSize: 18, color: '#e63946', fontWeight: '700' },
-  hintBar: {
-    paddingHorizontal: 16, paddingVertical: 6,
-    backgroundColor: '#f8f9fa', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
-  },
-  hintText: { fontSize: 11, color: '#aaa', textAlign: 'center' },
-  mapWrapper: { flex: 1, overflow: 'hidden' },
-  scrollOuter: { flex: 1 },
-  fab: {
-    position: 'absolute', bottom: 20, right: 20,
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#2d6a4f', alignItems: 'center', justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
-  },
-  fabActive: { backgroundColor: '#e63946' },
-  fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
-  fabMenu: {
-    position: 'absolute', bottom: 82, right: 20,
-    backgroundColor: '#fff', borderRadius: 16,
-    borderWidth: 1, borderColor: '#e9ecef',
-    elevation: 6, shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8,
-    overflow: 'hidden', minWidth: 200,
-  },
-  fabMenuItem: {
-    paddingHorizontal: 18, paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef',
-  },
-  fabMenuItemDanger: { borderBottomWidth: 0 },
-  fabMenuItemText: { fontSize: 15, color: '#1b4332', fontWeight: '600' },
-  fabMenuItemTextDanger: { color: '#e63946' },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 24, gap: 14, paddingBottom: 36,
-  },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  modalSubtitle: { fontSize: 13, color: '#6b705c', marginTop: -8 },
-  modalInput: {
-    backgroundColor: '#f8f9fa', borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#1b4332',
-  },
-  modalInputNotes: { fontSize: 14, minHeight: 60, textAlignVertical: 'top' },
-  typeRow: { flexDirection: 'row', gap: 8 },
-  typeBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: 10,
-    borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa', gap: 4,
-  },
-  typeBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
-  typeBtnIcon: { fontSize: 18 },
-  typeBtnLabel: { fontSize: 11, color: '#6b705c', fontWeight: '600' },
-  typeBtnLabelActive: { color: '#2d6a4f' },
-  colorLabel: { fontSize: 13, fontWeight: '600', color: '#6b705c' },
-  colorSwatch: {
-    width: 36, height: 36, borderRadius: 18, marginRight: 10,
-    borderWidth: 2, borderColor: 'transparent',
-  },
-  colorSwatchSelected: { borderColor: '#1b4332', transform: [{ scale: 1.2 }] },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  modalCancelBtn: {
-    flex: 1, borderWidth: 1, borderColor: '#e9ecef', borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center',
-  },
-  modalCancelText: { color: '#6b705c', fontWeight: '600', fontSize: 15 },
-  modalConfirmBtn: {
-    flex: 2, backgroundColor: '#2d6a4f', borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center',
-  },
-  modalConfirmBtnDisabled: { backgroundColor: '#ccc' },
-  modalConfirmText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
-
-const menuStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingBottom: 28, overflow: 'hidden' },
-  header: { backgroundColor: '#1b4332', paddingHorizontal: 20, paddingVertical: 16, marginBottom: 6 },
-  plantName: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  plantSpecies: { fontSize: 13, color: '#b7e4c7', fontStyle: 'italic', marginTop: 2 },
-  item: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef', gap: 14,
-  },
-  itemDanger: { borderBottomWidth: 0 },
-  itemIcon: { fontSize: 20, width: 28, textAlign: 'center' },
-  colorDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#e9ecef' },
-  itemLabel: { fontSize: 16, color: '#1b4332', fontWeight: '500', flex: 1 },
-  itemLabelDanger: { fontSize: 16, color: '#e63946', fontWeight: '500', flex: 1 },
-  chevron: { fontSize: 12, color: '#aaa' },
-  colorRow: { marginLeft: 20, marginBottom: 4 },
-  colorRowContent: { paddingRight: 20, gap: 10, paddingVertical: 8 },
-  swatch: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: 'transparent' },
-  swatchSelected: { borderColor: '#1b4332', transform: [{ scale: 1.2 }] },
-  noteArea: { marginHorizontal: 20, marginBottom: 4, gap: 8 },
-  noteInput: {
-    backgroundColor: '#f8f9fa', borderRadius: 10, borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#1b4332',
-    minHeight: 72, textAlignVertical: 'top',
-  },
-  noteSaveBtn: {
-    backgroundColor: '#2d6a4f', borderRadius: 10, paddingVertical: 10, alignItems: 'center',
-  },
-  noteSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  cancelBtn: {
-    marginHorizontal: 20, marginTop: 8,
-    backgroundColor: '#f1f8f3', borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  cancelText: { fontSize: 16, color: '#2d6a4f', fontWeight: '700' },
-});
-
-const corrStyles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, maxHeight: '70%' },
-  handle: { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  title: { fontSize: 18, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
-  lowConf: { fontSize: 12, color: '#e85d04', marginBottom: 12, backgroundColor: '#fff3e0', padding: 8, borderRadius: 8 },
-  label: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 8, marginBottom: 4 },
-  input: { borderWidth: 1, borderColor: '#b7e4c7', borderRadius: 10, padding: 10, fontSize: 15, color: '#1b4332', backgroundColor: '#f8fdf9' },
-  confirmBtn: { marginTop: 16, backgroundColor: '#2d6a4f', borderRadius: 12, padding: 14, alignItems: 'center' },
-  confirmText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  skipBtn: { marginTop: 8, alignItems: 'center', padding: 8 },
-  skipText: { color: '#888', fontSize: 13 },
-});
 
 export default MapScreen;
