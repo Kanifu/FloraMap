@@ -78,6 +78,7 @@ export interface Plant {
   width?: number;   // cells wide;  1 = single dot (default)
   height?: number;  // cells tall;  1 = single dot (default)
   color?: string;   // fill colour when width>1 or height>1
+  fillPattern?: 'solid' | 'grass' | 'forest' | 'gravel' | 'water'; // zone texture
   plantedDate?: string;
   sowDate?: string;
   lastMaintenanceDate?: string;
@@ -104,6 +105,33 @@ export interface GardenTask {
   completedDate?: string;
   urgency: GardenTaskUrgency;
   plantName?: string;
+}
+
+export interface HarvestEntry {
+  id: string;
+  date: string;
+  weightG?: number;
+  count?: number;
+  notes?: string;
+}
+
+export type SoilType = 'clay' | 'loam' | 'sand' | 'peat';
+
+export interface SoilAmendment {
+  id: string;
+  date: string;
+  type: string;
+  notes?: string;
+}
+
+export interface SoilProfile {
+  id: string;
+  gardenId: string;
+  zoneName: string;
+  ph?: number;
+  soilType?: SoilType;
+  lastTestedDate?: string;
+  amendments: SoilAmendment[];
 }
 
 export const ZONE_COLORS = [
@@ -149,6 +177,8 @@ export interface Garden {
   id: string;
   userId: string;
   name: string;
+  gridCols?: number;  // default 25 (each cell = 30×30 cm)
+  gridRows?: number;  // default 25
   polygons: GardenPolygon[];
   plants: Plant[];
   /** @deprecated Use Plants with width/height > 1 instead */
@@ -157,6 +187,7 @@ export interface Garden {
   boundaries?: GardenBoundary[];
   lastScannedAt?: string;
   northOrientationDeg?: number;
+  soilProfiles?: SoilProfile[];
 }
 
 export interface SeedPacket {

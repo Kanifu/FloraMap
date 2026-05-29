@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -10,7 +11,8 @@ import { useGardenStore } from '@/store/gardenStore';
 import { MapStackParamList } from '@/navigation/AppNavigator';
 import { MaintenanceTaskType, PhotoLogEntry, HarvestEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
-import { plantDatabase } from '@/data/plantDatabase';
+import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { useTheme } from '@/hooks/useTheme';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
@@ -39,25 +41,157 @@ const LIGHT_LABELS: Record<string, string> = {
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-const ROTATION_SUCCESSORS: Record<string, string[]> = {
-  'Nachtschade':   ['Vlinderbloem', 'Composiet', 'Gras'],
-  'Cucurbit':      ['Nachtschade', 'Kruisbloemige'],
-  'Kruisbloemige': ['Cucurbit', 'Composiet', 'Ui familie'],
-  'Composiet':     ['Nachtschade', 'Cucurbit'],
-  'Vlinderbloem':  ['Nachtschade', 'Kruisbloemige', 'Cucurbit'],
-  'Ui familie':    ['Cucurbit', 'Composiet'],
-  'Gras':          ['Vlinderbloem', 'Nachtschade'],
-};
-
 const PlantCardScreen = (): React.JSX.Element => {
+  const theme = useTheme();
   const route      = useRoute<PlantCardRouteProp>();
   const navigation = useNavigation<PlantCardNavProp>();
   const { plantId } = route.params;
+
+  const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 16, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: theme.border, gap: 10,
+    },
+    backRow: { paddingRight: 4 },
+    backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
+    headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: theme.primaryDark },
+    editActions: { flexDirection: 'row', gap: 8 },
+    editActionBtn: { paddingHorizontal: 10, paddingVertical: 6 },
+    editCancelText: { fontSize: 14, color: theme.textMuted, fontWeight: '600' },
+    editSaveBtn: { backgroundColor: theme.primary, borderRadius: 8 },
+    editSaveText: { fontSize: 14, color: theme.card, fontWeight: '700' },
+    editStartText: { fontSize: 14, color: theme.primary, fontWeight: '600' },
+    scroll: { padding: 16, gap: 20, paddingBottom: 40 },
+    card: { backgroundColor: theme.cardAlt, borderRadius: 16, padding: 20, gap: 10 },
+    plantName: { fontSize: 26, fontWeight: '700', color: theme.primaryDark },
+    plantSpecies: { fontSize: 15, fontStyle: 'italic', color: theme.textSecondary },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+    metaChip: {
+      backgroundColor: theme.primaryLight, borderRadius: 20,
+      paddingHorizontal: 10, paddingVertical: 4,
+    },
+    metaChipText: { fontSize: 12, color: theme.primary, fontWeight: '600' },
+    section: { gap: 8 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 15, fontWeight: '700', color: theme.primaryDark },
+    fieldLabel: { fontSize: 12, color: theme.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+    input: {
+      backgroundColor: theme.cardAlt, borderRadius: 10,
+      borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 14, paddingVertical: 10,
+      fontSize: 15, color: theme.primaryDark,
+    },
+    inputMulti: { minHeight: 72, textAlignVertical: 'top' },
+    notesCard: {
+      backgroundColor: theme.warningLight, borderRadius: 12,
+      padding: 14, borderWidth: 1, borderColor: theme.warning,
+    },
+    notesText: { fontSize: 14, color: theme.text, lineHeight: 21 },
+    tipsCard: {
+      backgroundColor: theme.primaryBg, borderRadius: 12,
+      padding: 14, gap: 8, borderWidth: 1, borderColor: theme.borderLight,
+    },
+    tipRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+    tipBullet: { fontSize: 16, color: theme.primary, marginTop: 1 },
+    tipText: { flex: 1, fontSize: 14, color: theme.primaryDark, lineHeight: 20 },
+    taskRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: theme.cardAlt, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.border,
+      padding: 13, gap: 10,
+    },
+    taskRowOverdue: { borderColor: theme.danger, backgroundColor: theme.dangerLight },
+    taskIcon: { fontSize: 20 },
+    taskBody: { flex: 1, gap: 2 },
+    taskNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    taskLabel: { fontSize: 14, fontWeight: '600', color: theme.primaryDark },
+    taskNote: { fontSize: 12, color: theme.textSecondary, fontStyle: 'italic' },
+    taskDue: { fontSize: 13, color: theme.textSecondary, fontWeight: '500' },
+    textOverdue: { color: theme.danger },
+    recurBadge: {
+      fontSize: 10, color: theme.primary, backgroundColor: theme.primaryLight,
+      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, fontWeight: '600', overflow: 'hidden',
+    },
+    doneBtn: {
+      backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 7,
+      borderRadius: 8, marginLeft: 6,
+    },
+    doneBtnEditing: { backgroundColor: theme.textMuted },
+    doneBtnText: { color: theme.card, fontWeight: '700', fontSize: 13 },
+    historyToggle: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 2,
+    },
+    chevron: { fontSize: 12, color: theme.textMuted },
+    historyRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: theme.cardAlt, borderRadius: 10,
+      borderWidth: 1, borderColor: theme.border,
+      padding: 12, gap: 10, opacity: 0.75,
+    },
+    historyDate: { fontSize: 12, color: theme.textMuted, marginTop: 1 },
+    checkMark: { fontSize: 18, color: theme.primary, fontWeight: '700' },
+    addPhotoBtn: {
+      backgroundColor: theme.primaryBg, borderRadius: 10,
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderWidth: 1, borderColor: theme.borderLight,
+    },
+    addPhotoBtnText: { fontSize: 13, color: theme.primary, fontWeight: '700' },
+    photoScroll: { marginTop: 4 },
+    photoEntry: { marginRight: 12, alignItems: 'center', gap: 4 },
+    photoThumb: { width: 80, height: 80, borderRadius: 12 },
+    photoDate: { fontSize: 11, color: theme.textSecondary, textAlign: 'center' },
+    photoHint: { fontSize: 11, color: theme.textMuted, fontStyle: 'italic' },
+    emptyText: { fontSize: 14, color: theme.textMuted, fontStyle: 'italic', lineHeight: 20 },
+    harvestTotalCard: {
+      backgroundColor: theme.warningLight, borderRadius: 12, borderWidth: 1, borderColor: theme.warning,
+      padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10,
+    },
+    harvestTotalEmoji: { fontSize: 24 },
+    harvestTotalText: { fontSize: 15, fontWeight: '700', color: theme.primaryDark, flex: 1 },
+    harvestTotalSub: { fontSize: 12, color: theme.textSecondary },
+    harvestForm: {
+      backgroundColor: theme.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: theme.border,
+      padding: 12, gap: 8,
+    },
+    harvestFormRow: { flexDirection: 'row', gap: 8 },
+    harvestFormInput: {
+      flex: 1, backgroundColor: theme.card, borderRadius: 8, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: theme.text,
+    },
+    harvestFormInputFull: {
+      backgroundColor: theme.card, borderRadius: 8, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: theme.text,
+    },
+    harvestSaveBtn: {
+      backgroundColor: theme.primary, borderRadius: 8, padding: 11, alignItems: 'center',
+    },
+    harvestSaveBtnText: { color: theme.card, fontWeight: '700', fontSize: 14 },
+    harvestEntryRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: theme.cardAlt, borderRadius: 10, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 12, paddingVertical: 9, gap: 8,
+    },
+    harvestEntryDate: { fontSize: 12, color: theme.textSecondary, flex: 1 },
+    harvestEntryAmount: { fontSize: 13, fontWeight: '700', color: theme.primary },
+    harvestEntryNotes: { fontSize: 11, color: theme.textMuted, fontStyle: 'italic' },
+    enrichBtn: {
+      backgroundColor: theme.primaryBg, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.primary,
+      paddingVertical: 13, alignItems: 'center',
+      marginTop: 4,
+    },
+    enrichBtnText: { fontSize: 14, color: theme.primary, fontWeight: '700' },
+  });
 
   const garden                  = useGardenStore((s) => s.garden);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const recordHarvest           = useGardenStore((s) => s.recordHarvest);
+  const deleteHarvestEntry      = useGardenStore((s) => s.deleteHarvestEntry);
 
   const plant = garden?.plants.find((p) => p.id === plantId);
   const now   = new Date().toISOString();
@@ -68,13 +202,12 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [editSpecies,  setEditSpecies]  = useState('');
   const [editNotes,    setEditNotes]    = useState('');
   const [editWater,    setEditWater]    = useState('');
-  const [showHistory,  setShowHistory]  = useState(false);
-
-  // ── harvest diary state ────────────────────────────────────────────────────
-  const [showHarvestForm, setShowHarvestForm] = useState(false);
-  const [harvestAmount,   setHarvestAmount]   = useState('');
-  const [harvestNote,     setHarvestNote]     = useState('');
-  const [harvestToast,    setHarvestToast]    = useState(false);
+  const [showHistory,       setShowHistory]       = useState(false);
+  const [enriching,         setEnriching]         = useState(false);
+  const [showHarvestForm,   setShowHarvestForm]   = useState(false);
+  const [harvestWeight,     setHarvestWeight]     = useState('');
+  const [harvestCount,      setHarvestCount]      = useState('');
+  const [harvestNotes,      setHarvestNotes]      = useState('');
 
   const startEdit = () => {
     if (!plant) return;
@@ -105,6 +238,49 @@ const PlantCardScreen = (): React.JSX.Element => {
   };
 
   const handleCancelEdit = () => setIsEditing(false);
+
+  // ── AI info enrichment (#76) ───────────────────────────────────────────────
+  const handleEnrichWithAI = async () => {
+    if (!plant) return;
+    setEnriching(true);
+    try {
+      const response = await gardenAssistantService.chat(
+        `Geef verzorgingsinfo voor de plant: ${plant.commonName}`,
+        null, [], [],
+      );
+      const info = response.identifiedPlants?.[0];
+      if (!info) {
+        Alert.alert('Niet gevonden', 'Geen plantinfo ontvangen. Probeer de naam aan te passen.');
+        return;
+      }
+      const existingTypes = new Set(plant.maintenanceTasks.map((t) => t.type));
+      const newTasks = createInitialTasksForPlant(plant.id, info)
+        .filter((t) => !existingTypes.has(t.type));
+      updatePlant({
+        ...plant,
+        species:     plant.species || info.species,
+        careTips:    plant.careTips?.length ? plant.careTips : (info.careTips ?? []),
+        harvestMonths: plant.harvestMonths ?? info.harvestMonths,
+        maintenanceTasks: [
+          ...plant.maintenanceTasks.map((t) => {
+            if (t.type === 'water' && !t.completedDate && !t.intervalDays && info.waterIntervalDays) {
+              return { ...t, intervalDays: info.waterIntervalDays };
+            }
+            if (t.type === 'fertilize' && !t.completedDate && !t.intervalDays && info.fertilizeIntervalDays) {
+              return { ...t, intervalDays: info.fertilizeIntervalDays };
+            }
+            return t;
+          }),
+          ...newTasks,
+        ],
+      });
+      Alert.alert('✅ Info aangevuld', 'Plantinformatie is bijgewerkt via AI.');
+    } catch (e) {
+      Alert.alert('Fout', e instanceof Error ? e.message : 'Kon AI niet bereiken.');
+    } finally {
+      setEnriching(false);
+    }
+  };
 
   // ── task complete ──────────────────────────────────────────────────────────
   const handleCompleteTask = useCallback(
@@ -148,22 +324,32 @@ const PlantCardScreen = (): React.JSX.Element => {
     ]);
   };
 
-  // ── harvest diary ─────────────────────────────────────────────────────────
+  // ── harvest ────────────────────────────────────────────────────────────────
   const handleSaveHarvest = () => {
     if (!plant) return;
-    const parsed = parseFloat(harvestAmount.replace(',', '.'));
+    const wg = harvestWeight ? parseFloat(harvestWeight) : undefined;
+    const cnt = harvestCount ? parseInt(harvestCount, 10) : undefined;
+    if (!wg && !cnt) return;
     const entry: HarvestEntry = {
       id: newId(),
       date: new Date().toISOString(),
-      amountGrams: isNaN(parsed) || harvestAmount.trim() === '' ? undefined : parsed,
-      notes: harvestNote.trim() || undefined,
+      weightG: wg && !isNaN(wg) ? Math.round(wg) : undefined,
+      count: cnt && !isNaN(cnt) ? cnt : undefined,
+      notes: harvestNotes.trim() || undefined,
     };
     recordHarvest(plant.id, entry);
-    setHarvestAmount('');
-    setHarvestNote('');
     setShowHarvestForm(false);
-    setHarvestToast(true);
-    setTimeout(() => setHarvestToast(false), 2500);
+    setHarvestWeight('');
+    setHarvestCount('');
+    setHarvestNotes('');
+  };
+
+  const handleDeleteHarvest = (entryId: string) => {
+    if (!plant) return;
+    Alert.alert('Oogst verwijderen?', 'Dit kan niet ongedaan worden gemaakt.', [
+      { text: 'Annuleren', style: 'cancel' },
+      { text: 'Verwijderen', style: 'destructive', onPress: () => deleteHarvestEntry(plant.id, entryId) },
+    ]);
   };
 
   // ── tasks ──────────────────────────────────────────────────────────────────
@@ -176,25 +362,6 @@ const PlantCardScreen = (): React.JSX.Element => {
         .sort((a, b) => (b.completedDate ?? '').localeCompare(a.completedDate ?? '')),
     };
   }, [plant]);
-
-  // ── successor crops ────────────────────────────────────────────────────────
-  const currentMonth = new Date().getMonth();
-  const successorSuggestions = useMemo(() => {
-    if (!plant?.plantFamily) return [];
-    const successorFamilies = ROTATION_SUCCESSORS[plant.plantFamily];
-    if (!successorFamilies) return [];
-    return plantDatabase
-      .filter((p) => p.plantFamily && successorFamilies.includes(p.plantFamily))
-      .slice(0, 3);
-  }, [plant]);
-
-  const showSuccessors = useMemo(() => {
-    if (!plant?.plantFamily) return false;
-    if (!ROTATION_SUCCESSORS[plant.plantFamily]) return false;
-    const hasHarvest = (plant.harvestLog ?? []).length > 0;
-    const hasRecentHarvestMonth = (plant.harvestMonths ?? []).some((m) => m <= currentMonth);
-    return hasHarvest || hasRecentHarvestMonth;
-  }, [plant, currentMonth]);
 
   // ── not found ──────────────────────────────────────────────────────────────
   if (!plant) {
@@ -247,7 +414,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                 <TextInput style={s.input} value={editName} onChangeText={setEditName} />
                 <Text style={s.fieldLabel}>Soort (wetenschappelijk)</Text>
                 <TextInput style={s.input} value={editSpecies} onChangeText={setEditSpecies}
-                  placeholder="bijv. Solanum lycopersicum" placeholderTextColor="#aaa" />
+                  placeholder="bijv. Solanum lycopersicum" placeholderTextColor={theme.textMuted} />
               </>
             ) : (
               <>
@@ -285,7 +452,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                 value={editNotes}
                 onChangeText={setEditNotes}
                 placeholder="Voeg een notitie toe…"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={3}
               />
@@ -297,6 +464,18 @@ const PlantCardScreen = (): React.JSX.Element => {
               <Text style={s.emptyText}>Geen notitie — tik op Bewerken om er een toe te voegen.</Text>
             )}
           </View>
+
+          {/* ── AI enrich button — shown when no care tips yet ── */}
+          {!isEditing && (!plant.careTips || plant.careTips.length === 0) && (
+            <TouchableOpacity
+              style={s.enrichBtn}
+              onPress={handleEnrichWithAI}
+              disabled={enriching}>
+              {enriching
+                ? <ActivityIndicator size="small" color={theme.primary} />
+                : <Text style={s.enrichBtnText}>🌿 Vul plantinfo aan via AI</Text>}
+            </TouchableOpacity>
+          )}
 
           {/* ── Care tips ── */}
           {plant.careTips && plant.careTips.length > 0 && (
@@ -361,7 +540,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                 value={editWater}
                 onChangeText={setEditWater}
                 placeholder="bijv. 3"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="number-pad"
               />
             </View>
@@ -421,234 +600,95 @@ const PlantCardScreen = (): React.JSX.Element => {
             )}
           </View>
 
-          {/* ── Harvest diary ── */}
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>🍓 Oogstdagboek</Text>
-              <TouchableOpacity
-                style={s.addPhotoBtn}
-                onPress={() => setShowHarvestForm((v) => !v)}>
-                <Text style={s.addPhotoBtnText}>
-                  {showHarvestForm ? '▲ Verbergen' : '🍓 Oogst registreren'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Harvest form */}
-            {showHarvestForm && (
-              <View style={s.harvestForm}>
-                <TextInput
-                  style={s.input}
-                  value={harvestAmount}
-                  onChangeText={setHarvestAmount}
-                  placeholder="Hoeveelheid in gram (optioneel)"
-                  placeholderTextColor="#aaa"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  style={[s.input, s.inputMulti]}
-                  value={harvestNote}
-                  onChangeText={setHarvestNote}
-                  placeholder="Notitie (optioneel)"
-                  placeholderTextColor="#aaa"
-                  multiline
-                  numberOfLines={2}
-                />
-                <TouchableOpacity style={s.doneBtn} onPress={handleSaveHarvest}>
-                  <Text style={s.doneBtnText}>Opslaan</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Toast */}
-            {harvestToast && (
-              <View style={s.harvestToast}>
-                <Text style={s.harvestToastText}>✓ Oogst geregistreerd</Text>
-              </View>
-            )}
-
-            {/* Harvest total */}
-            {(plant.harvestLog ?? []).length > 0 && (() => {
-              const total = (plant.harvestLog ?? []).reduce(
-                (sum, e) => sum + (e.amountGrams ?? 0), 0,
-              );
-              return total > 0 ? (
-                <View style={s.harvestTotalRow}>
-                  <Text style={s.harvestTotalText}>Totaal: {total} gram</Text>
+          {/* ── Harvest log ── */}
+          {plant.harvestMonths && plant.harvestMonths.length > 0 && (() => {
+            const log = [...(plant.harvestLog ?? [])].sort((a, b) => b.date.localeCompare(a.date));
+            const totalG = log.reduce((s, e) => s + (e.weightG ?? 0), 0);
+            const totalCount = log.reduce((s, e) => s + (e.count ?? 0), 0);
+            return (
+              <View style={s.section}>
+                <View style={s.sectionHeader}>
+                  <Text style={s.sectionTitle}>🍓 Oogst bijhouden</Text>
+                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn}>
+                    <Text style={s.addPhotoBtnText}>{showHarvestForm ? '✕ Sluiten' : '+ Oogst'}</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : null;
-            })()}
 
-            {/* Harvest history */}
-            {(plant.harvestLog ?? []).length === 0 ? (
-              <Text style={s.emptyText}>Nog geen oogsten geregistreerd</Text>
-            ) : (
-              [...(plant.harvestLog ?? [])].reverse().map((entry) => (
-                <View key={entry.id} style={s.harvestRow}>
-                  <View style={s.taskBody}>
-                    <Text style={s.taskLabel}>
-                      {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      {entry.amountGrams != null ? `  ·  ${entry.amountGrams} gram` : ''}
-                    </Text>
-                    {entry.notes ? <Text style={s.taskNote}>{entry.notes}</Text> : null}
-                  </View>
-                  <Text style={s.checkMark}>🍓</Text>
-                </View>
-              ))
-            )}
-          </View>
-
-          {/* ── Successor crops ── */}
-          {showSuccessors && successorSuggestions.length > 0 && (
-            <View style={s.section}>
-              <Text style={s.sectionTitle}>🔄 Opvolgteelt na {plant.commonName}</Text>
-              <View style={s.successorList}>
-                {successorSuggestions.map((p) => (
-                  <View key={p.species} style={s.successorCard}>
-                    <Text style={s.successorEmoji}>{p.emoji}</Text>
-                    <View style={s.taskBody}>
-                      <Text style={s.taskLabel}>{p.commonName}</Text>
-                      {p.sowMonths?.includes(currentMonth) && (
-                        <Text style={s.successorSeason}>Past goed in dit seizoen</Text>
-                      )}
+                {(totalG > 0 || totalCount > 0) && (
+                  <View style={s.harvestTotalCard}>
+                    <Text style={s.harvestTotalEmoji}>🏆</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.harvestTotalText}>
+                        {totalG > 0 ? `${totalG}g` : ''}
+                        {totalG > 0 && totalCount > 0 ? ' · ' : ''}
+                        {totalCount > 0 ? `${totalCount}x` : ''}
+                        {' totaal geoogst'}
+                      </Text>
+                      <Text style={s.harvestTotalSub}>{log.length} {log.length === 1 ? 'oogst' : 'oogsten'} geregistreerd</Text>
                     </View>
                   </View>
-                ))}
+                )}
+
+                {showHarvestForm && (
+                  <View style={s.harvestForm}>
+                    <View style={s.harvestFormRow}>
+                      <TextInput
+                        style={s.harvestFormInput}
+                        placeholder="Gewicht (g)"
+                        placeholderTextColor={theme.textMuted}
+                        value={harvestWeight}
+                        onChangeText={setHarvestWeight}
+                        keyboardType="decimal-pad"
+                      />
+                      <TextInput
+                        style={s.harvestFormInput}
+                        placeholder="Aantal stuks"
+                        placeholderTextColor={theme.textMuted}
+                        value={harvestCount}
+                        onChangeText={setHarvestCount}
+                        keyboardType="number-pad"
+                      />
+                    </View>
+                    <TextInput
+                      style={s.harvestFormInputFull}
+                      placeholder="Notitie (optioneel)"
+                      placeholderTextColor={theme.textMuted}
+                      value={harvestNotes}
+                      onChangeText={setHarvestNotes}
+                    />
+                    <TouchableOpacity style={s.harvestSaveBtn} onPress={handleSaveHarvest}>
+                      <Text style={s.harvestSaveBtnText}>Opslaan</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {log.length === 0 ? (
+                  <Text style={s.emptyText}>Nog geen oogsten geregistreerd.</Text>
+                ) : (
+                  log.map((entry) => (
+                    <TouchableOpacity
+                      key={entry.id}
+                      style={s.harvestEntryRow}
+                      onLongPress={() => handleDeleteHarvest(entry.id)}
+                      activeOpacity={0.7}>
+                      <Text style={s.harvestEntryDate}>
+                        🌾 {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                      <Text style={s.harvestEntryAmount}>
+                        {[entry.weightG ? `${entry.weightG}g` : '', entry.count ? `${entry.count}x` : ''].filter(Boolean).join(' · ')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+                {log.length > 0 && <Text style={s.photoHint}>Lang indrukken om oogstregistratie te verwijderen</Text>}
               </View>
-            </View>
-          )}
+            );
+          })()}
 
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef', gap: 10,
-  },
-  backRow: { paddingRight: 4 },
-  backText: { color: '#2d6a4f', fontSize: 16, fontWeight: '600' },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#1b4332' },
-  editActions: { flexDirection: 'row', gap: 8 },
-  editActionBtn: { paddingHorizontal: 10, paddingVertical: 6 },
-  editCancelText: { fontSize: 14, color: '#aaa', fontWeight: '600' },
-  editSaveBtn: { backgroundColor: '#2d6a4f', borderRadius: 8 },
-  editSaveText: { fontSize: 14, color: '#fff', fontWeight: '700' },
-  editStartText: { fontSize: 14, color: '#2d6a4f', fontWeight: '600' },
-  scroll: { padding: 16, gap: 20, paddingBottom: 40 },
-  card: { backgroundColor: '#f8f9fa', borderRadius: 16, padding: 20, gap: 10 },
-  plantName: { fontSize: 26, fontWeight: '700', color: '#1b4332' },
-  plantSpecies: { fontSize: 15, fontStyle: 'italic', color: '#6b705c' },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  metaChip: {
-    backgroundColor: '#d8f3dc', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  metaChipText: { fontSize: 12, color: '#2d6a4f', fontWeight: '600' },
-  section: { gap: 8 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1b4332' },
-  fieldLabel: { fontSize: 12, color: '#aaa', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
-  input: {
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 15, color: '#1b4332',
-  },
-  inputMulti: { minHeight: 72, textAlignVertical: 'top' },
-  notesCard: {
-    backgroundColor: '#fff9e6', borderRadius: 12,
-    padding: 14, borderWidth: 1, borderColor: '#ffe08a',
-  },
-  notesText: { fontSize: 14, color: '#5a4000', lineHeight: 21 },
-  tipsCard: {
-    backgroundColor: '#f1f8f3', borderRadius: 12,
-    padding: 14, gap: 8, borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  tipRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  tipBullet: { fontSize: 16, color: '#2d6a4f', marginTop: 1 },
-  tipText: { flex: 1, fontSize: 14, color: '#1b4332', lineHeight: 20 },
-  taskRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 12,
-    borderWidth: 1, borderColor: '#e9ecef',
-    padding: 13, gap: 10,
-  },
-  taskRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
-  taskIcon: { fontSize: 20 },
-  taskBody: { flex: 1, gap: 2 },
-  taskNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  taskLabel: { fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  taskNote: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
-  taskDue: { fontSize: 13, color: '#6b705c', fontWeight: '500' },
-  textOverdue: { color: '#e63946' },
-  recurBadge: {
-    fontSize: 10, color: '#2d6a4f', backgroundColor: '#d8f3dc',
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, fontWeight: '600', overflow: 'hidden',
-  },
-  doneBtn: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: 8, marginLeft: 6,
-  },
-  doneBtnEditing: { backgroundColor: '#ccc' },
-  doneBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  historyToggle: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 2,
-  },
-  chevron: { fontSize: 12, color: '#aaa' },
-  historyRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
-    padding: 12, gap: 10, opacity: 0.75,
-  },
-  historyDate: { fontSize: 12, color: '#aaa', marginTop: 1 },
-  checkMark: { fontSize: 18, color: '#2d6a4f', fontWeight: '700' },
-  addPhotoBtn: {
-    backgroundColor: '#f1f8f3', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  addPhotoBtnText: { fontSize: 13, color: '#2d6a4f', fontWeight: '700' },
-  photoScroll: { marginTop: 4 },
-  photoEntry: { marginRight: 12, alignItems: 'center', gap: 4 },
-  photoThumb: { width: 80, height: 80, borderRadius: 12 },
-  photoDate: { fontSize: 11, color: '#6b705c', textAlign: 'center' },
-  photoHint: { fontSize: 11, color: '#aaa', fontStyle: 'italic' },
-  emptyText: { fontSize: 14, color: '#aaa', fontStyle: 'italic', lineHeight: 20 },
-  harvestForm: { gap: 10, backgroundColor: '#f8f9fa', borderRadius: 14, padding: 14 },
-  harvestToast: {
-    backgroundColor: '#d8f3dc', borderRadius: 10, padding: 10, alignItems: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  harvestToastText: { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
-  harvestTotalRow: {
-    backgroundColor: '#f1f8f3', borderRadius: 10, padding: 10,
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  harvestTotalText: { fontSize: 14, fontWeight: '700', color: '#2d6a4f' },
-  harvestRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
-    padding: 12, gap: 10,
-  },
-  successorList: { gap: 8 },
-  successorCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f1f8f3', borderRadius: 12,
-    borderWidth: 1, borderColor: '#b7e4c7',
-    padding: 12, gap: 10,
-  },
-  successorEmoji: { fontSize: 24 },
-  successorSeason: { fontSize: 12, color: '#2d6a4f', fontWeight: '600', marginTop: 2 },
-});
 
 export default PlantCardScreen;

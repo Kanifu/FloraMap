@@ -7,6 +7,7 @@ import MaintenanceScreen from '@/screens/MaintenanceScreen';
 import PlantCardScreen from '@/screens/PlantCardScreen';
 import AboutScreen from '@/screens/AboutScreen';
 import SeedInventoryScreen from '@/screens/SeedInventoryScreen';
+import VirtualGardenScreen from '@/screens/VirtualGardenScreen';
 
 export type RootStackParamList = {
   Map: undefined;
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   About: undefined;
   Assistant: undefined;
   Maintenance: undefined;
+  VirtualGarden: undefined;
 };
 
 // Keep old type aliases so existing imports in other screens still compile
@@ -33,6 +35,7 @@ export const AppNavigator = (): React.JSX.Element => (
       <RootStack.Screen name="About" component={AboutScreen} />
       <RootStack.Screen name="Assistant" component={AssistantScreen} />
       <RootStack.Screen name="Maintenance" component={MaintenanceScreen} />
+      <RootStack.Screen name="VirtualGarden" component={VirtualGardenScreen} />
     </RootStack.Navigator>
   </NavigationContainer>
 );

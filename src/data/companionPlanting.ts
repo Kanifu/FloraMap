@@ -134,6 +134,116 @@ export const COMPANION_RULES: CompanionRule[] = [
     reason: 'Spinazie als bodembedekker houdt onkruid bij aardbeien weg',
   },
 
+  // ── Extra goede combinaties ───────────────────────────────────────────────
+  {
+    a: ['tagetes', 'marigold', 'afrikaantje', 'goudsbloem', 'calendula'],
+    b: ['tomaat', 'tomato', 'lycopersicon'],
+    relation: 'good',
+    reason: 'Tagetes houdt aaltjes en wittevlieg weg bij tomaten',
+  },
+  {
+    a: ['tagetes', 'marigold', 'afrikaantje', 'goudsbloem', 'calendula'],
+    b: ['komkommer', 'cucumber', 'cucumis sativus'],
+    relation: 'good',
+    reason: 'Tagetes trekt nuttige insecten aan en bestrijdt bodemaaltjes',
+  },
+  {
+    a: ['tagetes', 'marigold', 'afrikaantje', 'goudsbloem', 'calendula'],
+    b: ['aardappel', 'potato', 'solanum tuberosum'],
+    relation: 'good',
+    reason: 'Tagetes beschermt aardappels tegen aardappelcystenaaltjes',
+  },
+  {
+    a: ['tijm', 'thyme', 'thymus'],
+    b: ['kool', 'cabbage', 'brassica', 'broccoli', 'bloemkool'],
+    relation: 'good',
+    reason: 'Tijm verspreidt etherische oliën die koolvlieg afschrikken',
+  },
+  {
+    a: ['tijm', 'thyme', 'thymus'],
+    b: ['tomaat', 'tomato', 'lycopersicon'],
+    relation: 'good',
+    reason: 'Tijm houdt luis weg en trekt bestuivers aan voor tomaten',
+  },
+  {
+    a: ['rozemarijn', 'rosemary', 'rosmarinus'],
+    b: ['kool', 'cabbage', 'brassica', 'broccoli', 'bloemkool'],
+    relation: 'good',
+    reason: 'Rozemarijn houdt koolvlieg en rupsen weg bij koolsoorten',
+  },
+  {
+    a: ['rozemarijn', 'rosemary', 'rosmarinus'],
+    b: ['boon', 'bean', 'phaseolus'],
+    relation: 'good',
+    reason: 'Rozemarijn trekt bijen aan en verbetert de groei van bonen',
+  },
+  {
+    a: ['lavendel', 'lavender', 'lavandula'],
+    b: ['roos', 'rose', 'rosa'],
+    relation: 'good',
+    reason: 'Lavendel trekt bestuivers aan en houdt bladluizen bij rozen weg',
+  },
+  {
+    a: ['lavendel', 'lavender', 'lavandula'],
+    b: ['tomaat', 'tomato', 'lycopersicon'],
+    relation: 'good',
+    reason: 'Lavendel houdt wittevlieg weg bij tomaten',
+  },
+  {
+    a: ['aubergine', 'eggplant', 'solanum melongena'],
+    b: ['basilicum', 'basil', 'ocimum'],
+    relation: 'good',
+    reason: 'Basilicum verbetert smaak en houdt trips weg bij aubergine',
+  },
+  {
+    a: ['biet', 'beetroot', 'beta vulgaris', 'rode biet', 'suikerbiet'],
+    b: ['sla', 'lettuce', 'lactuca'],
+    relation: 'good',
+    reason: 'Bieten en sla gebruiken nutriënten op verschillende diepte',
+  },
+  {
+    a: ['biet', 'beetroot', 'beta vulgaris', 'rode biet'],
+    b: ['kool', 'cabbage', 'brassica'],
+    relation: 'good',
+    reason: 'Bieten voegen mineralen toe die kool goed kan gebruiken',
+  },
+  {
+    a: ['nasturtium', 'oost-indische kers', 'tropaeolum'],
+    b: ['komkommer', 'cucumber', 'cucumis sativus'],
+    relation: 'good',
+    reason: 'Oost-Indische kers trekt bladluizen weg van komkommer (lokvogel)',
+  },
+  {
+    a: ['nasturtium', 'oost-indische kers', 'tropaeolum'],
+    b: ['tomaat', 'tomato', 'lycopersicon'],
+    relation: 'good',
+    reason: 'Nasturtium lokt luis weg als lokvogel en trekt zweefvliegen aan',
+  },
+  {
+    a: ['munt', 'mint', 'mentha'],
+    b: ['kool', 'cabbage', 'brassica', 'broccoli'],
+    relation: 'good',
+    reason: 'Munt verspreidt geur die koolvlieg en bladluizen afschrikt',
+  },
+  {
+    a: ['munt', 'mint', 'mentha'],
+    b: ['erwt', 'pea', 'pisum'],
+    relation: 'good',
+    reason: 'Munt houdt bladluizen weg bij erwten',
+  },
+  {
+    a: ['zonnebloem', 'sunflower', 'helianthus'],
+    b: ['komkommer', 'cucumber', 'cucumis sativus'],
+    relation: 'good',
+    reason: 'Zonnebloem geeft schaduw en trekt bestuivers aan voor komkommer',
+  },
+  {
+    a: ['courgette', 'zucchini', 'cucurbita pepo'],
+    b: ['boon', 'bean', 'phaseolus'],
+    relation: 'good',
+    reason: 'Klassieke "Three Sisters" — bonen binden stikstof voor courgette',
+  },
+
   // ── Slechte combinaties ────────────────────────────────────────────────────
   {
     a: ['tomaat', 'tomato', 'lycopersicon', 'solanum lyco'],
@@ -197,6 +307,24 @@ export const COMPANION_RULES: CompanionRule[] = [
     b: ['dille', 'dill', 'anethum'],
     relation: 'bad',
     reason: 'Bloeiende dille kruist met wortelen en verslechtert oogst',
+  },
+  {
+    a: ['munt', 'mint', 'mentha'],
+    b: ['lavendel', 'lavender', 'lavandula'],
+    relation: 'bad',
+    reason: 'Munt is invasief en concurreert met lavendel om ruimte en water',
+  },
+  {
+    a: ['aubergine', 'eggplant', 'solanum melongena'],
+    b: ['venkel', 'fennel', 'foeniculum'],
+    relation: 'bad',
+    reason: 'Venkel is allelopathisch en remt de groei van aubergine',
+  },
+  {
+    a: ['biet', 'beetroot', 'beta vulgaris', 'rode biet'],
+    b: ['boon', 'bean', 'phaseolus'],
+    relation: 'bad',
+    reason: 'Bonen en bieten remmen elkaars groei door chemische uitscheiding',
   },
 ];
 
