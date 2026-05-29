@@ -287,12 +287,21 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
 const MapScreen = (): React.JSX.Element => {
   const theme = useTheme();
   const navigation = useNavigation<MapNavProp>();
-  const garden      = useGardenStore((s) => s.garden);
-  const setGarden   = useGardenStore((s) => s.setGarden);
+  const garden       = useGardenStore((s) => s.garden);
+  const gardens      = useGardenStore((s) => s.gardens);
+  const setGarden    = useGardenStore((s) => s.setGarden);
   const removePlant  = useGardenStore((s) => s.removePlant);
   const updatePlant  = useGardenStore((s) => s.updatePlant);
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
+  const createGarden = useGardenStore((s) => s.createGarden);
+  const switchGarden = useGardenStore((s) => s.switchGarden);
+  const renameGarden = useGardenStore((s) => s.renameGarden);
+  const deleteGarden = useGardenStore((s) => s.deleteGarden);
+
+  const [showGardenPicker, setShowGardenPicker] = useState(false);
+  const [renamingId,       setRenamingId]       = useState<string | null>(null);
+  const [renameText,       setRenameText]       = useState('');
 
   const [movingPlant,          setMovingPlant]          = useState<Plant | null>(null);
   const [drawStep,             setDrawStep]             = useState<DrawStep | null>(null);
@@ -539,8 +548,20 @@ const MapScreen = (): React.JSX.Element => {
       borderBottomWidth: 1, borderBottomColor: theme.border,
       backgroundColor: theme.card,
     },
+    gardenNameRow: { flexDirection: 'row', alignItems: 'center' },
     gardenName: { fontSize: 20, fontWeight: '700', color: theme.primaryDark },
+    gardenChevron: { fontSize: 15, color: theme.primary, fontWeight: '700' },
     plantCount: { fontSize: 13, color: theme.textSecondary, marginTop: 2 },
+    gardenPickerRow: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border, gap: 8,
+    },
+    gardenPickerName: { fontSize: 16, fontWeight: '600', color: theme.primaryDark },
+    gardenPickerNameActive: { color: theme.primary },
+    gardenPickerSub: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
+    gardenPickerEdit: { padding: 6 },
+    gardenPickerDelete: { padding: 6 },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     badge: { backgroundColor: theme.warning, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
     badgeText: { color: theme.text, fontWeight: '700', fontSize: 13 },
@@ -735,10 +756,13 @@ const MapScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.gardenName}>{currentGarden.name}</Text>
+        <TouchableOpacity onPress={() => setShowGardenPicker(true)} activeOpacity={0.7}>
+          <View style={styles.gardenNameRow}>
+            <Text style={styles.gardenName}>{currentGarden.name}</Text>
+            <Text style={styles.gardenChevron}>{gardens.length > 1 ? ' ▾' : ' ＋'}</Text>
+          </View>
           <Text style={styles.plantCount}>{currentGarden.plants.length} planten</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
             <View style={styles.badge}>
@@ -1071,6 +1095,73 @@ const MapScreen = (): React.JSX.Element => {
                 <Text style={styles.modalConfirmText}>Opslaan</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Garden switcher / manager modal */}
+      <Modal visible={showGardenPicker} transparent animationType="slide">
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>🏡 Mijn tuinen</Text>
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              {gardens.map((g) => {
+                const isActive = g.id === currentGarden.id;
+                return (
+                  <View key={g.id} style={styles.gardenPickerRow}>
+                    {renamingId === g.id ? (
+                      <TextInput
+                        style={[styles.modalInput, { flex: 1, paddingVertical: 8 }]}
+                        value={renameText}
+                        onChangeText={setRenameText}
+                        autoFocus
+                        onBlur={() => {
+                          if (renameText.trim()) renameGarden(g.id, renameText.trim());
+                          setRenamingId(null);
+                        }}
+                        onSubmitEditing={() => {
+                          if (renameText.trim()) renameGarden(g.id, renameText.trim());
+                          setRenamingId(null);
+                        }}
+                        returnKeyType="done"
+                      />
+                    ) : (
+                      <TouchableOpacity style={{ flex: 1 }}
+                        onPress={() => { switchGarden(g.id); setShowGardenPicker(false); }}>
+                        <Text style={[styles.gardenPickerName, isActive && styles.gardenPickerNameActive]}>
+                          {isActive ? '✓ ' : '   '}{g.name}
+                        </Text>
+                        <Text style={styles.gardenPickerSub}>{g.plants.length} planten</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.gardenPickerEdit}
+                      onPress={() => { setRenamingId(g.id); setRenameText(g.name); }}>
+                      <Text style={{ fontSize: 16 }}>✏️</Text>
+                    </TouchableOpacity>
+                    {gardens.length > 1 && (
+                      <TouchableOpacity style={styles.gardenPickerDelete}
+                        onPress={() => Alert.alert('Tuin verwijderen', `"${g.name}" verwijderen?`, [
+                          { text: 'Annuleren', style: 'cancel' },
+                          { text: 'Verwijderen', style: 'destructive', onPress: () => deleteGarden(g.id) },
+                        ])}>
+                        <Text style={{ fontSize: 16, color: theme.danger }}>🗑️</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={styles.modalConfirmBtn}
+              onPress={() => {
+                const n = `Tuin ${gardens.length + 1}`;
+                createGarden(n);
+                setShowGardenPicker(false);
+              }}>
+              <Text style={styles.modalConfirmText}>＋ Nieuwe tuin aanmaken</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowGardenPicker(false)}>
+              <Text style={styles.modalCancelText}>Sluiten</Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
