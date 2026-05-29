@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useGardenStore } from '@/store/gardenStore';
-import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, SuggestedPlacement, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -26,6 +26,7 @@ interface Message {
   imageUri?: string;
   identifiedPlants?: IdentifiedPlant[];
   detectedTasks?: AssistantTask[];
+  suggestedPlacements?: SuggestedPlacement[];
   loading?: boolean;
 }
 
@@ -164,6 +165,9 @@ const AssistantScreen = (): React.JSX.Element => {
     },
     addAllTaskButton: { backgroundColor: theme.warning },
     addAllButtonText: { color: theme.card, fontWeight: '700', fontSize: 14 },
+    placementCard: { backgroundColor: theme.infoLight, borderColor: theme.info },
+    placementRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.card, borderRadius: 10, padding: 10 },
+    placementCoord: { fontSize: 11, color: theme.textMuted, marginTop: 2, fontFamily: 'monospace' },
     emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12, paddingHorizontal: 32 },
     emptyIcon: { fontSize: 56 },
     emptyTitle: { fontSize: 18, fontWeight: '700', color: theme.primaryDark, textAlign: 'center' },
@@ -294,6 +298,7 @@ const AssistantScreen = (): React.JSX.Element => {
           text: response.text,
           identifiedPlants: response.identifiedPlants,
           detectedTasks: response.detectedTasks,
+          suggestedPlacements: response.suggestedPlacements,
         };
 
         setMessages((prev) => [...prev.filter((m) => !m.loading), assistantMsg]);
@@ -392,6 +397,38 @@ const AssistantScreen = (): React.JSX.Element => {
     [garden, setGarden, addGardenTask, addedTaskKeys],
   );
 
+  const [addedPlacementKeys, setAddedPlacementKeys] = useState<Set<string>>(new Set());
+
+  const handleAddPlacements = useCallback(
+    (placements: SuggestedPlacement[], messageId: string) => {
+      const key = `${messageId}-placements`;
+      if (addedPlacementKeys.has(key)) return;
+      const activeGarden = garden ?? makeDefaultGarden();
+      if (!garden) setGarden(activeGarden);
+      placements.forEach((p) => {
+        const id = `plant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        addPlant({
+          id,
+          gardenId: activeGarden.id,
+          species: p.species ?? '',
+          commonName: p.commonName,
+          x: p.x, y: p.y, z: 0,
+          width: 1, height: 1,
+          plantedDate: new Date().toISOString(),
+          maintenanceTasks: [{
+            id: `task-${Date.now()}`, plantId: id, type: 'water',
+            dueDate: new Date(Date.now() + 7 * 86_400_000).toISOString(), intervalDays: 7,
+          }],
+          identificationConfidence: 1,
+          careTips: [],
+          addedVia: 'manual',
+        });
+      });
+      setAddedPlacementKeys((prev) => new Set([...prev, key]));
+    },
+    [garden, setGarden, addPlant, addedPlacementKeys],
+  );
+
   const renderMessage = ({ item }: { item: Message }) => {
     if (item.loading) {
       return (
@@ -455,6 +492,33 @@ const AssistantScreen = (): React.JSX.Element => {
                 <Text style={styles.addAllButtonText}>Alle {item.identifiedPlants.length} toevoegen aan tuin</Text>
               </TouchableOpacity>
             )}
+          </View>
+        )}
+
+        {/* AI garden planner — suggested placements card */}
+        {item.suggestedPlacements && item.suggestedPlacements.length > 0 && (
+          <View style={[styles.card, styles.placementCard]}>
+            <Text style={styles.cardTitle}>🗺️ Voorgestelde plaatsing</Text>
+            {item.suggestedPlacements.map((p, idx) => (
+              <View key={idx} style={styles.placementRow}>
+                <View style={styles.plantInfo}>
+                  <Text style={styles.plantCommonName}>{p.commonName}</Text>
+                  {p.species ? <Text style={styles.plantSpecies}>{p.species}</Text> : null}
+                  <Text style={styles.placementCoord}>Raster: kolom {p.x}, rij {p.y}</Text>
+                </View>
+                <Text style={{ fontSize: 20 }}>📍</Text>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={[styles.addAllButton, { backgroundColor: theme.info }, addedPlacementKeys.has(`${item.id}-placements`) && { backgroundColor: theme.primaryLight }]}
+              onPress={() => handleAddPlacements(item.suggestedPlacements!, item.id)}
+              disabled={addedPlacementKeys.has(`${item.id}-placements`)}>
+              <Text style={[styles.addAllButtonText, addedPlacementKeys.has(`${item.id}-placements`) && { color: theme.primary }]}>
+                {addedPlacementKeys.has(`${item.id}-placements`)
+                  ? `✓ ${item.suggestedPlacements.length} planten toegevoegd`
+                  : `✓ Voeg ${item.suggestedPlacements.length} planten toe aan tuin`}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
