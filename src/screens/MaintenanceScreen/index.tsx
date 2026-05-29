@@ -13,6 +13,9 @@ import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask, SoilProfile, S
 import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
+import { generateGardenHTML } from '@/utils/pdfExport';
+import * as Print from 'expo-print';
+import Constants from 'expo-constants';
 import { getCachedLocation } from '@/utils/location';
 import { useTheme } from '@/hooks/useTheme';
 import { getMoonInfo } from '@/utils/moonPhase';
@@ -514,6 +517,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const [weather, setWeather]               = useState<WeatherData>(EMPTY_WEATHER);
   const [activeTab, setActiveTab]           = useState<Tab>('taken');
   const [exporting, setExporting]           = useState(false);
+  const [exportingPDF, setExportingPDF]     = useState(false);
   const [showAllTasks, setShowAllTasks]     = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showAddSoilModal, setShowAddSoilModal] = useState(false);
@@ -834,6 +838,31 @@ const MaintenanceScreen = (): React.JSX.Element => {
     }
   }, [garden]);
 
+  // ── PDF export ────────────────────────────────────────────────────────────
+  const handleExportPDF = useCallback(async () => {
+    if (!garden) return;
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert('Delen niet beschikbaar', 'Delen wordt niet ondersteund op dit apparaat.');
+      return;
+    }
+    setExportingPDF(true);
+    try {
+      const version = (Constants.expoConfig?.version ?? '?') as string;
+      const html = generateGardenHTML(garden, version);
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `FloraMap — ${garden.name}`,
+        UTI: 'com.adobe.pdf',
+      });
+    } catch {
+      Alert.alert('PDF exporteren mislukt', 'Kon het PDF-bestand niet aanmaken.');
+    } finally {
+      setExportingPDF(false);
+    }
+  }, [garden]);
+
   // ── Soil handlers ────────────────────────────────────────────────────────
   const handleSaveSoilProfile = useCallback(() => {
     if (!newZoneName.trim()) return;
@@ -943,6 +972,12 @@ const MaintenanceScreen = (): React.JSX.Element => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Onderhoud</Text>
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={handleExportPDF}
+            style={styles.headerIconBtn}
+            disabled={exportingPDF || !garden}>
+            <Text style={styles.headerIconText}>{exportingPDF ? '⏳' : '📄'}</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}

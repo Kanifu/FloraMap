@@ -26,6 +26,7 @@
     "expo-image-picker": "~16.0.6",
     "expo-location": "~18.0.10",
     "expo-notifications": "~0.29.14",
+    "expo-print": "~13.0.0",
     "expo-sharing": "~13.0.1",
     "expo-status-bar": "~2.0.1",
     "react": "18.3.1",
