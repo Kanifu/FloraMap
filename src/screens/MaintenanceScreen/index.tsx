@@ -16,6 +16,7 @@ import { generateICS } from '@/utils/icsExport';
 import { getCachedLocation } from '@/utils/location';
 import { useTheme } from '@/hooks/useTheme';
 import { getMoonInfo } from '@/utils/moonPhase';
+import { ACHIEVEMENTS } from '@/data/achievements';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'geschiedenis' | 'bodem';
@@ -507,6 +508,8 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const addSoilAmendment = useGardenStore((s) => s.addSoilAmendment);
   const deleteSoilProfile = useGardenStore((s) => s.deleteSoilProfile);
   const soilProfiles = garden?.soilProfiles ?? [];
+  const recentUnlockId = useGardenStore((s) => s.recentUnlockId);
+  const clearRecentUnlock = useGardenStore((s) => s.clearRecentUnlock);
 
   const [weather, setWeather]               = useState<WeatherData>(EMPTY_WEATHER);
   const [activeTab, setActiveTab]           = useState<Tab>('taken');
@@ -707,6 +710,16 @@ const MaintenanceScreen = (): React.JSX.Element => {
   });
 
   useEffect(() => { fetchWeather().then(setWeather); }, []);
+
+  useEffect(() => {
+    if (!recentUnlockId) return;
+    const def = ACHIEVEMENTS.find((a) => a.id === recentUnlockId);
+    if (def) {
+      setToast(`${def.emoji} Prestatie ontgrendeld: ${def.title}!`);
+      setTimeout(() => setToast(null), 4000);
+    }
+    clearRecentUnlock();
+  }, [recentUnlockId, clearRecentUnlock]);
 
   const harvestAlerts = useMemo(() => {
     if (!garden) return [];

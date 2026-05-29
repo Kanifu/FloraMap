@@ -12,6 +12,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
 import { useTheme } from '@/hooks/useTheme';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { ACHIEVEMENTS } from '@/data/achievements';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -67,6 +68,9 @@ const AboutScreen = (): React.JSX.Element => {
   const navigation = useNavigation();
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
+  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
+  const currentStreak = useGardenStore((s) => s.currentStreak);
+  const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
   const [importing, setImporting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const theme = useTheme();
@@ -152,6 +156,25 @@ const AboutScreen = (): React.JSX.Element => {
       lineHeight: 18,
       paddingHorizontal: 8,
     },
+    // Achievements
+    statsRow: { flexDirection: 'row', gap: 10 },
+    statCard: {
+      flex: 1, backgroundColor: theme.primaryBg, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.borderLight,
+      padding: 14, alignItems: 'center', gap: 4,
+    },
+    statNumber: { fontSize: 24, fontWeight: '800', color: theme.primaryDark },
+    statLabel: { fontSize: 11, color: theme.textSecondary, fontWeight: '600', textAlign: 'center' },
+    achievementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    achievementBadge: {
+      width: '30%', backgroundColor: theme.card, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.border,
+      padding: 10, alignItems: 'center', gap: 4,
+    },
+    achievementBadgeLocked: { opacity: 0.35 },
+    achievementEmoji: { fontSize: 24 },
+    achievementTitle: { fontSize: 10, fontWeight: '700', color: theme.primaryDark, textAlign: 'center' },
+    achievementDate: { fontSize: 9, color: theme.textMuted, textAlign: 'center' },
   });
 
   // ── Backup export ─────────────────────────────────────────────────────────
@@ -275,6 +298,45 @@ const AboutScreen = (): React.JSX.Element => {
               </View>
               <Text style={styles.linkChevron}>{importing ? '⏳' : '›'}</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Achievements */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Prestaties ({Object.keys(unlockedAchievements).length}/{ACHIEVEMENTS.length})
+          </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{currentStreak > 0 ? `🔥 ${currentStreak}` : '—'}</Text>
+              <Text style={styles.statLabel}>Dag streak</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{totalTasksCompleted}</Text>
+              <Text style={styles.statLabel}>Taken voltooid</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{garden?.plants.length ?? 0}</Text>
+              <Text style={styles.statLabel}>Planten</Text>
+            </View>
+          </View>
+          <View style={styles.achievementGrid}>
+            {ACHIEVEMENTS.map((achievement) => {
+              const unlockedAt = unlockedAchievements[achievement.id];
+              return (
+                <View
+                  key={achievement.id}
+                  style={[styles.achievementBadge, !unlockedAt && styles.achievementBadgeLocked]}>
+                  <Text style={styles.achievementEmoji}>{achievement.emoji}</Text>
+                  <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                  {unlockedAt && (
+                    <Text style={styles.achievementDate}>
+                      {new Date(unlockedAt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
           </View>
         </View>
 

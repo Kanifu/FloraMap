@@ -9,6 +9,13 @@ interface GardenState {
   activeGardenId: string | null;
   isScanning: boolean;
   pendingDiffProposals: DiffProposal[];
+  // Gamification
+  unlockedAchievements: Record<string, string>;  // id → ISO unlock date
+  recentUnlockId: string | null;                 // cleared after display (not persisted)
+  totalTasksCompleted: number;
+  currentStreak: number;
+  lastTaskDate: string | null;
+  totalScans: number;
 }
 
 interface GardenActions {
@@ -32,6 +39,8 @@ interface GardenActions {
   switchGarden: (id: string) => void;
   renameGarden: (id: string, name: string) => void;
   deleteGarden: (id: string) => void;
+  // Achievement actions
+  clearRecentUnlock: () => void;
 }
 
 /** Sync updated active garden into the gardens array */
@@ -39,6 +48,22 @@ const syncActive = (state: GardenState, updated: Garden): Partial<GardenState> =
   garden: updated,
   gardens: state.gardens.map((g) => (g.id === updated.id ? updated : g)),
 });
+
+/** Attempt to unlock multiple achievements; returns updated map + last newly unlocked id */
+const tryUnlockMany = (
+  unlocked: Record<string, string>,
+  ids: string[],
+): { unlocked: Record<string, string>; recentUnlockId: string | null } => {
+  const next = { ...unlocked };
+  let recentUnlockId: string | null = null;
+  for (const id of ids) {
+    if (!next[id]) {
+      next[id] = new Date().toISOString();
+      recentUnlockId = id;
+    }
+  }
+  return { unlocked: next, recentUnlockId };
+};
 
 export const useGardenStore = create<GardenState & GardenActions>()(
   persist(
@@ -48,6 +73,12 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       activeGardenId: null,
       isScanning: false,
       pendingDiffProposals: [],
+      unlockedAchievements: {},
+      recentUnlockId: null,
+      totalTasksCompleted: 0,
+      currentStreak: 0,
+      lastTaskDate: null,
+      totalScans: 0,
 
       setGarden: (garden) => {
         const state = get();
@@ -74,10 +105,18 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       addPlant: (plant) => {
-        const { garden } = get();
+        const state = get();
+        const { garden } = state;
         if (!garden) return;
         const updated = { ...garden, plants: [...garden.plants, plant] };
-        set(syncActive(get(), updated));
+        const count = updated.plants.length;
+        const toUnlock: string[] = [];
+        if (count === 1) toUnlock.push('first_plant');
+        if (count >= 5) toUnlock.push('five_plants');
+        if (count >= 10) toUnlock.push('ten_plants');
+        if (count >= 25) toUnlock.push('twenty_five_plants');
+        const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+        set({ ...syncActive(state, updated), unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
       },
 
       removePlant: (plantId) => {
@@ -88,7 +127,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       completeMaintenanceTask: (plantId, taskId) => {
-        const { garden } = get();
+        const state = get();
+        const { garden } = state;
         if (!garden) return;
         const plant = garden.plants.find((p) => p.id === plantId);
         if (!plant) return;
@@ -121,7 +161,36 @@ export const useGardenStore = create<GardenState & GardenActions>()(
               : p,
           ),
         };
-        set(syncActive(get(), updated));
+
+        // Streak calculation
+        const todayStr = now.toISOString().slice(0, 10);
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yesterdayStr = yest.toISOString().slice(0, 10);
+        let newStreak = state.currentStreak;
+        if (state.lastTaskDate === yesterdayStr) newStreak = state.currentStreak + 1;
+        else if (state.lastTaskDate !== todayStr) newStreak = 1;
+
+        const newTotal = state.totalTasksCompleted + 1;
+
+        const toUnlock: string[] = [];
+        if (newTotal === 1) toUnlock.push('first_task');
+        if (newTotal >= 10) toUnlock.push('ten_tasks');
+        if (newTotal >= 50) toUnlock.push('fifty_tasks');
+        if (newTotal >= 100) toUnlock.push('hundred_tasks');
+        if (newStreak >= 3) toUnlock.push('streak_3');
+        if (newStreak >= 7) toUnlock.push('streak_7');
+        if (newStreak >= 30) toUnlock.push('streak_30');
+        const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+
+        set({
+          ...syncActive(state, updated),
+          totalTasksCompleted: newTotal,
+          currentStreak: newStreak,
+          lastTaskDate: todayStr,
+          unlockedAchievements: unlocked,
+          ...(recentUnlockId ? { recentUnlockId } : {}),
+        });
       },
 
       addGardenTask: (task) => {
@@ -163,18 +232,34 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         }));
       },
 
-      setScanning: (isScanning) => set({ isScanning }),
+      setScanning: (isScanning) => {
+        const state = get();
+        if (!isScanning && state.isScanning) {
+          // Scan just completed
+          const newTotal = state.totalScans + 1;
+          const toUnlock: string[] = [];
+          if (newTotal === 1) toUnlock.push('first_scan');
+          if (newTotal >= 5) toUnlock.push('five_scans');
+          const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+          set({ isScanning: false, totalScans: newTotal, unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
+        } else {
+          set({ isScanning });
+        }
+      },
 
       setSoilProfile: (profile) => {
-        const { garden } = get();
+        const state = get();
+        const { garden } = state;
         if (!garden) return;
         const profiles = garden.soilProfiles ?? [];
-        const exists = profiles.some((p) => p.id === profile.id);
+        const isNew = !profiles.some((p) => p.id === profile.id);
         const updated = {
           ...garden,
-          soilProfiles: exists ? profiles.map((p) => p.id === profile.id ? profile : p) : [...profiles, profile],
+          soilProfiles: isNew ? [...profiles, profile] : profiles.map((p) => p.id === profile.id ? profile : p),
         };
-        set(syncActive(get(), updated));
+        const toUnlock = isNew ? ['first_soil'] : [];
+        const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+        set({ ...syncActive(state, updated), unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
       },
 
       addSoilAmendment: (profileId, amendment) => {
@@ -197,10 +282,13 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       createGarden: (name) => {
+        const state = get();
         const id = `garden-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const newGarden: Garden = { id, userId: 'local', name, polygons: [], plants: [], tasks: [] };
-        const state = get();
-        set({ gardens: [...state.gardens, newGarden], garden: newGarden, activeGardenId: id });
+        const willHaveMultiple = state.gardens.length >= 1;
+        const toUnlock = willHaveMultiple ? ['multi_garden'] : [];
+        const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+        set({ gardens: [...state.gardens, newGarden], garden: newGarden, activeGardenId: id, unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
         return newGarden;
       },
 
@@ -227,6 +315,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           set({ gardens: remaining });
         }
       },
+
+      clearRecentUnlock: () => set({ recentUnlockId: null }),
     }),
     {
       name: 'garden-storage',
@@ -235,6 +325,11 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         garden: state.garden,
         gardens: state.gardens,
         activeGardenId: state.activeGardenId,
+        unlockedAchievements: state.unlockedAchievements,
+        totalTasksCompleted: state.totalTasksCompleted,
+        currentStreak: state.currentStreak,
+        lastTaskDate: state.lastTaskDate,
+        totalScans: state.totalScans,
       }),
       onRehydrateStorage: () => (state) => {
         // Migrate old format: single garden → gardens array
