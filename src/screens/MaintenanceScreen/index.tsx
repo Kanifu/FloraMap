@@ -17,6 +17,8 @@ import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } f
 import { plantDatabase } from '@/data/plantDatabase';
 import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/useWeather';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { useTheme } from '@/hooks/useTheme';
+import { Theme } from '@/theme';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'zaai' | 'geschiedenis';
@@ -116,6 +118,8 @@ interface TaskItemProps {
 
 const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays }: TaskItemProps): React.JSX.Element => {
   const { task, plant, isOverdue, isRecurring, isBroughtForward } = flatTask;
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const swipeableRef = useRef<Swipeable>(null);
   const isWateringInRain    = task.type === 'water' && rainExpected;
   const isWateringInDrought = task.type === 'water' && isBroughtForward;
@@ -190,6 +194,8 @@ const URGENCY_LABELS: Record<string, string> = {
 
 interface GardenTaskItemProps { task: GardenTask; onComplete: (taskId: string) => void; }
 const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const isOverdue = !task.completedDate && task.dueDate < new Date().toISOString();
   return (
     <View style={[styles.taskRow, isOverdue && styles.taskRowOverdue, task.completedDate ? { opacity: 0.5 } : null]}>
@@ -212,6 +218,8 @@ const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.El
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 const MaintenanceScreen = (): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const navigation = useNavigation<MaintenanceNavProp>();
   const garden = useGardenStore((s) => s.garden);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
@@ -499,10 +507,10 @@ const MaintenanceScreen = (): React.JSX.Element => {
           {gardenStats.currentStreak > 0 ? (
             <Text style={styles.streakText}>🔥 {gardenStats.currentStreak} dagen streak</Text>
           ) : (
-            <Text style={[styles.streakText, { color: '#52b788' }]}>🌱 Begin je streak — rond een taak af!</Text>
+            <Text style={[styles.streakText, { color: theme.primary }]}>🌱 Begin je streak — rond een taak af!</Text>
           )}
           {gardenStats.totalTasksCompleted > 0 && (
-            <Text style={{ fontSize: 11, color: '#2d6a4f' }}>{gardenStats.totalTasksCompleted} taken ✓</Text>
+            <Text style={{ fontSize: 11, color: theme.primary }}>{gardenStats.totalTasksCompleted} taken ✓</Text>
           )}
         </View>
         {earnedBadges.length > 0 ? (
@@ -718,161 +726,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
         </ScrollView>
       )}
 
-      {/* Stats tab removed — use 📊 Statistieken in the drawer (StatsModal) */}
-      {(activeTab as string) === 'stats' && (() => {
-        const PLANT_EMOJI_HINTS: Record<string, string> = {
-          tomaat: '🍅', komkommer: '🥒', paprika: '🫑', sla: '🥬', wortel: '🥕',
-          aardappel: '🥔', ui: '🧅', courgette: '🥒', basilicum: '🌿', aardbei: '🍓',
-        };
-        const getPlantEmoji = (name: string): string => {
-          const lower = name.toLowerCase();
-          for (const [key, emoji] of Object.entries(PLANT_EMOJI_HINTS)) {
-            if (lower.includes(key)) return emoji;
-          }
-          return '🌿';
-        };
-
-        const plants = garden?.plants ?? [];
-        const totalPlants = plants.length;
-        const totalCompleted = plants.reduce(
-          (sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length,
-          0,
-        );
-        const activeTasks = plants.reduce(
-          (sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length,
-          0,
-        );
-        const totalHarvestGrams = plants.reduce((sum, p) => {
-          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0);
-        }, 0);
-
-        // Top 5 harvest plants
-        const harvestRanking = plants
-          .map((p) => ({
-            id: p.id,
-            name: p.commonName,
-            emoji: getPlantEmoji(p.commonName),
-            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0),
-          }))
-          .filter((p) => p.totalGrams > 0)
-          .sort((a, b) => b.totalGrams - a.totalGrams)
-          .slice(0, 5);
-
-        // Task counts per type (completed)
-        const taskTypeCounts: Record<string, number> = {};
-        for (const p of plants) {
-          for (const t of p.maintenanceTasks) {
-            if (t.completedDate) {
-              taskTypeCounts[t.type] = (taskTypeCounts[t.type] ?? 0) + 1;
-            }
-          }
-        }
-        const taskTypeEntries = Object.entries(taskTypeCounts).sort((a, b) => b[1] - a[1]);
-        const maxTaskCount = taskTypeEntries.length > 0 ? taskTypeEntries[0][1] : 1;
-        const taskTypeIconLabel: Record<string, { icon: string; label: string }> = {
-          water: { icon: '💧', label: 'Begieten' },
-          fertilize: { icon: '🌱', label: 'Bemesten' },
-          prune: { icon: '✂️', label: 'Snoeien' },
-          repot: { icon: '🪴', label: 'Verpotten' },
-          treat: { icon: '🩹', label: 'Behandelen' },
-        };
-
-        const earnedBadgesList = gardenStats.badges;
-
-        return (
-          <ScrollView contentContainerStyle={styles.listContent}>
-            {/* Section 1: Tuin overzicht */}
-            <View style={statsStyles.section}>
-              <Text style={statsStyles.sectionTitle}>🌳 Tuin overzicht</Text>
-              <View style={statsStyles.statRow}>
-                <View style={statsStyles.statCard}>
-                  <Text style={statsStyles.statValue}>{totalPlants}</Text>
-                  <Text style={statsStyles.statLabel}>Planten</Text>
-                </View>
-                <View style={statsStyles.statCard}>
-                  <Text style={statsStyles.statValue}>{totalCompleted}</Text>
-                  <Text style={statsStyles.statLabel}>Taken afgerond</Text>
-                </View>
-                <View style={statsStyles.statCard}>
-                  <Text style={statsStyles.statValue}>{activeTasks}</Text>
-                  <Text style={statsStyles.statLabel}>Open taken</Text>
-                </View>
-              </View>
-              <View style={statsStyles.harvestRow}>
-                <Text style={statsStyles.harvestLabel}>🍓 Totale oogst</Text>
-                <Text style={statsStyles.harvestValue}>
-                  {totalHarvestGrams > 0 ? `${totalHarvestGrams}g` : 'Nog niets geoogst'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Section 2: Streak & badges */}
-            <View style={statsStyles.section}>
-              <Text style={statsStyles.sectionTitle}>🔥 Streak & badges</Text>
-              <View style={statsStyles.streakCard}>
-                <Text style={statsStyles.streakMain}>
-                  {gardenStats.currentStreak > 0 ? '🔥 ' : ''}{gardenStats.currentStreak} {gardenStats.currentStreak === 1 ? 'dag actief' : 'dagen actief'}
-                </Text>
-                <Text style={statsStyles.streakSub}>
-                  Record: {gardenStats.longestStreak} dagen
-                </Text>
-                <Text style={statsStyles.streakSub}>
-                  {gardenStats.totalTasksCompleted} taken afgerond
-                </Text>
-              </View>
-              {earnedBadgesList.length > 0 ? (
-                <View style={statsStyles.badgesWrap}>
-                  {earnedBadgesList.map((b) => (
-                    <View key={b.id} style={statsStyles.badgeChip}>
-                      <Text style={statsStyles.badgeChipEmoji}>{b.emoji}</Text>
-                      <Text style={statsStyles.badgeChipName}>{b.name}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={statsStyles.emptyHint}>Nog geen badges — rond je eerste taken af!</Text>
-              )}
-            </View>
-
-            {/* Section 3: Oogstranking */}
-            {harvestRanking.length > 0 && (
-              <View style={statsStyles.section}>
-                <Text style={statsStyles.sectionTitle}>🏆 Oogstranking</Text>
-                {harvestRanking.map((item, idx) => (
-                  <View key={item.id} style={statsStyles.rankRow}>
-                    <Text style={statsStyles.rankNum}>#{idx + 1}</Text>
-                    <Text style={statsStyles.rankEmoji}>{item.emoji}</Text>
-                    <Text style={statsStyles.rankName}>{item.name}</Text>
-                    <Text style={statsStyles.rankGrams}>{item.totalGrams}g</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Section 4: Taken per type */}
-            {taskTypeEntries.length > 0 && (
-              <View style={statsStyles.section}>
-                <Text style={statsStyles.sectionTitle}>📊 Taken per type (afgerond)</Text>
-                {taskTypeEntries.map(([type, count]) => {
-                  const info = taskTypeIconLabel[type] ?? { icon: '🔧', label: type };
-                  const pct = count / maxTaskCount;
-                  return (
-                    <View key={type} style={statsStyles.barRow}>
-                      <Text style={statsStyles.barIcon}>{info.icon}</Text>
-                      <Text style={statsStyles.barLabel}>{info.label}</Text>
-                      <View style={statsStyles.barTrack}>
-                        <View style={[statsStyles.barFill, { flex: pct }]} />
-                        <View style={{ flex: 1 - pct }} />
-                      </View>
-                      <Text style={statsStyles.barCount}>{count}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </ScrollView>
-        );
-      })()}
 
       {/* ── Geschiedenis tab ── */}
       {activeTab === 'geschiedenis' && (
@@ -926,246 +779,183 @@ const MaintenanceScreen = (): React.JSX.Element => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (theme: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef',
+    borderBottomWidth: 1, borderBottomColor: theme.border,
   },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: theme.primaryDark },
   backBtn: { paddingVertical: 2, marginBottom: 2 },
-  backBtnText: { fontSize: 13, color: '#2d6a4f', fontWeight: '600' },
+  backBtnText: { fontSize: 13, color: theme.primary, fontWeight: '600' },
   headerActions: { flexDirection: 'row', gap: 4 },
   headerIconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerIconText: { fontSize: 22 },
-  // Streak row
   streakRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#f0faf4', paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
+    backgroundColor: theme.primaryBg, paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: theme.borderLight,
   },
-  streakText: { fontSize: 13, fontWeight: '700', color: '#1b4332' },
+  streakText: { fontSize: 13, fontWeight: '700', color: theme.primaryDark },
   badgeEmojis: { fontSize: 16, letterSpacing: 2 },
   rainBanner: {
-    backgroundColor: '#cce5ff', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#b8d4f0',
+    backgroundColor: theme.infoLight, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: theme.info,
   },
-  rainBannerText: { fontSize: 13, color: '#0d3a6e', fontWeight: '600' },
+  rainBannerText: { fontSize: 13, color: theme.info, fontWeight: '600' },
   droughtBanner: {
-    backgroundColor: '#fff3cd', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#f4a261',
+    backgroundColor: theme.warningLight, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: theme.warning,
   },
-  droughtBannerText: { fontSize: 13, color: '#7c3d00', fontWeight: '600' },
-  taskRowDrought: { borderColor: '#f4a261', backgroundColor: '#fff9f0' },
-  textDrought: { color: '#c05600' },
-  droughtText: { fontSize: 12, color: '#c05600', fontWeight: '600', fontStyle: 'italic' },
-  klaarButtonDrought: { backgroundColor: '#e76f00' },
+  droughtBannerText: { fontSize: 13, color: theme.warning, fontWeight: '600' },
+  taskRowDrought: { borderColor: theme.warning, backgroundColor: theme.warningLight },
+  textDrought: { color: theme.warning },
+  droughtText: { fontSize: 12, color: theme.warning, fontWeight: '600', fontStyle: 'italic' },
+  klaarButtonDrought: { backgroundColor: theme.warning },
   tabBar: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
-    backgroundColor: '#fff',
+    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: theme.border,
+    backgroundColor: theme.card,
   },
   tabBtn: {
     flex: 1, paddingVertical: 12, alignItems: 'center',
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  tabBtnActive: { borderBottomColor: '#2d6a4f' },
-  tabLabel: { fontSize: 12, fontWeight: '600', color: '#aaa' },
-  tabLabelActive: { color: '#2d6a4f' },
+  tabBtnActive: { borderBottomColor: theme.primary },
+  tabLabel: { fontSize: 12, fontWeight: '600', color: theme.textMuted },
+  tabLabelActive: { color: theme.primary },
   listContent: { padding: 12, gap: 4, paddingBottom: 32 },
   emptyScroll: { flexGrow: 1, padding: 12 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12, flex: 1 },
   emptyIcon: { fontSize: 48 },
-  emptyText: { fontSize: 16, color: '#aaa', fontStyle: 'italic', textAlign: 'center', paddingHorizontal: 24 },
+  emptyText: { fontSize: 16, color: theme.textMuted, fontStyle: 'italic', textAlign: 'center', paddingHorizontal: 24 },
   sectionHeader: { paddingVertical: 8, paddingHorizontal: 4 },
   sectionHeaderText: {
-    fontSize: 13, fontWeight: '700', color: '#aaa',
+    fontSize: 13, fontWeight: '700', color: theme.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.8,
   },
   taskRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 12,
-    borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: theme.cardAlt, borderRadius: 12,
+    borderWidth: 1, borderColor: theme.border,
     padding: 14, marginBottom: 8, gap: 10,
   },
-  taskRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
-  taskRowSkip: { borderColor: '#cce5ff', backgroundColor: '#f0f7ff' },
+  taskRowOverdue: { borderColor: theme.danger, backgroundColor: theme.dangerLight },
+  taskRowSkip: { borderColor: theme.info, backgroundColor: theme.infoLight },
   taskIcon: { fontSize: 22 },
   taskBody: { flex: 1, gap: 2 },
   taskNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  taskPlantName: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  taskPlantName: { fontSize: 15, fontWeight: '600', color: theme.primaryDark },
   recurringBadge: {
-    fontSize: 10, color: '#2d6a4f', backgroundColor: '#d8f3dc',
+    fontSize: 10, color: theme.primary, backgroundColor: theme.primaryLight,
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8,
     fontWeight: '600', overflow: 'hidden',
   },
-  taskType: { fontSize: 13, color: '#6b705c' },
-  taskNotes: { fontSize: 12, color: '#95a590', fontStyle: 'italic' },
-  taskDue: { fontSize: 13, fontWeight: '500', color: '#6b705c' },
-  textOverdue: { color: '#e63946' },
-  skipText: { fontSize: 12, color: '#0d3a6e', fontStyle: 'italic' },
+  taskType: { fontSize: 13, color: theme.textSecondary },
+  taskNotes: { fontSize: 12, color: theme.textMuted, fontStyle: 'italic' },
+  taskDue: { fontSize: 13, fontWeight: '500', color: theme.textSecondary },
+  textOverdue: { color: theme.danger },
+  skipText: { fontSize: 12, color: theme.info, fontStyle: 'italic' },
   klaarButton: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: 8, marginLeft: 8,
   },
-  klaarButtonMuted: { backgroundColor: '#6b705c' },
+  klaarButtonMuted: { backgroundColor: theme.textSecondary },
   klaarButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   swipeComplete: {
-    backgroundColor: '#40916c', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center',
     width: 72, borderRadius: 12, marginBottom: 8,
   },
   swipeCompleteText: { color: '#fff', fontWeight: '700', fontSize: 13, textAlign: 'center' },
   gardenTasksSection: { marginTop: 4 },
   seasonCard: {
-    backgroundColor: '#f1f8f3', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: theme.primaryBg, borderRadius: 12, borderWidth: 1, borderColor: theme.borderLight,
     padding: 14, gap: 6, marginBottom: 12,
   },
-  seasonTitle: { fontSize: 12, fontWeight: '700', color: '#2d6a4f', textTransform: 'uppercase', letterSpacing: 0.6 },
-  seasonText: { fontSize: 14, color: '#1b4332', lineHeight: 20 },
+  seasonTitle: { fontSize: 12, fontWeight: '700', color: theme.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
+  seasonText: { fontSize: 14, color: theme.primaryDark, lineHeight: 20 },
   harvestCard: {
-    backgroundColor: '#fff9e6', borderRadius: 12, borderWidth: 1, borderColor: '#ffe08a',
+    backgroundColor: theme.warningLight, borderRadius: 12, borderWidth: 1, borderColor: theme.warning,
     padding: 14, gap: 6, marginBottom: 12,
   },
-  harvestTitle: { fontSize: 13, fontWeight: '700', color: '#7c5a00' },
-  harvestItem: { fontSize: 13, color: '#5a4000', lineHeight: 20 },
-  // Planning tab
+  harvestTitle: { fontSize: 13, fontWeight: '700', color: theme.warning },
+  harvestItem: { fontSize: 13, color: theme.warning, lineHeight: 20 },
   planningDayHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 8, paddingHorizontal: 4, marginTop: 4,
   },
-  planningDayLabel: { fontSize: 14, fontWeight: '700', color: '#1b4332', flex: 1 },
+  planningDayLabel: { fontSize: 14, fontWeight: '700', color: theme.primaryDark, flex: 1 },
   planningDayRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  planningDayTemp:  { fontSize: 13, fontWeight: '600', color: '#2d6a4f' },
-  planningDayCount: { fontSize: 12, color: '#aaa' },
+  planningDayTemp:  { fontSize: 13, fontWeight: '600', color: theme.primary },
+  planningDayCount: { fontSize: 12, color: theme.textMuted },
   planningRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: theme.cardAlt, borderRadius: 10,
+    borderWidth: 1, borderColor: theme.border,
     paddingHorizontal: 12, paddingVertical: 10,
     marginBottom: 6, gap: 10,
   },
-  planningRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
+  planningRowOverdue: { borderColor: theme.danger, backgroundColor: theme.dangerLight },
   planningIcon: { fontSize: 18 },
-  // Geschiedenis tab
   historyRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: theme.cardAlt, borderRadius: 10,
+    borderWidth: 1, borderColor: theme.border,
     paddingHorizontal: 12, paddingVertical: 10,
     marginBottom: 6, gap: 10, opacity: 0.85,
   },
   historyIcon: { fontSize: 18 },
   historyMeta: { alignItems: 'flex-end', gap: 2 },
-  historyDate: { fontSize: 12, fontWeight: '600', color: '#6b705c' },
-  historyTime: { fontSize: 11, color: '#aaa' },
-  // Weather card
+  historyDate: { fontSize: 12, fontWeight: '600', color: theme.textSecondary },
+  historyTime: { fontSize: 11, color: theme.textMuted },
   weatherCard: {
-    backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.borderLight,
     padding: 14, gap: 8, marginBottom: 12,
   },
-  weatherCardDry: { borderColor: '#f4a261', backgroundColor: '#fff9f4' },
+  weatherCardDry: { borderColor: theme.warning, backgroundColor: theme.warningLight },
   weatherMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   weatherEmoji: { fontSize: 36 },
   weatherInfo: { flex: 1, gap: 2 },
-  weatherTemp: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  weatherDesc: { fontSize: 13, color: '#6b705c' },
+  weatherTemp: { fontSize: 20, fontWeight: '700', color: theme.primaryDark },
+  weatherDesc: { fontSize: 13, color: theme.textSecondary },
   weatherDryAlert: {
-    fontSize: 13, fontWeight: '600', color: '#c05600',
-    backgroundColor: '#fff4e6', borderRadius: 8, padding: 8, textAlign: 'center',
+    fontSize: 13, fontWeight: '600', color: theme.warning,
+    backgroundColor: theme.warningLight, borderRadius: 8, padding: 8, textAlign: 'center',
   },
-  // Show more tasks
   showMoreBtn: {
-    backgroundColor: '#f1f8f3', borderRadius: 10, borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: theme.primaryBg, borderRadius: 10, borderWidth: 1, borderColor: theme.borderLight,
     padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 8,
   },
-  showMoreText: { fontSize: 14, fontWeight: '600', color: '#2d6a4f' },
-  // Zaaikalender tab
+  showMoreText: { fontSize: 14, fontWeight: '600', color: theme.primary },
   zaaiSeizoenCard: {
-    backgroundColor: '#d8f3dc', borderRadius: 12, borderWidth: 1, borderColor: '#74c69d',
+    backgroundColor: theme.primaryLight, borderRadius: 12, borderWidth: 1, borderColor: theme.borderLight,
     padding: 14, gap: 6, marginBottom: 16,
   },
-  zaaiSeizoenTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
-  zaaiSeizoenItem: { fontSize: 14, color: '#1b4332', lineHeight: 22 },
+  zaaiSeizoenTitle: { fontSize: 14, fontWeight: '700', color: theme.primaryDark, marginBottom: 4 },
+  zaaiSeizoenItem: { fontSize: 14, color: theme.primaryDark, lineHeight: 22 },
   zaaiMonthCard: {
-    backgroundColor: '#f8f9fa', borderRadius: 10, borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: theme.cardAlt, borderRadius: 10, borderWidth: 1, borderColor: theme.border,
     padding: 12, marginBottom: 8, gap: 4,
   },
   zaaiMonthCardCurrent: {
-    borderColor: '#40916c', backgroundColor: '#f1f8f3',
+    borderColor: theme.primary, backgroundColor: theme.primaryBg,
   },
   zaaiMonthName: {
-    fontSize: 14, fontWeight: '700', color: '#6b705c', marginBottom: 4,
+    fontSize: 14, fontWeight: '700', color: theme.textSecondary, marginBottom: 4,
   },
-  zaaiMonthNameCurrent: { color: '#1b4332' },
+  zaaiMonthNameCurrent: { color: theme.primaryDark },
   zaaiRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' },
-  zaaiRowLabel: { fontSize: 13, fontWeight: '600', color: '#2d6a4f', minWidth: 80 },
-  zaaiRowValue: { fontSize: 13, color: '#1b4332', flex: 1, flexWrap: 'wrap' },
-  zaaiEmptyText: { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
-  // Toast
+  zaaiRowLabel: { fontSize: 13, fontWeight: '600', color: theme.primary, minWidth: 80 },
+  zaaiRowValue: { fontSize: 13, color: theme.primaryDark, flex: 1, flexWrap: 'wrap' },
+  zaaiEmptyText: { fontSize: 13, color: theme.textMuted, fontStyle: 'italic' },
   toast: {
     position: 'absolute', bottom: 24, left: 16, right: 16,
-    backgroundColor: '#1b4332', borderRadius: 12, padding: 14,
+    backgroundColor: theme.primaryDark, borderRadius: 12, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.22, shadowRadius: 4, elevation: 6,
   },
   toastText: { color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center' },
 });
 
-const statsStyles = StyleSheet.create({
-  section: {
-    backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef',
-    padding: 14, marginBottom: 12, gap: 8,
-  },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
-  statRow: { flexDirection: 'row', gap: 8 },
-  statCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1,
-    borderColor: '#e9ecef', padding: 12, alignItems: 'center', gap: 4,
-  },
-  statValue: { fontSize: 24, fontWeight: '700', color: '#2d6a4f' },
-  statLabel: { fontSize: 11, color: '#6b705c', fontWeight: '600', textAlign: 'center' },
-  harvestRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#fff9e6', borderRadius: 10, padding: 12,
-    borderWidth: 1, borderColor: '#ffe08a',
-  },
-  harvestLabel: { fontSize: 14, fontWeight: '600', color: '#7c5a00' },
-  harvestValue: { fontSize: 14, fontWeight: '700', color: '#7c5a00' },
-  streakCard: {
-    backgroundColor: '#d8f3dc', borderRadius: 10, padding: 12, gap: 4,
-  },
-  streakMain: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
-  streakSub: { fontSize: 13, color: '#2d6a4f' },
-  badgesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  badgeChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#b7e4c7',
-    paddingHorizontal: 10, paddingVertical: 5,
-  },
-  badgeChipEmoji: { fontSize: 16 },
-  badgeChipName: { fontSize: 12, fontWeight: '700', color: '#1b4332' },
-  emptyHint: { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
-  rankRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#fff', borderRadius: 10, padding: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
-  },
-  rankNum: { fontSize: 13, fontWeight: '700', color: '#aaa', width: 24 },
-  rankEmoji: { fontSize: 20 },
-  rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  rankGrams: { fontSize: 14, fontWeight: '700', color: '#2d6a4f' },
-  barRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 4,
-  },
-  barIcon: { fontSize: 16, width: 22, textAlign: 'center' },
-  barLabel: { fontSize: 12, fontWeight: '600', color: '#6b705c', width: 72 },
-  barTrack: {
-    flex: 1, height: 10, borderRadius: 5,
-    backgroundColor: '#e9ecef', flexDirection: 'row', overflow: 'hidden',
-  },
-  barFill: { backgroundColor: '#2d6a4f', borderRadius: 5 },
-  barCount: { fontSize: 13, fontWeight: '700', color: '#1b4332', width: 28, textAlign: 'right' },
-});
 
 export default MaintenanceScreen;

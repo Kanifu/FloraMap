@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Plant } from '@/models';
+import { useTheme } from '@/hooks/useTheme';
 
 interface PlantIconProps {
   plant: Plant;
@@ -30,6 +31,31 @@ const hasOverdueTasks = (plant: Plant): boolean => {
 export const PlantIcon = ({ plant, onPress, size = 40 }: PlantIconProps): React.JSX.Element => {
   const overdue = hasOverdueTasks(plant);
   const emoji = getPlantEmoji(plant.species);
+  const theme = useTheme();
+
+  const styles = StyleSheet.create({
+    container: {
+      position: 'relative',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    circle: {
+      backgroundColor: theme.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: theme.primary,
+    },
+    badge: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.danger,
+    },
+  });
 
   return (
     <TouchableOpacity onPress={onPress} style={[styles.container, { width: size, height: size }]}>
@@ -40,29 +66,3 @@ export const PlantIcon = ({ plant, onPress, size = 40 }: PlantIconProps): React.
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circle: {
-    backgroundColor: '#d8f3dc',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#2d6a4f',
-  },
-  badge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#e63946',
-    borderWidth: 1.5,
-    borderColor: '#fff',
-  },
-});

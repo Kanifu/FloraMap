@@ -16,11 +16,13 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useGardenStore } from '@/store/gardenStore';
 import { SeedPacket } from '@/models';
+import { useTheme } from '@/hooks/useTheme';
 
 const newId = () => `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const CURRENT_YEAR = new Date().getFullYear();
 
 const SeedInventoryScreen = (): React.JSX.Element => {
+  const theme = useTheme();
   const navigation = useNavigation();
   const seedPackets = useGardenStore((s) => s.seedPackets);
   const addSeedPacket = useGardenStore((s) => s.addSeedPacket);
@@ -143,6 +145,88 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     );
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 14,
+      borderBottomWidth: 1, borderBottomColor: theme.border,
+    },
+    headerTitle: { fontSize: 20, fontWeight: '700', color: theme.primaryDark, flex: 1, textAlign: 'center' },
+    backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    backBtnText: { fontSize: 22, color: theme.primaryDark, fontWeight: '700' },
+    addBtn: {
+      backgroundColor: theme.primary, paddingHorizontal: 14, paddingVertical: 8,
+      borderRadius: 20,
+    },
+    addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    listContent: { padding: 12, gap: 8, paddingBottom: 32 },
+    emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
+    emptyText: { fontSize: 16, color: theme.textMuted, textAlign: 'center', lineHeight: 24 },
+    card: {
+      backgroundColor: theme.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: theme.border,
+      padding: 14, gap: 10,
+    },
+    cardUsedUp: { opacity: 0.6 },
+    cardMain: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+    cardEmoji: { fontSize: 32, marginTop: 2 },
+    cardInfo: { flex: 1, gap: 4 },
+    cardNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+    cardName: { fontSize: 16, fontWeight: '700', color: theme.primaryDark },
+    cardSpecies: { fontSize: 12, color: theme.textSecondary, fontStyle: 'italic' },
+    textMuted: { color: theme.textMuted },
+    chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+    chip: {
+      backgroundColor: theme.border, paddingHorizontal: 8, paddingVertical: 3,
+      borderRadius: 10,
+    },
+    chipAmber: { backgroundColor: theme.warningLight, borderWidth: 1, borderColor: theme.warning },
+    chipText: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
+    chipTextAmber: { color: theme.warning },
+    chipUsedUp: {
+      backgroundColor: theme.primaryLight, paddingHorizontal: 8, paddingVertical: 3,
+      borderRadius: 10,
+    },
+    chipUsedUpText: { fontSize: 11, color: theme.primary, fontWeight: '700' },
+    expiredBadge: {
+      backgroundColor: theme.dangerLight, paddingHorizontal: 6, paddingVertical: 2,
+      borderRadius: 8, borderWidth: 1, borderColor: theme.danger,
+    },
+    expiredBadgeText: { fontSize: 11, color: theme.danger, fontWeight: '700' },
+    cardNotes: { fontSize: 12, color: theme.textSecondary, fontStyle: 'italic', marginTop: 2 },
+    usedUpBtn: {
+      alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 6,
+      borderRadius: 10, borderWidth: 1, borderColor: theme.borderLight,
+      backgroundColor: theme.primaryBg,
+    },
+    usedUpBtnActive: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
+    usedUpBtnText: { fontSize: 12, fontWeight: '700', color: theme.primary },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.overlay },
+    modalSheet: {
+      backgroundColor: theme.card, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+      padding: 24, gap: 12, paddingBottom: 36,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: theme.primaryDark },
+    input: {
+      backgroundColor: theme.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: theme.border,
+      paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: theme.primaryDark,
+      marginBottom: 8,
+    },
+    inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
+    modalButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
+    cancelBtn: {
+      flex: 1, borderWidth: 1, borderColor: theme.border, borderRadius: 12,
+      paddingVertical: 14, alignItems: 'center',
+    },
+    cancelBtnText: { color: theme.textSecondary, fontWeight: '600', fontSize: 15 },
+    saveBtn: {
+      flex: 2, backgroundColor: theme.primary, borderRadius: 12,
+      paddingVertical: 14, alignItems: 'center',
+    },
+    saveBtnDisabled: { backgroundColor: theme.border },
+    saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -248,88 +332,5 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef',
-  },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332', flex: 1, textAlign: 'center' },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backBtnText: { fontSize: 22, color: '#1b4332', fontWeight: '700' },
-  addBtn: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20,
-  },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  listContent: { padding: 12, gap: 8, paddingBottom: 32 },
-  emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyText: { fontSize: 16, color: '#aaa', textAlign: 'center', lineHeight: 24 },
-  card: {
-    backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef',
-    padding: 14, gap: 10,
-  },
-  cardUsedUp: { opacity: 0.6 },
-  cardMain: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  cardEmoji: { fontSize: 32, marginTop: 2 },
-  cardInfo: { flex: 1, gap: 4 },
-  cardNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  cardName: { fontSize: 16, fontWeight: '700', color: '#1b4332' },
-  cardSpecies: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
-  textMuted: { color: '#aaa' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
-  chip: {
-    backgroundColor: '#e9ecef', paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 10,
-  },
-  chipAmber: { backgroundColor: '#fff3cd', borderWidth: 1, borderColor: '#f4a261' },
-  chipText: { fontSize: 11, color: '#6b705c', fontWeight: '600' },
-  chipTextAmber: { color: '#7c3d00' },
-  chipUsedUp: {
-    backgroundColor: '#d8f3dc', paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 10,
-  },
-  chipUsedUpText: { fontSize: 11, color: '#2d6a4f', fontWeight: '700' },
-  expiredBadge: {
-    backgroundColor: '#fff5f5', paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: 8, borderWidth: 1, borderColor: '#f4bfc0',
-  },
-  expiredBadgeText: { fontSize: 11, color: '#e63946', fontWeight: '700' },
-  cardNotes: { fontSize: 12, color: '#6b705c', fontStyle: 'italic', marginTop: 2 },
-  usedUpBtn: {
-    alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 10, borderWidth: 1, borderColor: '#b7e4c7',
-    backgroundColor: '#f1f8f3',
-  },
-  usedUpBtnActive: { backgroundColor: '#d8f3dc', borderColor: '#2d6a4f' },
-  usedUpBtnText: { fontSize: 12, fontWeight: '700', color: '#2d6a4f' },
-  // Modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22,
-    padding: 24, gap: 12, paddingBottom: 36,
-  },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  input: {
-    backgroundColor: '#f8f9fa', borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#1b4332',
-    marginBottom: 8,
-  },
-  inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  cancelBtn: {
-    flex: 1, borderWidth: 1, borderColor: '#e9ecef', borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center',
-  },
-  cancelBtnText: { color: '#6b705c', fontWeight: '600', fontSize: 15 },
-  saveBtn: {
-    flex: 2, backgroundColor: '#2d6a4f', borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: '#ccc' },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
 
 export default SeedInventoryScreen;

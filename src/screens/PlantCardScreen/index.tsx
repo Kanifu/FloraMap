@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform,
@@ -196,6 +196,8 @@ const PlantCardScreen = (): React.JSX.Element => {
   const plant = garden?.plants.find((p) => p.id === plantId);
   const now   = new Date().toISOString();
 
+  const scrollRef = useRef<ScrollView>(null);
+
   // ── edit state ─────────────────────────────────────────────────────────────
   const [isEditing,    setIsEditing]    = useState(false);
   const [editName,     setEditName]     = useState('');
@@ -217,6 +219,8 @@ const PlantCardScreen = (): React.JSX.Element => {
     const waterTask = plant.maintenanceTasks.find((t) => t.type === 'water' && !t.completedDate);
     setEditWater(String(waterTask?.intervalDays ?? ''));
     setIsEditing(true);
+    // Scroll to top so all edit fields are immediately visible
+    setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 50);
   };
 
   const handleSave = () => {
@@ -404,17 +408,26 @@ const PlantCardScreen = (): React.JSX.Element => {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
           {/* ── Identity card ── */}
           <View style={s.card}>
             {isEditing ? (
               <>
                 <Text style={s.fieldLabel}>Naam</Text>
-                <TextInput style={s.input} value={editName} onChangeText={setEditName} />
+                <TextInput style={s.input} value={editName} onChangeText={setEditName} autoFocus />
                 <Text style={s.fieldLabel}>Soort (wetenschappelijk)</Text>
                 <TextInput style={s.input} value={editSpecies} onChangeText={setEditSpecies}
                   placeholder="bijv. Solanum lycopersicum" placeholderTextColor={theme.textMuted} />
+                <Text style={s.fieldLabel}>💧 Begietinterval (dagen)</Text>
+                <TextInput
+                  style={s.input}
+                  value={editWater}
+                  onChangeText={setEditWater}
+                  placeholder="bijv. 3"
+                  placeholderTextColor={theme.textMuted}
+                  keyboardType="number-pad"
+                />
               </>
             ) : (
               <>
@@ -530,21 +543,6 @@ const PlantCardScreen = (): React.JSX.Element => {
               })
             )}
           </View>
-
-          {/* ── Water interval edit ── */}
-          {isEditing && (
-            <View style={s.section}>
-              <Text style={s.sectionTitle}>💧 Begietinterval (dagen)</Text>
-              <TextInput
-                style={s.input}
-                value={editWater}
-                onChangeText={setEditWater}
-                placeholder="bijv. 3"
-                placeholderTextColor={theme.textMuted}
-                keyboardType="number-pad"
-              />
-            </View>
-          )}
 
           {/* ── Task history ── */}
           {completedTasks.length > 0 && (

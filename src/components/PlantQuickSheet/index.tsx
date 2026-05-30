@@ -8,6 +8,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { plantDatabase } from '@/data/plantDatabase';
 import { createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { useTheme } from '@/hooks/useTheme';
 
 interface Props {
   plant: Plant | null;
@@ -29,6 +30,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
+  const theme = useTheme();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName,      setEditName]      = useState('');
@@ -104,6 +106,127 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
     (t) => t.completedDate?.slice(0, 10) === todayStr
   );
 
+  const s = StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: theme.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: theme.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: 32,
+      maxHeight: '70%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      elevation: 20,
+    },
+    handle: {
+      width: 36, height: 4,
+      backgroundColor: theme.border,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginTop: 10, marginBottom: 4,
+    },
+    plantHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    plantName: { fontSize: 18, fontWeight: '700', color: theme.primaryDark },
+    plantSpecies: { fontSize: 12, color: theme.textMuted, fontStyle: 'italic', marginTop: 2 },
+    doneTodayBadge: {
+      backgroundColor: theme.primaryLight, borderRadius: 12,
+      paddingHorizontal: 10, paddingVertical: 4,
+    },
+    doneTodayText: { fontSize: 12, color: theme.primary, fontWeight: '600' },
+    editSection: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: theme.primaryBg,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    editInput: {
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      borderRadius: 8,
+      padding: 8,
+      fontSize: 14,
+      color: theme.primaryDark,
+      marginBottom: 6,
+      backgroundColor: theme.card,
+    },
+    editSaveBtn: {
+      backgroundColor: theme.primary,
+      borderRadius: 8,
+      padding: 8,
+      alignItems: 'center',
+    },
+    editSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    editCancelBtn: { alignItems: 'center', padding: 4 },
+    editCancelText: { color: theme.textMuted, fontSize: 12 },
+    editRowBtn: { flexDirection: 'row', alignItems: 'center', paddingBottom: 4 },
+    editRowBtnText: { fontSize: 11, color: theme.textMuted },
+    taskList: { paddingHorizontal: 16, paddingTop: 8 },
+    emptyTasks: { alignItems: 'center', paddingVertical: 20 },
+    emptyTasksText: { fontSize: 15, color: theme.primary },
+    taskBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.primaryBg,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.primaryLight,
+    },
+    taskBtnOverdue: { backgroundColor: theme.dangerLight, borderColor: theme.danger },
+    taskBtnIcon: { fontSize: 22, marginRight: 12 },
+    taskBtnBody: { flex: 1 },
+    taskBtnLabel: { fontSize: 14, fontWeight: '600', color: theme.primaryDark },
+    taskBtnLabelOverdue: { color: theme.danger },
+    taskBtnDue: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
+    rainHint: { fontSize: 11, color: theme.info, marginTop: 2 },
+    taskBtnCheck: {
+      width: 32, height: 32,
+      backgroundColor: theme.primary,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    taskBtnCheckText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    moreTasksBtn: {
+      paddingVertical: 10,
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    moreTasksText: { fontSize: 13, color: theme.primary, fontWeight: '600', textDecorationLine: 'underline' },
+    tipsSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 4 },
+    tipsSectionTitle: { fontSize: 13, fontWeight: '700', color: theme.primary, marginBottom: 4 },
+    tipRow: { fontSize: 12, color: theme.textSecondary, lineHeight: 18, marginLeft: 4 },
+    moreTips: { fontSize: 11, color: theme.textMuted, marginTop: 2, fontStyle: 'italic' },
+    detailsBtn: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      padding: 14,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.primary,
+    },
+    detailsBtnText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+    hintText: { textAlign: 'center', fontSize: 10, color: theme.border, marginTop: 6, paddingBottom: 4 },
+  });
+
   return (
     <Modal
       visible={visible}
@@ -141,7 +264,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 value={editName}
                 onChangeText={setEditName}
                 placeholder="Naam van de plant"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
                 autoFocus
               />
               <TextInput
@@ -149,7 +272,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 value={editSpecies}
                 onChangeText={setEditSpecies}
                 placeholder="Latijnse naam (optioneel)"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={theme.textMuted}
               />
               <TouchableOpacity style={s.editSaveBtn} onPress={handleSaveEdit} activeOpacity={0.8}>
                 <Text style={s.editSaveBtnText}>Opslaan</Text>
@@ -167,32 +290,44 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 <Text style={s.emptyTasksText}>🎉 Geen openstaande taken!</Text>
               </View>
             ) : (
-              activeTasks.slice(0, 4).map((task) => {
-                const isOverdue = task.dueDate < now;
-                const isWaterInRain = task.type === 'water' && weatherRainExpected;
-                return (
+              <>
+                {activeTasks.slice(0, 4).map((task) => {
+                  const isOverdue = task.dueDate < now;
+                  const isWaterInRain = task.type === 'water' && weatherRainExpected;
+                  return (
+                    <TouchableOpacity
+                      key={task.id}
+                      style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
+                      onPress={() => handleComplete(task.id)}
+                      activeOpacity={0.75}>
+                      <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
+                      <View style={s.taskBtnBody}>
+                        <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
+                          {TASK_LABELS[task.type]}
+                          {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
+                        </Text>
+                        <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
+                        {isWaterInRain && (
+                          <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
+                        )}
+                      </View>
+                      <View style={s.taskBtnCheck}>
+                        <Text style={s.taskBtnCheckText}>✓</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                {activeTasks.length > 4 && (
                   <TouchableOpacity
-                    key={task.id}
-                    style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
-                    onPress={() => handleComplete(task.id)}
+                    style={s.moreTasksBtn}
+                    onPress={() => { onClose(); onDetails(plant.id); }}
                     activeOpacity={0.75}>
-                    <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
-                    <View style={s.taskBtnBody}>
-                      <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
-                        {TASK_LABELS[task.type]}
-                        {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
-                      </Text>
-                      <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
-                      {isWaterInRain && (
-                        <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
-                      )}
-                    </View>
-                    <View style={s.taskBtnCheck}>
-                      <Text style={s.taskBtnCheckText}>✓</Text>
-                    </View>
+                    <Text style={s.moreTasksText}>
+                      + {activeTasks.length - 4} meer taken — open plantenpaspoort →
+                    </Text>
                   </TouchableOpacity>
-                );
-              })
+                )}
+              </>
             )}
 
             {/* Care tips section */}
@@ -224,118 +359,3 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
     </Modal>
   );
 };
-
-const s = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 32,
-    maxHeight: '70%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 20,
-  },
-  handle: {
-    width: 36, height: 4,
-    backgroundColor: '#ddd',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10, marginBottom: 4,
-  },
-  plantHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  plantName: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
-  plantSpecies: { fontSize: 12, color: '#888', fontStyle: 'italic', marginTop: 2 },
-  doneTodayBadge: {
-    backgroundColor: '#d8f3dc', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  doneTodayText: { fontSize: 12, color: '#2d6a4f', fontWeight: '600' },
-  editSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f8fdf9',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e8f5e9',
-  },
-  editInput: {
-    borderWidth: 1,
-    borderColor: '#b7e4c7',
-    borderRadius: 8,
-    padding: 8,
-    fontSize: 14,
-    color: '#1b4332',
-    marginBottom: 6,
-    backgroundColor: '#fff',
-  },
-  editSaveBtn: {
-    backgroundColor: '#2d6a4f',
-    borderRadius: 8,
-    padding: 8,
-    alignItems: 'center',
-  },
-  editSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  editCancelBtn: { alignItems: 'center', padding: 4 },
-  editCancelText: { color: '#888', fontSize: 12 },
-  editRowBtn: { flexDirection: 'row', alignItems: 'center', paddingBottom: 4 },
-  editRowBtnText: { fontSize: 11, color: '#888' },
-  taskList: { paddingHorizontal: 16, paddingTop: 8 },
-  emptyTasks: { alignItems: 'center', paddingVertical: 20 },
-  emptyTasksText: { fontSize: 15, color: '#52b788' },
-  taskBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fdf9',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#d8f3dc',
-  },
-  taskBtnOverdue: { backgroundColor: '#fff5f5', borderColor: '#ffd0d0' },
-  taskBtnIcon: { fontSize: 22, marginRight: 12 },
-  taskBtnBody: { flex: 1 },
-  taskBtnLabel: { fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  taskBtnLabelOverdue: { color: '#c1121f' },
-  taskBtnDue: { fontSize: 11, color: '#888', marginTop: 2 },
-  rainHint: { fontSize: 11, color: '#1565c0', marginTop: 2 },
-  taskBtnCheck: {
-    width: 32, height: 32,
-    backgroundColor: '#2d6a4f',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  taskBtnCheckText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  tipsSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 4 },
-  tipsSectionTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', marginBottom: 4 },
-  tipRow: { fontSize: 12, color: '#555', lineHeight: 18, marginLeft: 4 },
-  moreTips: { fontSize: 11, color: '#888', marginTop: 2, fontStyle: 'italic' },
-  detailsBtn: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    backgroundColor: '#2d6a4f',
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2d6a4f',
-  },
-  detailsBtnText: { fontSize: 14, color: '#fff', fontWeight: '600' },
-  hintText: { textAlign: 'center', fontSize: 10, color: '#bbb', marginTop: 6, paddingBottom: 4 },
-});
