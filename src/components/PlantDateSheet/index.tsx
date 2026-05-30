@@ -4,6 +4,7 @@ import {
   ScrollView, Pressable, TextInput,
 } from 'react-native';
 import { Plant, MaintenanceTask } from '@/models';
+import { useTheme } from '@/hooks/useTheme';
 
 interface Props {
   plant: Plant | null;
@@ -46,6 +47,7 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
   const [customDate, setCustomDate] = useState('');
   const [showCustom, setShowCustom] = useState(false);
   const [dateError, setDateError] = useState('');
+  const theme = useTheme();
 
   if (!plant) return null;
 
@@ -74,6 +76,29 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
       setDateError('Ongeldige datum — gebruik formaat JJJJ-MM-DD (bijv. 2026-05-01)');
     }
   };
+
+  const s = StyleSheet.create({
+    backdrop:     { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
+    sheet:        { backgroundColor: theme.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: '70%', paddingBottom: 16 },
+    handle:       { width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+    title:        { fontSize: 17, fontWeight: '700', color: theme.primaryDark, paddingHorizontal: 20, paddingVertical: 10 },
+    current:      { fontSize: 13, color: theme.textSecondary, paddingHorizontal: 20, marginBottom: 2 },
+    currentValue: { color: theme.primary, fontWeight: '600' },
+    hint:         { fontSize: 11, color: theme.textMuted, paddingHorizontal: 20, marginBottom: 8, fontStyle: 'italic' },
+    list:         { paddingHorizontal: 16 },
+    optionRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+    optionLabel:  { fontSize: 15, color: theme.primaryDark, fontWeight: '500' },
+    optionDate:   { fontSize: 13, color: theme.textMuted },
+    optionChevron:{ fontSize: 12, color: theme.textMuted },
+    customArea:   { paddingVertical: 10, gap: 8 },
+    dateInput:      { borderWidth: 1, borderColor: theme.borderLight, borderRadius: 10, padding: 10, fontSize: 15, color: theme.primaryDark, backgroundColor: theme.primaryBg },
+    dateInputError: { borderColor: theme.danger, backgroundColor: theme.dangerLight },
+    dateErrorText:  { fontSize: 12, color: theme.danger, marginTop: 4, marginBottom: 4 },
+    saveBtn:      { backgroundColor: theme.primary, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+    saveBtnText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
+    cancelBtn:    { marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderColor: theme.border, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+    cancelBtnText:{ color: theme.textSecondary, fontWeight: '600', fontSize: 15 },
+  });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -110,7 +135,7 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
                   value={customDate}
                   onChangeText={(v) => { setCustomDate(v); if (dateError) setDateError(''); }}
                   placeholder="JJJJ-MM-DD"
-                  placeholderTextColor="#aaa"
+                  placeholderTextColor={theme.textMuted}
                   keyboardType="numbers-and-punctuation"
                 />
                 {dateError ? <Text style={s.dateErrorText}>{dateError}</Text> : null}
@@ -129,26 +154,3 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
     </Modal>
   );
 }
-
-const s = StyleSheet.create({
-  backdrop:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: '70%', paddingBottom: 16 },
-  handle:       { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  title:        { fontSize: 17, fontWeight: '700', color: '#1b4332', paddingHorizontal: 20, paddingVertical: 10 },
-  current:      { fontSize: 13, color: '#6b705c', paddingHorizontal: 20, marginBottom: 2 },
-  currentValue: { color: '#2d6a4f', fontWeight: '600' },
-  hint:         { fontSize: 11, color: '#aaa', paddingHorizontal: 20, marginBottom: 8, fontStyle: 'italic' },
-  list:         { paddingHorizontal: 16 },
-  optionRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e9ecef' },
-  optionLabel:  { fontSize: 15, color: '#1b4332', fontWeight: '500' },
-  optionDate:   { fontSize: 13, color: '#aaa' },
-  optionChevron:{ fontSize: 12, color: '#aaa' },
-  customArea:   { paddingVertical: 10, gap: 8 },
-  dateInput:      { borderWidth: 1, borderColor: '#b7e4c7', borderRadius: 10, padding: 10, fontSize: 15, color: '#1b4332', backgroundColor: '#f8fdf9' },
-  dateInputError: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
-  dateErrorText:  { fontSize: 12, color: '#e63946', marginTop: 4, marginBottom: 4 },
-  saveBtn:      { backgroundColor: '#2d6a4f', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
-  saveBtnText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
-  cancelBtn:    { marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderColor: '#e9ecef', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  cancelBtnText:{ color: '#6b705c', fontWeight: '600', fontSize: 15 },
-});

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '@/hooks/useTheme';
 
 export interface OnboardingResult {
   gridCols: number;
@@ -41,6 +42,7 @@ const EXPERIENCE_OPTIONS: { key: Experience; emoji: string; label: string }[] = 
 ];
 
 export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
+  const theme = useTheme();
   const [step, setStep] = useState(0);
   const [locationGranted, setLocationGranted] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<GardenType[]>([]);
@@ -254,6 +256,130 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
     return 'Volgende';
   };
 
+  const s = StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: theme.overlay,
+      justifyContent: 'flex-end',
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-end',
+    },
+    card: {
+      backgroundColor: theme.card,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      padding: 32,
+      paddingBottom: 48,
+      alignItems: 'center',
+    },
+    emoji: { fontSize: 56, marginBottom: 16 },
+    title: {
+      fontSize: 22,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: 10,
+      color: theme.primaryDark,
+    },
+    body: {
+      fontSize: 15,
+      lineHeight: 23,
+      textAlign: 'center',
+      color: theme.textSecondary,
+      marginBottom: 20,
+    },
+    dots: { flexDirection: 'row', gap: 7, marginBottom: 28, marginTop: 16 },
+    dot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: theme.primaryLight,
+    },
+    dotActive: { backgroundColor: theme.primary, width: 22 },
+    btn: {
+      backgroundColor: theme.primary,
+      borderRadius: 14,
+      paddingVertical: 15,
+      paddingHorizontal: 32,
+      alignItems: 'center',
+      width: '100%',
+    },
+    btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    backLink: { marginTop: 14, padding: 8 },
+    backLinkText: { color: theme.textMuted, fontSize: 14 },
+    locationBtn: {
+      backgroundColor: theme.primary,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      alignItems: 'center',
+      width: '100%',
+      marginBottom: 12,
+    },
+    locationBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    locationGranted: {
+      backgroundColor: theme.primaryLight,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      alignItems: 'center',
+      width: '100%',
+      marginBottom: 12,
+    },
+    locationGrantedText: { color: theme.primary, fontSize: 15, fontWeight: '600' },
+    skipLink: { padding: 8 },
+    skipLinkText: { color: theme.textMuted, fontSize: 14 },
+    typeGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      justifyContent: 'center',
+      width: '100%',
+      marginBottom: 8,
+    },
+    typeBtn: {
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      backgroundColor: theme.cardAlt,
+      minWidth: 90,
+    },
+    typeBtnActive: { borderColor: theme.primary, backgroundColor: theme.primaryLight },
+    typeBtnEmoji: { fontSize: 24, marginBottom: 4 },
+    typeBtnLabel: { fontSize: 12, color: theme.textSecondary, fontWeight: '600' },
+    typeBtnLabelActive: { color: theme.primary },
+    bold: { fontWeight: '700', color: theme.primaryDark },
+    infoBox: {
+      backgroundColor: theme.primaryBg, borderRadius: 12, padding: 14,
+      borderWidth: 1, borderColor: theme.borderLight, width: '100%', gap: 6,
+    },
+    infoText: { fontSize: 14, color: theme.primaryDark, lineHeight: 20 },
+    expRow: {
+      flexDirection: 'row',
+      gap: 10,
+      width: '100%',
+      marginBottom: 8,
+    },
+    expBtn: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      backgroundColor: theme.cardAlt,
+      gap: 6,
+    },
+    expBtnActive: { borderColor: theme.primary, backgroundColor: theme.primaryLight },
+    expEmoji: { fontSize: 24 },
+    expLabel: { fontSize: 12, color: theme.textSecondary, fontWeight: '600' },
+    expLabelActive: { color: theme.primary },
+  });
+
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
       <View style={s.overlay}>
@@ -294,130 +420,3 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   );
 }
 
-const s = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'flex-end',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-end',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 32,
-    paddingBottom: 48,
-    alignItems: 'center',
-  },
-  emoji: { fontSize: 56, marginBottom: 16 },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 10,
-    color: '#1b4332',
-  },
-  body: {
-    fontSize: 15,
-    lineHeight: 23,
-    textAlign: 'center',
-    color: '#6b705c',
-    marginBottom: 20,
-  },
-  dots: { flexDirection: 'row', gap: 7, marginBottom: 28, marginTop: 16 },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#d8f3dc',
-  },
-  dotActive: { backgroundColor: '#2d6a4f', width: 22 },
-  btn: {
-    backgroundColor: '#2d6a4f',
-    borderRadius: 14,
-    paddingVertical: 15,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    width: '100%',
-  },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  backLink: { marginTop: 14, padding: 8 },
-  backLinkText: { color: '#aaa', fontSize: 14 },
-  // Locatie stap
-  locationBtn: {
-    backgroundColor: '#2d6a4f',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 12,
-  },
-  locationBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  locationGranted: {
-    backgroundColor: '#d8f3dc',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 12,
-  },
-  locationGrantedText: { color: '#2d6a4f', fontSize: 15, fontWeight: '600' },
-  skipLink: { padding: 8 },
-  skipLinkText: { color: '#aaa', fontSize: 14 },
-  // Tuintype stap
-  typeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center',
-    width: '100%',
-    marginBottom: 8,
-  },
-  typeBtn: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa',
-    minWidth: 90,
-  },
-  typeBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
-  typeBtnEmoji: { fontSize: 24, marginBottom: 4 },
-  typeBtnLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600' },
-  typeBtnLabelActive: { color: '#2d6a4f' },
-  // Scan/kaart info stap
-  bold: { fontWeight: '700', color: '#1b4332' },
-  infoBox: {
-    backgroundColor: '#f1f8f3', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#b7e4c7', width: '100%', gap: 6,
-  },
-  infoText: { fontSize: 14, color: '#1b4332', lineHeight: 20 },
-  // Ervaring stap
-  expRow: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-    marginBottom: 8,
-  },
-  expBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa',
-    gap: 6,
-  },
-  expBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
-  expEmoji: { fontSize: 24 },
-  expLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600' },
-  expLabelActive: { color: '#2d6a4f' },
-});
