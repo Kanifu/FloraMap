@@ -6,6 +6,7 @@ import {
 import { FEATURE_CONFIGS, FeatureKey } from '@/hooks/useFeatureFlag';
 import { useGardenStore } from '@/store/gardenStore';
 import { TIER_RANK } from '@/constants/tiers';
+import { useTheme } from '@/hooks/useTheme';
 
 interface Props {
   visible: boolean;
@@ -30,12 +31,38 @@ const FEATURE_ORDER: FeatureKey[] = [
 
 const TIER_LABELS = ['Gratis', 'Plus ⭐', 'Premium 💎'];
 const TIER_KEYS   = ['free', 'plus', 'premium'] as const;
-const TIER_COLORS = ['#6b705c', '#2d6a4f', '#1b4332'];
-const TIER_BG     = ['#f8f9fa', '#d8f3dc', '#1b4332'];
-const TIER_TEXT   = ['#1b4332', '#1b4332', '#fff'];
 
 export function TierComparisonModal({ visible, onClose }: Props): React.JSX.Element {
   const userTier = useGardenStore((s) => s.userTier);
+  const theme = useTheme();
+
+  // Tier colors adapt to theme for free/plus; premium always uses brand dark green
+  const TIER_BG   = [theme.cardAlt, theme.primaryLight, '#1b4332'];
+  const TIER_TEXT = [theme.primaryDark, theme.primaryDark, '#fff'];
+
+  const s = StyleSheet.create({
+    backdrop:   { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
+    sheet:      { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%', paddingBottom: 8 },
+    handle:     { width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+    title:      { fontSize: 20, fontWeight: '700', color: theme.primaryDark, paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border },
+    headerRow:  { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border },
+    featureCol: { flex: 2 },
+    tierCol:    { flex: 1, alignItems: 'center', borderRadius: 10, padding: 8, marginHorizontal: 2 },
+    tierColActive: { borderWidth: 2, borderColor: theme.primary },
+    tierLabel:  { fontSize: 12, fontWeight: '700' },
+    currentBadge: { backgroundColor: theme.primary, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
+    currentBadgeText: { fontSize: 9, color: '#fff', fontWeight: '700' },
+    scroll:     { paddingHorizontal: 12 },
+    row:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+    featureText:{ flex: 2, fontSize: 13, color: theme.primaryDark },
+    tierCell:   { flex: 1, alignItems: 'center' },
+    checkIcon:  { fontSize: 14, color: theme.primary, fontWeight: '700' },
+    lockIcon:   { fontSize: 14, color: theme.textMuted },
+    footer:     { padding: 16, borderTopWidth: 1, borderTopColor: theme.border },
+    footerNote: { fontSize: 12, color: theme.textMuted, textAlign: 'center', marginBottom: 10 },
+    closeBtn:   { backgroundColor: theme.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+    closeBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -120,27 +147,3 @@ export function TierComparisonModal({ visible, onClose }: Props): React.JSX.Elem
     </Modal>
   );
 }
-
-const s = StyleSheet.create({
-  backdrop:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet:      { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%', paddingBottom: 8 },
-  handle:     { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  title:      { fontSize: 20, fontWeight: '700', color: '#1b4332', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  headerRow:  { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
-  featureCol: { flex: 2 },
-  tierCol:    { flex: 1, alignItems: 'center', borderRadius: 10, padding: 8, marginHorizontal: 2 },
-  tierColActive: { borderWidth: 2, borderColor: '#2d6a4f' },
-  tierLabel:  { fontSize: 12, fontWeight: '700' },
-  currentBadge: { backgroundColor: '#2d6a4f', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
-  currentBadgeText: { fontSize: 9, color: '#fff', fontWeight: '700' },
-  scroll:     { paddingHorizontal: 12 },
-  row:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f0f0f0' },
-  featureText:{ flex: 2, fontSize: 13, color: '#1b4332' },
-  tierCell:   { flex: 1, alignItems: 'center' },
-  checkIcon:  { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
-  lockIcon:   { fontSize: 14, color: '#ccc' },
-  footer:     { padding: 16, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
-  footerNote: { fontSize: 12, color: '#aaa', textAlign: 'center', marginBottom: 10 },
-  closeBtn:   { backgroundColor: '#2d6a4f', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  closeBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
