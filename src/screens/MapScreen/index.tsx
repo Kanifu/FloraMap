@@ -241,6 +241,7 @@ const MapScreen = (): React.JSX.Element => {
   const switchGarden           = useGardenStore((s) => s.switchGarden);
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
   const renameGarden           = useGardenStore((s) => s.renameGarden);
+  const trackScanInStore       = useGardenStore((s) => s.setScanning);
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -686,6 +687,7 @@ const MapScreen = (): React.JSX.Element => {
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
     if (result.canceled) return;
     setScanning(true);
+    trackScanInStore(true);
     try {
       const gardenPlants = garden?.plants.map((p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`) ?? [];
       const response = await gardenAssistantService.chat('', result.assets[0].uri, [], gardenPlants);
@@ -698,6 +700,7 @@ const MapScreen = (): React.JSX.Element => {
       Alert.alert('Scannen mislukt', e instanceof Error ? e.message : 'Onbekende fout.');
     } finally {
       setScanning(false);
+      trackScanInStore(false);
     }
   };
 
