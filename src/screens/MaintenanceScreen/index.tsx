@@ -507,10 +507,10 @@ const MaintenanceScreen = (): React.JSX.Element => {
           {gardenStats.currentStreak > 0 ? (
             <Text style={styles.streakText}>🔥 {gardenStats.currentStreak} dagen streak</Text>
           ) : (
-            <Text style={[styles.streakText, { color: '#52b788' }]}>🌱 Begin je streak — rond een taak af!</Text>
+            <Text style={[styles.streakText, { color: theme.primary }]}>🌱 Begin je streak — rond een taak af!</Text>
           )}
           {gardenStats.totalTasksCompleted > 0 && (
-            <Text style={{ fontSize: 11, color: '#2d6a4f' }}>{gardenStats.totalTasksCompleted} taken ✓</Text>
+            <Text style={{ fontSize: 11, color: theme.primary }}>{gardenStats.totalTasksCompleted} taken ✓</Text>
           )}
         </View>
         {earnedBadges.length > 0 ? (
