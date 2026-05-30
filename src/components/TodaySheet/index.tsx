@@ -6,6 +6,7 @@ import {
 import { Garden, MaintenanceTaskType, Plant, MaintenanceTask } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
+import { useTheme } from '@/hooks/useTheme';
 
 interface Props {
   visible: boolean;
@@ -35,6 +36,7 @@ export const TodaySheet = ({
 }: Props): React.JSX.Element | null => {
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
+  const theme = useTheme();
 
   const tasks = useMemo((): TaskItem[] => {
     if (!garden) return [];
@@ -59,6 +61,83 @@ export const TodaySheet = ({
     completeMaintenanceTask(plant.id, taskId);
     recordTaskCompletion();
   };
+
+  const s = StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: theme.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: theme.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: 32,
+      maxHeight: '75%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      elevation: 20,
+    },
+    handle: {
+      width: 36, height: 4,
+      backgroundColor: theme.border,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginTop: 10, marginBottom: 4,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: theme.primaryDark,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    list: { paddingHorizontal: 16, paddingTop: 8 },
+    empty: { alignItems: 'center', paddingVertical: 32 },
+    emptyText: { fontSize: 15, color: theme.primary },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.primaryBg,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.primaryLight,
+    },
+    rowOverdue: { backgroundColor: theme.dangerLight, borderColor: theme.danger },
+    rowIcon: { fontSize: 22, marginRight: 12 },
+    rowBody: { flex: 1 },
+    plantName: { fontSize: 14, fontWeight: '700', color: theme.primaryDark },
+    plantNameOverdue: { color: theme.danger },
+    taskLabel: { fontSize: 13, color: theme.primary, marginTop: 1 },
+    taskLabelOverdue: { color: theme.danger },
+    dueLabel: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
+    rainHint: { fontSize: 11, color: theme.info, marginTop: 2 },
+    checkBtn: {
+      width: 32, height: 32,
+      backgroundColor: theme.primary,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    allTasksBtn: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      backgroundColor: theme.primaryBg,
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    allTasksBtnText: { fontSize: 14, color: theme.primary, fontWeight: '700' },
+  });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -111,80 +190,3 @@ export const TodaySheet = ({
     </Modal>
   );
 };
-
-const s = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 32,
-    maxHeight: '75%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 20,
-  },
-  handle: {
-    width: 36, height: 4,
-    backgroundColor: '#ddd',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10, marginBottom: 4,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1b4332',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  list: { paddingHorizontal: 16, paddingTop: 8 },
-  empty: { alignItems: 'center', paddingVertical: 32 },
-  emptyText: { fontSize: 15, color: '#52b788' },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fdf9',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#d8f3dc',
-  },
-  rowOverdue: { backgroundColor: '#fff5f5', borderColor: '#ffd0d0' },
-  rowIcon: { fontSize: 22, marginRight: 12 },
-  rowBody: { flex: 1 },
-  plantName: { fontSize: 14, fontWeight: '700', color: '#1b4332' },
-  plantNameOverdue: { color: '#c1121f' },
-  taskLabel: { fontSize: 13, color: '#2d6a4f', marginTop: 1 },
-  taskLabelOverdue: { color: '#c1121f' },
-  dueLabel: { fontSize: 11, color: '#888', marginTop: 2 },
-  rainHint: { fontSize: 11, color: '#1565c0', marginTop: 2 },
-  checkBtn: {
-    width: 32, height: 32,
-    backgroundColor: '#2d6a4f',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  allTasksBtn: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    backgroundColor: '#f1f8f3',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#b7e4c7',
-  },
-  allTasksBtnText: { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
-});
