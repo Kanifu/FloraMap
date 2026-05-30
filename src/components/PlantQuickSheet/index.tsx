@@ -167,32 +167,44 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 <Text style={s.emptyTasksText}>🎉 Geen openstaande taken!</Text>
               </View>
             ) : (
-              activeTasks.slice(0, 4).map((task) => {
-                const isOverdue = task.dueDate < now;
-                const isWaterInRain = task.type === 'water' && weatherRainExpected;
-                return (
+              <>
+                {activeTasks.slice(0, 4).map((task) => {
+                  const isOverdue = task.dueDate < now;
+                  const isWaterInRain = task.type === 'water' && weatherRainExpected;
+                  return (
+                    <TouchableOpacity
+                      key={task.id}
+                      style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
+                      onPress={() => handleComplete(task.id)}
+                      activeOpacity={0.75}>
+                      <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
+                      <View style={s.taskBtnBody}>
+                        <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
+                          {TASK_LABELS[task.type]}
+                          {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
+                        </Text>
+                        <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
+                        {isWaterInRain && (
+                          <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
+                        )}
+                      </View>
+                      <View style={s.taskBtnCheck}>
+                        <Text style={s.taskBtnCheckText}>✓</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                {activeTasks.length > 4 && (
                   <TouchableOpacity
-                    key={task.id}
-                    style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
-                    onPress={() => handleComplete(task.id)}
+                    style={s.moreTasksBtn}
+                    onPress={() => { onClose(); onDetails(plant.id); }}
                     activeOpacity={0.75}>
-                    <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
-                    <View style={s.taskBtnBody}>
-                      <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
-                        {TASK_LABELS[task.type]}
-                        {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
-                      </Text>
-                      <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
-                      {isWaterInRain && (
-                        <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
-                      )}
-                    </View>
-                    <View style={s.taskBtnCheck}>
-                      <Text style={s.taskBtnCheckText}>✓</Text>
-                    </View>
+                    <Text style={s.moreTasksText}>
+                      + {activeTasks.length - 4} meer taken — open plantenpaspoort →
+                    </Text>
                   </TouchableOpacity>
-                );
-              })
+                )}
+              </>
             )}
 
             {/* Care tips section */}
@@ -322,6 +334,12 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   taskBtnCheckText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  moreTasksBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  moreTasksText: { fontSize: 13, color: '#2d6a4f', fontWeight: '600', textDecorationLine: 'underline' },
   tipsSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 4 },
   tipsSectionTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', marginBottom: 4 },
   tipRow: { fontSize: 12, color: '#555', lineHeight: 18, marginLeft: 4 },

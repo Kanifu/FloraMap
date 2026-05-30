@@ -668,6 +668,19 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (!fromGallery) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om planten te scannen.');
+        return;
+      }
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Toestemming nodig', 'Geef toegang tot je fotobibliotheek om een afbeelding te kiezen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });

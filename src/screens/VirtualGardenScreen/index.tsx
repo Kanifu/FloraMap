@@ -53,9 +53,9 @@ const PlantPot = ({ phaseIndex }: PlantPotProps): React.JSX.Element => {
       {/* Decorative dots on pot */}
       {phaseIndex >= 2 && (
         <>
-          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
-          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12}" />
-          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
+          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
+          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12)" />
+          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
         </>
       )}
     </Svg>

@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
@@ -184,13 +185,31 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een foto te maken.');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+      if (!result.canceled) setPendingImage(result.assets[0].uri);
+    } catch {
+      Alert.alert('Fout', 'Kan de camera niet openen. Probeer het opnieuw.');
+    }
   };
 
   const handlePickFromGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Toestemming nodig', 'Geef toegang tot je fotobibliotheek om een afbeelding te kiezen.');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+      if (!result.canceled) setPendingImage(result.assets[0].uri);
+    } catch {
+      Alert.alert('Fout', 'Kan de fotobibliotheek niet openen. Probeer het opnieuw.');
+    }
   };
 
   const handleSend = () => sendMessage(inputText, pendingImage);
