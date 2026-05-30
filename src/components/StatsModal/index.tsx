@@ -41,11 +41,11 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   const totalCompleted = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length, 0);
   const activeTasks    = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length, 0);
   const totalHarvestGrams = plants.reduce((sum, p) =>
-    sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0), 0);
+    sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0), 0);
 
   const harvestRanking = plants
     .map((p) => ({ id: p.id, name: p.commonName, emoji: getPlantEmoji(p.commonName),
-      totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0) }))
+      totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0) }))
     .filter((p) => p.totalGrams > 0)
     .sort((a, b) => b.totalGrams - a.totalGrams)
     .slice(0, 5);
