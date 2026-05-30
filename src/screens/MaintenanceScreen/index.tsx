@@ -743,7 +743,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
           0,
         );
         const totalHarvestGrams = plants.reduce((sum, p) => {
-          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0);
+          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0);
         }, 0);
 
         // Top 5 harvest plants
@@ -752,7 +752,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
             id: p.id,
             name: p.commonName,
             emoji: getPlantEmoji(p.commonName),
-            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0),
+            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0),
           }))
           .filter((p) => p.totalGrams > 0)
           .sort((a, b) => b.totalGrams - a.totalGrams)
