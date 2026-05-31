@@ -231,6 +231,7 @@ const MapScreen = (): React.JSX.Element => {
   const updatePlant  = useGardenStore((s) => s.updatePlant);
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
+  const storeScan    = useGardenStore((s) => s.setScanning);
   const addBoundary  = useGardenStore((s) => s.addBoundary);
   const removeBoundary = useGardenStore((s) => s.removeBoundary);
   const updateBoundary = useGardenStore((s) => s.updateBoundary);
@@ -673,6 +674,7 @@ const MapScreen = (): React.JSX.Element => {
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
     if (result.canceled) return;
     setScanning(true);
+    storeScan(true);
     try {
       const gardenPlants = garden?.plants.map((p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`) ?? [];
       const response = await gardenAssistantService.chat('', result.assets[0].uri, [], gardenPlants);
@@ -685,6 +687,7 @@ const MapScreen = (): React.JSX.Element => {
       Alert.alert('Scannen mislukt', e instanceof Error ? e.message : 'Onbekende fout.');
     } finally {
       setScanning(false);
+      storeScan(false);
     }
   };
 
