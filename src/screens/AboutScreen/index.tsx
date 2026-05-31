@@ -207,7 +207,7 @@ const AboutScreen = (): React.JSX.Element => {
       backgroundColor: theme.primary, borderRadius: 12,
       paddingVertical: 12, alignItems: 'center',
     },
-    tierUpgradeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+    tierUpgradeBtnText: { fontSize: 14, fontWeight: '700', color: theme.card },
     tierDebugRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
     tierDebugBtn: {
       flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center',

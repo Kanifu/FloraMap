@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppNavigator } from '@/navigation/AppNavigator';
@@ -24,10 +24,14 @@ const NotificationBootstrap = (): null => {
 };
 
 const App = (): React.JSX.Element => {
+  const isDark = useColorScheme() === 'dark';
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={isDark ? '#0f1a0f' : '#ffffff'}
+        />
         <NotificationBootstrap />
         <AppNavigator />
       </SafeAreaProvider>

@@ -17,11 +17,14 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
   return status === 'granted';
 };
 
+const DAILY_NOTIFICATION_ID = 'daily-maintenance';
+
 export const scheduleDailyMaintenanceNotification = async (
   garden: Garden | null,
   weatherData?: { rainExpected: boolean; droughtDays: number; tempMax: number },
 ): Promise<void> => {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // Cancel only our own daily notification, not weather-alert notifications
+  await Notifications.cancelScheduledNotificationAsync(DAILY_NOTIFICATION_ID).catch(() => {});
   if (!garden) return;
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -85,6 +88,7 @@ export const scheduleDailyMaintenanceNotification = async (
   if (!body) return;
 
   await Notifications.scheduleNotificationAsync({
+    identifier: DAILY_NOTIFICATION_ID,
     content: {
       title: '🌿 FloraMap — Tuin update',
       body,

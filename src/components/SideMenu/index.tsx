@@ -1,11 +1,12 @@
 /**
  * SideMenu — drawer / zijmenu
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
   Animated, Pressable, ScrollView, Dimensions,
 } from 'react-native';
+import { useTheme } from '@/hooks/useTheme';
 
 const PANEL_WIDTH = Math.min(320, Dimensions.get('window').width * 0.82);
 
@@ -57,6 +58,8 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
     unlockedBadgeCount, recentBadgeEmojis,
   } = props;
 
+  const theme = useTheme();
+
   const slide = useRef(new Animated.Value(-PANEL_WIDTH)).current;
 
   useEffect(() => {
@@ -68,6 +71,36 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
   }, [visible, slide]);
 
   const run = (fn: () => void) => () => { onClose(); setTimeout(fn, 180); };
+
+  const s = useMemo(() => StyleSheet.create({
+    backdrop:        { flex: 1, backgroundColor: theme.overlay, flexDirection: 'row' },
+    panel:           { width: PANEL_WIDTH, height: '100%' },
+    panelInner:      { flex: 1, backgroundColor: theme.card },
+    // Brand identity bar — backgroundColor stays hardcoded
+    header:          { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1b4332', paddingTop: 56, paddingBottom: 18, paddingHorizontal: 20 },
+    headerIcon:      { fontSize: 34 },
+    headerTitle:     { fontSize: 20, fontWeight: '700', color: '#fff' },
+    headerSub:       { fontSize: 13, color: '#b7e4c7', marginTop: 2 },
+    badgeChip:       { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+    badgeChipEmojis: { fontSize: 14 },
+    badgeChipCount:  { fontSize: 11, color: '#b7e4c7', fontWeight: '700', marginTop: 1 },
+    scrollView:      { flex: 1 },   // ← critical: lets ScrollView fill remaining height
+    scroll:          { paddingVertical: 8, paddingBottom: 48 },
+    section:         { marginTop: 12 },
+    sectionLabel:    { fontSize: 11, fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, paddingHorizontal: 20, marginBottom: 4 },
+    row:             { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 13 },
+    rowActive:       { backgroundColor: theme.primaryBg },
+    rowIcon:         { fontSize: 22, width: 26, textAlign: 'center' },
+    rowText:         { flex: 1 },
+    rowLabel:        { fontSize: 15, fontWeight: '600', color: theme.primaryDark },
+    rowLabelActive:  { color: theme.primary },
+    rowLabelDanger:  { color: theme.danger },
+    rowSub:          { fontSize: 12, color: theme.textMuted, marginTop: 1 },
+    toggle:          { width: 40, height: 24, borderRadius: 12, backgroundColor: theme.border, padding: 2, justifyContent: 'center' },
+    toggleOn:        { backgroundColor: theme.primary },
+    knob:            { width: 20, height: 20, borderRadius: 10, backgroundColor: theme.card },
+    knobOn:          { alignSelf: 'flex-end' },
+  }), [theme]);
 
   const sections: { title: string; rows: MenuRow[] }[] = [
     {
@@ -161,32 +194,3 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
     </Modal>
   );
 }
-
-const s = StyleSheet.create({
-  backdrop:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', flexDirection: 'row' },
-  panel:           { width: PANEL_WIDTH, height: '100%' },
-  panelInner:      { flex: 1, backgroundColor: '#fff' },
-  header:          { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1b4332', paddingTop: 56, paddingBottom: 18, paddingHorizontal: 20 },
-  headerIcon:      { fontSize: 34 },
-  headerTitle:     { fontSize: 20, fontWeight: '700', color: '#fff' },
-  headerSub:       { fontSize: 13, color: '#b7e4c7', marginTop: 2 },
-  badgeChip:       { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
-  badgeChipEmojis: { fontSize: 14 },
-  badgeChipCount:  { fontSize: 11, color: '#b7e4c7', fontWeight: '700', marginTop: 1 },
-  scrollView:      { flex: 1 },   // ← critical: lets ScrollView fill remaining height
-  scroll:          { paddingVertical: 8, paddingBottom: 48 },
-  section:         { marginTop: 12 },
-  sectionLabel:    { fontSize: 11, fontWeight: '700', color: '#95a99c', textTransform: 'uppercase', letterSpacing: 0.7, paddingHorizontal: 20, marginBottom: 4 },
-  row:             { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 13 },
-  rowActive:       { backgroundColor: '#f1f8f3' },
-  rowIcon:         { fontSize: 22, width: 26, textAlign: 'center' },
-  rowText:         { flex: 1 },
-  rowLabel:        { fontSize: 15, fontWeight: '600', color: '#1b4332' },
-  rowLabelActive:  { color: '#2d6a4f' },
-  rowLabelDanger:  { color: '#c1121f' },
-  rowSub:          { fontSize: 12, color: '#8a958c', marginTop: 1 },
-  toggle:          { width: 40, height: 24, borderRadius: 12, backgroundColor: '#d8e3da', padding: 2, justifyContent: 'center' },
-  toggleOn:        { backgroundColor: '#2d6a4f' },
-  knob:            { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
-  knobOn:          { alignSelf: 'flex-end' },
-});
