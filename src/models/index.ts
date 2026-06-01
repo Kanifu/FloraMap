@@ -53,13 +53,6 @@ export interface PhotoLogEntry {
   note?: string;
 }
 
-export interface HarvestEntry {
-  id: string;
-  date: string;           // ISO 8601
-  amountGrams?: number;
-  notes?: string;
-}
-
 export interface RotationRecord {
   plantFamily: string;
   x: number;

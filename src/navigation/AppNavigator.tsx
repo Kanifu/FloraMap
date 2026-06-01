@@ -1,5 +1,6 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import MapScreen from '@/screens/MapScreen';
 import AssistantScreen from '@/screens/AssistantScreen';
@@ -26,8 +27,10 @@ export type MaintenanceStackParamList = RootStackParamList;
 
 const RootStack = createStackNavigator<RootStackParamList>();
 
-export const AppNavigator = (): React.JSX.Element => (
-  <NavigationContainer>
+export const AppNavigator = (): React.JSX.Element => {
+  const scheme = useColorScheme();
+  return (
+  <NavigationContainer theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       <RootStack.Screen name="Map" component={MapScreen} />
       <RootStack.Screen name="PlantCard" component={PlantCardScreen} />
@@ -38,4 +41,5 @@ export const AppNavigator = (): React.JSX.Element => (
       <RootStack.Screen name="VirtualGarden" component={VirtualGardenScreen} />
     </RootStack.Navigator>
   </NavigationContainer>
-);
+  );
+};

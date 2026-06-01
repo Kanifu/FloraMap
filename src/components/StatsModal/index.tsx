@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Pressable,
 } from 'react-native';
 import { useGardenStore } from '@/store/gardenStore';
 import { ACHIEVEMENTS } from '@/data/achievements';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -32,6 +34,8 @@ const TASK_ICON_LABEL: Record<string, { icon: string; label: string }> = {
 };
 
 export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
+  const theme = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const garden               = useGardenStore((s) => s.garden);
   const gardenStats          = useGardenStore((s) => s.gardenStats);
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
@@ -41,11 +45,11 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   const totalCompleted = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length, 0);
   const activeTasks    = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length, 0);
   const totalHarvestGrams = plants.reduce((sum, p) =>
-    sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0), 0);
+    sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0), 0);
 
   const harvestRanking = plants
     .map((p) => ({ id: p.id, name: p.commonName, emoji: getPlantEmoji(p.commonName),
-      totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0) }))
+      totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0) }))
     .filter((p) => p.totalGrams > 0)
     .sort((a, b) => b.totalGrams - a.totalGrams)
     .slice(0, 5);
@@ -157,45 +161,45 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   );
 }
 
-const s = StyleSheet.create({
-  backdrop:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', minHeight: 240 },
-  handle:       { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  title:        { fontSize: 20, fontWeight: '700', color: '#1b4332', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  scroll:       {},   // no flex:1 — ScrollView sizes to content up to maxHeight of parent
+const makeStyles = (t: Theme) => StyleSheet.create({
+  backdrop:     { flex: 1, backgroundColor: t.overlay, justifyContent: 'flex-end' },
+  sheet:        { backgroundColor: t.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', minHeight: 240 },
+  handle:       { width: 36, height: 4, backgroundColor: t.border, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+  title:        { fontSize: 20, fontWeight: '700', color: t.primaryDark, paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: t.border },
+  scroll:       {},
   scrollContent:{ padding: 16, paddingBottom: 8 },
-  section:      { backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef', padding: 14, marginBottom: 12, gap: 8 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+  section:      { backgroundColor: t.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: t.border, padding: 14, marginBottom: 12, gap: 8 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: t.primaryDark, marginBottom: 4 },
   statRow:      { flexDirection: 'row', gap: 8 },
-  statCard:     { flex: 1, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e9ecef', padding: 12, alignItems: 'center', gap: 4 },
-  statValue:    { fontSize: 24, fontWeight: '700', color: '#2d6a4f' },
-  statLabel:    { fontSize: 11, color: '#6b705c', fontWeight: '600', textAlign: 'center' },
-  harvestRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff9e6', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#ffe08a' },
-  harvestLabel: { fontSize: 14, fontWeight: '600', color: '#7c5a00' },
-  harvestValue: { fontSize: 14, fontWeight: '700', color: '#7c5a00' },
-  streakCard:   { backgroundColor: '#d8f3dc', borderRadius: 10, padding: 12, gap: 4 },
-  streakMain:   { fontSize: 18, fontWeight: '700', color: '#1b4332' },
-  streakSub:    { fontSize: 13, color: '#2d6a4f' },
+  statCard:     { flex: 1, backgroundColor: t.card, borderRadius: 10, borderWidth: 1, borderColor: t.border, padding: 12, alignItems: 'center', gap: 4 },
+  statValue:    { fontSize: 24, fontWeight: '700', color: t.primary },
+  statLabel:    { fontSize: 11, color: t.textSecondary, fontWeight: '600', textAlign: 'center' },
+  harvestRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: t.warningLight, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: t.warning },
+  harvestLabel: { fontSize: 14, fontWeight: '600', color: t.warning },
+  harvestValue: { fontSize: 14, fontWeight: '700', color: t.warning },
+  streakCard:   { backgroundColor: t.primaryLight, borderRadius: 10, padding: 12, gap: 4 },
+  streakMain:   { fontSize: 18, fontWeight: '700', color: t.primaryDark },
+  streakSub:    { fontSize: 13, color: t.primary },
   badgesWrap:      { gap: 8 },
-  badgeChip:       { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f1f8f3', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7', paddingHorizontal: 12, paddingVertical: 8 },
-  badgeChipLocked: { backgroundColor: '#f8f9fa', borderColor: '#e9ecef', opacity: 0.6 },
+  badgeChip:       { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: t.primaryBg, borderRadius: 12, borderWidth: 1, borderColor: t.borderLight, paddingHorizontal: 12, paddingVertical: 8 },
+  badgeChipLocked: { backgroundColor: t.cardAlt, borderColor: t.border, opacity: 0.6 },
   badgeEmoji:      { fontSize: 22 },
   badgeEmojiLocked:{ opacity: 0.35 },
-  badgeName:       { fontSize: 13, fontWeight: '700', color: '#1b4332' },
-  badgeNameLocked: { color: '#aaa' },
-  badgeDesc:       { fontSize: 11, color: '#6b705c', marginTop: 1 },
-  emptyHint:       { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
-  rankRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#e9ecef' },
-  rankNum:      { fontSize: 13, fontWeight: '700', color: '#aaa', width: 24 },
+  badgeName:       { fontSize: 13, fontWeight: '700', color: t.primaryDark },
+  badgeNameLocked: { color: t.textMuted },
+  badgeDesc:       { fontSize: 11, color: t.textSecondary, marginTop: 1 },
+  emptyHint:       { fontSize: 13, color: t.textMuted, fontStyle: 'italic' },
+  rankRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.card, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: t.border },
+  rankNum:      { fontSize: 13, fontWeight: '700', color: t.textMuted, width: 24 },
   rankEmoji:    { fontSize: 20 },
-  rankName:     { flex: 1, fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  rankGrams:    { fontSize: 14, fontWeight: '700', color: '#2d6a4f' },
+  rankName:     { flex: 1, fontSize: 14, fontWeight: '600', color: t.primaryDark },
+  rankGrams:    { fontSize: 14, fontWeight: '700', color: t.primary },
   barRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   barIcon:      { fontSize: 16, width: 22, textAlign: 'center' },
-  barLabel:     { fontSize: 12, fontWeight: '600', color: '#6b705c', width: 72 },
-  barTrack:     { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#e9ecef', flexDirection: 'row', overflow: 'hidden' },
-  barFill:      { backgroundColor: '#2d6a4f', borderRadius: 5 },
-  barCount:     { fontSize: 13, fontWeight: '700', color: '#1b4332', width: 28, textAlign: 'right' },
-  closeBtn:     { margin: 16, backgroundColor: '#2d6a4f', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  barLabel:     { fontSize: 12, fontWeight: '600', color: t.textSecondary, width: 72 },
+  barTrack:     { flex: 1, height: 10, borderRadius: 5, backgroundColor: t.border, flexDirection: 'row', overflow: 'hidden' },
+  barFill:      { backgroundColor: t.primary, borderRadius: 5 },
+  barCount:     { fontSize: 13, fontWeight: '700', color: t.primaryDark, width: 28, textAlign: 'right' },
+  closeBtn:     { margin: 16, backgroundColor: t.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   closeBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

@@ -17,6 +17,8 @@ import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } f
 import { plantDatabase } from '@/data/plantDatabase';
 import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/useWeather';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'zaai' | 'geschiedenis';
@@ -212,6 +214,9 @@ const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.El
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 const MaintenanceScreen = (): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const statsStyles = useMemo(() => makeStatsStyles(theme), [theme]);
   const navigation = useNavigation<MaintenanceNavProp>();
   const garden = useGardenStore((s) => s.garden);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
@@ -743,7 +748,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
           0,
         );
         const totalHarvestGrams = plants.reduce((sum, p) => {
-          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0);
+          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0);
         }, 0);
 
         // Top 5 harvest plants
@@ -752,7 +757,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
             id: p.id,
             name: p.commonName,
             emoji: getPlantEmoji(p.commonName),
-            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0),
+            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? 0), 0),
           }))
           .filter((p) => p.totalGrams > 0)
           .sort((a, b) => b.totalGrams - a.totalGrams)
@@ -926,89 +931,89 @@ const MaintenanceScreen = (): React.JSX.Element => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.card },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef',
+    borderBottomWidth: 1, borderBottomColor: t.border,
   },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#1b4332' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: t.primaryDark },
   backBtn: { paddingVertical: 2, marginBottom: 2 },
-  backBtnText: { fontSize: 13, color: '#2d6a4f', fontWeight: '600' },
+  backBtnText: { fontSize: 13, color: t.primary, fontWeight: '600' },
   headerActions: { flexDirection: 'row', gap: 4 },
   headerIconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerIconText: { fontSize: 22 },
   // Streak row
   streakRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#f0faf4', paddingHorizontal: 16, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#b7e4c7',
+    backgroundColor: t.primaryBg, paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: t.borderLight,
   },
-  streakText: { fontSize: 13, fontWeight: '700', color: '#1b4332' },
+  streakText: { fontSize: 13, fontWeight: '700', color: t.primaryDark },
   badgeEmojis: { fontSize: 16, letterSpacing: 2 },
   rainBanner: {
-    backgroundColor: '#cce5ff', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#b8d4f0',
+    backgroundColor: t.infoLight, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: t.info,
   },
-  rainBannerText: { fontSize: 13, color: '#0d3a6e', fontWeight: '600' },
+  rainBannerText: { fontSize: 13, color: t.info, fontWeight: '600' },
   droughtBanner: {
-    backgroundColor: '#fff3cd', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#f4a261',
+    backgroundColor: t.warningLight, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: t.warning,
   },
-  droughtBannerText: { fontSize: 13, color: '#7c3d00', fontWeight: '600' },
-  taskRowDrought: { borderColor: '#f4a261', backgroundColor: '#fff9f0' },
-  textDrought: { color: '#c05600' },
-  droughtText: { fontSize: 12, color: '#c05600', fontWeight: '600', fontStyle: 'italic' },
+  droughtBannerText: { fontSize: 13, color: t.warning, fontWeight: '600' },
+  taskRowDrought: { borderColor: t.warning, backgroundColor: t.warningLight },
+  textDrought: { color: t.warning },
+  droughtText: { fontSize: 12, color: t.warning, fontWeight: '600', fontStyle: 'italic' },
   klaarButtonDrought: { backgroundColor: '#e76f00' },
   tabBar: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e9ecef',
-    backgroundColor: '#fff',
+    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: t.border,
+    backgroundColor: t.card,
   },
   tabBtn: {
     flex: 1, paddingVertical: 12, alignItems: 'center',
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  tabBtnActive: { borderBottomColor: '#2d6a4f' },
-  tabLabel: { fontSize: 12, fontWeight: '600', color: '#aaa' },
-  tabLabelActive: { color: '#2d6a4f' },
+  tabBtnActive: { borderBottomColor: t.primary },
+  tabLabel: { fontSize: 12, fontWeight: '600', color: t.textMuted },
+  tabLabelActive: { color: t.primary },
   listContent: { padding: 12, gap: 4, paddingBottom: 32 },
   emptyScroll: { flexGrow: 1, padding: 12 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12, flex: 1 },
   emptyIcon: { fontSize: 48 },
-  emptyText: { fontSize: 16, color: '#aaa', fontStyle: 'italic', textAlign: 'center', paddingHorizontal: 24 },
+  emptyText: { fontSize: 16, color: t.textMuted, fontStyle: 'italic', textAlign: 'center', paddingHorizontal: 24 },
   sectionHeader: { paddingVertical: 8, paddingHorizontal: 4 },
   sectionHeaderText: {
-    fontSize: 13, fontWeight: '700', color: '#aaa',
+    fontSize: 13, fontWeight: '700', color: t.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.8,
   },
   taskRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 12,
-    borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: t.cardAlt, borderRadius: 12,
+    borderWidth: 1, borderColor: t.border,
     padding: 14, marginBottom: 8, gap: 10,
   },
-  taskRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
-  taskRowSkip: { borderColor: '#cce5ff', backgroundColor: '#f0f7ff' },
+  taskRowOverdue: { borderColor: t.danger, backgroundColor: t.dangerLight },
+  taskRowSkip: { borderColor: t.info, backgroundColor: t.infoLight },
   taskIcon: { fontSize: 22 },
   taskBody: { flex: 1, gap: 2 },
   taskNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  taskPlantName: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
+  taskPlantName: { fontSize: 15, fontWeight: '600', color: t.primaryDark },
   recurringBadge: {
-    fontSize: 10, color: '#2d6a4f', backgroundColor: '#d8f3dc',
+    fontSize: 10, color: t.primary, backgroundColor: t.primaryLight,
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8,
     fontWeight: '600', overflow: 'hidden',
   },
-  taskType: { fontSize: 13, color: '#6b705c' },
-  taskNotes: { fontSize: 12, color: '#95a590', fontStyle: 'italic' },
-  taskDue: { fontSize: 13, fontWeight: '500', color: '#6b705c' },
-  textOverdue: { color: '#e63946' },
-  skipText: { fontSize: 12, color: '#0d3a6e', fontStyle: 'italic' },
+  taskType: { fontSize: 13, color: t.textSecondary },
+  taskNotes: { fontSize: 12, color: t.textMuted, fontStyle: 'italic' },
+  taskDue: { fontSize: 13, fontWeight: '500', color: t.textSecondary },
+  textOverdue: { color: t.danger },
+  skipText: { fontSize: 12, color: t.info, fontStyle: 'italic' },
   klaarButton: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: t.primary, paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: 8, marginLeft: 8,
   },
-  klaarButtonMuted: { backgroundColor: '#6b705c' },
+  klaarButtonMuted: { backgroundColor: t.textSecondary },
   klaarButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   swipeComplete: {
     backgroundColor: '#40916c', justifyContent: 'center', alignItems: 'center',
@@ -1017,155 +1022,155 @@ const styles = StyleSheet.create({
   swipeCompleteText: { color: '#fff', fontWeight: '700', fontSize: 13, textAlign: 'center' },
   gardenTasksSection: { marginTop: 4 },
   seasonCard: {
-    backgroundColor: '#f1f8f3', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: t.primaryBg, borderRadius: 12, borderWidth: 1, borderColor: t.borderLight,
     padding: 14, gap: 6, marginBottom: 12,
   },
-  seasonTitle: { fontSize: 12, fontWeight: '700', color: '#2d6a4f', textTransform: 'uppercase', letterSpacing: 0.6 },
-  seasonText: { fontSize: 14, color: '#1b4332', lineHeight: 20 },
+  seasonTitle: { fontSize: 12, fontWeight: '700', color: t.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
+  seasonText: { fontSize: 14, color: t.primaryDark, lineHeight: 20 },
   harvestCard: {
-    backgroundColor: '#fff9e6', borderRadius: 12, borderWidth: 1, borderColor: '#ffe08a',
+    backgroundColor: t.warningLight, borderRadius: 12, borderWidth: 1, borderColor: t.warning,
     padding: 14, gap: 6, marginBottom: 12,
   },
-  harvestTitle: { fontSize: 13, fontWeight: '700', color: '#7c5a00' },
-  harvestItem: { fontSize: 13, color: '#5a4000', lineHeight: 20 },
+  harvestTitle: { fontSize: 13, fontWeight: '700', color: t.warning },
+  harvestItem: { fontSize: 13, color: t.text, lineHeight: 20 },
   // Planning tab
   planningDayHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 8, paddingHorizontal: 4, marginTop: 4,
   },
-  planningDayLabel: { fontSize: 14, fontWeight: '700', color: '#1b4332', flex: 1 },
+  planningDayLabel: { fontSize: 14, fontWeight: '700', color: t.primaryDark, flex: 1 },
   planningDayRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  planningDayTemp:  { fontSize: 13, fontWeight: '600', color: '#2d6a4f' },
-  planningDayCount: { fontSize: 12, color: '#aaa' },
+  planningDayTemp:  { fontSize: 13, fontWeight: '600', color: t.primary },
+  planningDayCount: { fontSize: 12, color: t.textMuted },
   planningRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: t.cardAlt, borderRadius: 10,
+    borderWidth: 1, borderColor: t.border,
     paddingHorizontal: 12, paddingVertical: 10,
     marginBottom: 6, gap: 10,
   },
-  planningRowOverdue: { borderColor: '#e63946', backgroundColor: '#fff5f5' },
+  planningRowOverdue: { borderColor: t.danger, backgroundColor: t.dangerLight },
   planningIcon: { fontSize: 18 },
   // Geschiedenis tab
   historyRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8f9fa', borderRadius: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: t.cardAlt, borderRadius: 10,
+    borderWidth: 1, borderColor: t.border,
     paddingHorizontal: 12, paddingVertical: 10,
     marginBottom: 6, gap: 10, opacity: 0.85,
   },
   historyIcon: { fontSize: 18 },
   historyMeta: { alignItems: 'flex-end', gap: 2 },
-  historyDate: { fontSize: 12, fontWeight: '600', color: '#6b705c' },
-  historyTime: { fontSize: 11, color: '#aaa' },
+  historyDate: { fontSize: 12, fontWeight: '600', color: t.textSecondary },
+  historyTime: { fontSize: 11, color: t.textMuted },
   // Weather card
   weatherCard: {
-    backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: t.card, borderRadius: 12, borderWidth: 1, borderColor: t.borderLight,
     padding: 14, gap: 8, marginBottom: 12,
   },
-  weatherCardDry: { borderColor: '#f4a261', backgroundColor: '#fff9f4' },
+  weatherCardDry: { borderColor: t.warning, backgroundColor: t.warningLight },
   weatherMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   weatherEmoji: { fontSize: 36 },
   weatherInfo: { flex: 1, gap: 2 },
-  weatherTemp: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
-  weatherDesc: { fontSize: 13, color: '#6b705c' },
+  weatherTemp: { fontSize: 20, fontWeight: '700', color: t.primaryDark },
+  weatherDesc: { fontSize: 13, color: t.textSecondary },
   weatherDryAlert: {
-    fontSize: 13, fontWeight: '600', color: '#c05600',
-    backgroundColor: '#fff4e6', borderRadius: 8, padding: 8, textAlign: 'center',
+    fontSize: 13, fontWeight: '600', color: t.warning,
+    backgroundColor: t.warningLight, borderRadius: 8, padding: 8, textAlign: 'center',
   },
   // Show more tasks
   showMoreBtn: {
-    backgroundColor: '#f1f8f3', borderRadius: 10, borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: t.primaryBg, borderRadius: 10, borderWidth: 1, borderColor: t.borderLight,
     padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 8,
   },
-  showMoreText: { fontSize: 14, fontWeight: '600', color: '#2d6a4f' },
+  showMoreText: { fontSize: 14, fontWeight: '600', color: t.primary },
   // Zaaikalender tab
   zaaiSeizoenCard: {
-    backgroundColor: '#d8f3dc', borderRadius: 12, borderWidth: 1, borderColor: '#74c69d',
+    backgroundColor: t.primaryLight, borderRadius: 12, borderWidth: 1, borderColor: t.primary,
     padding: 14, gap: 6, marginBottom: 16,
   },
-  zaaiSeizoenTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
-  zaaiSeizoenItem: { fontSize: 14, color: '#1b4332', lineHeight: 22 },
+  zaaiSeizoenTitle: { fontSize: 14, fontWeight: '700', color: t.primaryDark, marginBottom: 4 },
+  zaaiSeizoenItem: { fontSize: 14, color: t.text, lineHeight: 22 },
   zaaiMonthCard: {
-    backgroundColor: '#f8f9fa', borderRadius: 10, borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: t.cardAlt, borderRadius: 10, borderWidth: 1, borderColor: t.border,
     padding: 12, marginBottom: 8, gap: 4,
   },
   zaaiMonthCardCurrent: {
-    borderColor: '#40916c', backgroundColor: '#f1f8f3',
+    borderColor: t.primary, backgroundColor: t.primaryBg,
   },
   zaaiMonthName: {
-    fontSize: 14, fontWeight: '700', color: '#6b705c', marginBottom: 4,
+    fontSize: 14, fontWeight: '700', color: t.textSecondary, marginBottom: 4,
   },
-  zaaiMonthNameCurrent: { color: '#1b4332' },
+  zaaiMonthNameCurrent: { color: t.primaryDark },
   zaaiRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' },
-  zaaiRowLabel: { fontSize: 13, fontWeight: '600', color: '#2d6a4f', minWidth: 80 },
-  zaaiRowValue: { fontSize: 13, color: '#1b4332', flex: 1, flexWrap: 'wrap' },
-  zaaiEmptyText: { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
+  zaaiRowLabel: { fontSize: 13, fontWeight: '600', color: t.primary, minWidth: 80 },
+  zaaiRowValue: { fontSize: 13, color: t.text, flex: 1, flexWrap: 'wrap' },
+  zaaiEmptyText: { fontSize: 13, color: t.textMuted, fontStyle: 'italic' },
   // Toast
   toast: {
     position: 'absolute', bottom: 24, left: 16, right: 16,
-    backgroundColor: '#1b4332', borderRadius: 12, padding: 14,
+    backgroundColor: t.primaryDark, borderRadius: 12, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.22, shadowRadius: 4, elevation: 6,
   },
   toastText: { color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center' },
 });
 
-const statsStyles = StyleSheet.create({
+const makeStatsStyles = (t: Theme) => StyleSheet.create({
   section: {
-    backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: t.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: t.border,
     padding: 14, marginBottom: 12, gap: 8,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: t.primaryDark, marginBottom: 4 },
   statRow: { flexDirection: 'row', gap: 8 },
   statCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1,
-    borderColor: '#e9ecef', padding: 12, alignItems: 'center', gap: 4,
+    flex: 1, backgroundColor: t.card, borderRadius: 10, borderWidth: 1,
+    borderColor: t.border, padding: 12, alignItems: 'center', gap: 4,
   },
-  statValue: { fontSize: 24, fontWeight: '700', color: '#2d6a4f' },
-  statLabel: { fontSize: 11, color: '#6b705c', fontWeight: '600', textAlign: 'center' },
+  statValue: { fontSize: 24, fontWeight: '700', color: t.primary },
+  statLabel: { fontSize: 11, color: t.textSecondary, fontWeight: '600', textAlign: 'center' },
   harvestRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#fff9e6', borderRadius: 10, padding: 12,
-    borderWidth: 1, borderColor: '#ffe08a',
+    backgroundColor: t.warningLight, borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: t.warning,
   },
-  harvestLabel: { fontSize: 14, fontWeight: '600', color: '#7c5a00' },
-  harvestValue: { fontSize: 14, fontWeight: '700', color: '#7c5a00' },
+  harvestLabel: { fontSize: 14, fontWeight: '600', color: t.warning },
+  harvestValue: { fontSize: 14, fontWeight: '700', color: t.warning },
   streakCard: {
-    backgroundColor: '#d8f3dc', borderRadius: 10, padding: 12, gap: 4,
+    backgroundColor: t.primaryLight, borderRadius: 10, padding: 12, gap: 4,
   },
-  streakMain: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
-  streakSub: { fontSize: 13, color: '#2d6a4f' },
+  streakMain: { fontSize: 18, fontWeight: '700', color: t.primaryDark },
+  streakSub: { fontSize: 13, color: t.primary },
   badgesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   badgeChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#b7e4c7',
+    backgroundColor: t.card, borderRadius: 20, borderWidth: 1, borderColor: t.borderLight,
     paddingHorizontal: 10, paddingVertical: 5,
   },
   badgeChipEmoji: { fontSize: 16 },
-  badgeChipName: { fontSize: 12, fontWeight: '700', color: '#1b4332' },
-  emptyHint: { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
+  badgeChipName: { fontSize: 12, fontWeight: '700', color: t.primaryDark },
+  emptyHint: { fontSize: 13, color: t.textMuted, fontStyle: 'italic' },
   rankRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#fff', borderRadius: 10, padding: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: t.card, borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: t.border,
   },
-  rankNum: { fontSize: 13, fontWeight: '700', color: '#aaa', width: 24 },
+  rankNum: { fontSize: 13, fontWeight: '700', color: t.textMuted, width: 24 },
   rankEmoji: { fontSize: 20 },
-  rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  rankGrams: { fontSize: 14, fontWeight: '700', color: '#2d6a4f' },
+  rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: t.primaryDark },
+  rankGrams: { fontSize: 14, fontWeight: '700', color: t.primary },
   barRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingVertical: 4,
   },
   barIcon: { fontSize: 16, width: 22, textAlign: 'center' },
-  barLabel: { fontSize: 12, fontWeight: '600', color: '#6b705c', width: 72 },
+  barLabel: { fontSize: 12, fontWeight: '600', color: t.textSecondary, width: 72 },
   barTrack: {
     flex: 1, height: 10, borderRadius: 5,
-    backgroundColor: '#e9ecef', flexDirection: 'row', overflow: 'hidden',
+    backgroundColor: t.border, flexDirection: 'row', overflow: 'hidden',
   },
-  barFill: { backgroundColor: '#2d6a4f', borderRadius: 5 },
-  barCount: { fontSize: 13, fontWeight: '700', color: '#1b4332', width: 28, textAlign: 'right' },
+  barFill: { backgroundColor: t.primary, borderRadius: 5 },
+  barCount: { fontSize: 13, fontWeight: '700', color: t.primaryDark, width: 28, textAlign: 'right' },
 });
 
 export default MaintenanceScreen;

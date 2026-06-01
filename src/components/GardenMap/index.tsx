@@ -3,6 +3,7 @@ import { Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line, ClipPath, Image as SvgImage } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
+import { useTheme } from '@/hooks/useTheme';
 
 export const CELL_CM    = 30;
 export const SCALE      = 40;
@@ -124,6 +125,7 @@ const GardenMapBase = ({
   showNames = true,
   renderScale = 1,
 }: GardenMapProps): React.JSX.Element => {
+  const theme = useTheme();
 
   const effCols   = garden.gridCols ?? GRID_COLS;
   const effRows   = garden.gridRows ?? GRID_ROWS;
@@ -208,16 +210,16 @@ const GardenMapBase = ({
         </Defs>
 
         {/* Background */}
-        <Rect x={0} y={0} width={mapWidth} height={mapHeight} fill="#eaf4ec" />
+        <Rect x={0} y={0} width={mapWidth} height={mapHeight} fill={theme.primaryBg} />
 
         {/* Grid lines */}
         {Array.from({ length: effCols + 1 }, (_, i) => (
           <Rect key={`v${i}`} x={i * SCALE} y={0} width={0.5} height={mapHeight}
-            fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
+            fill={theme.borderLight} opacity={isInteractive ? 0.8 : 0.22} />
         ))}
         {Array.from({ length: effRows + 1 }, (_, i) => (
           <Rect key={`h${i}`} x={0} y={i * SCALE} width={mapWidth} height={0.5}
-            fill="#b7e4c7" opacity={isInteractive ? 0.8 : 0.22} />
+            fill={theme.borderLight} opacity={isInteractive ? 0.8 : 0.22} />
         ))}
 
         {/* Garden polygons */}
@@ -326,10 +328,10 @@ const GardenMapBase = ({
                     <Rect
                       x={cx - pillW / 2} y={cy - pillH / 2}
                       width={pillW} height={pillH}
-                      fill="rgba(255,255,255,0.88)" rx={pillH / 2} />
+                      fill={theme.card} rx={pillH / 2} opacity={0.9} />
                     <SvgText x={cx} y={cy + labelFontSize * 0.35}
                       textAnchor="middle" fontSize={labelFontSize}
-                      fill="#1b4332" fontWeight="700"
+                      fill={theme.primaryDark} fontWeight="700"
                       opacity={isMoving ? 0.4 : 1}>
                       {label}
                     </SvgText>
@@ -413,7 +415,7 @@ const GardenMapBase = ({
               {/* Plant name */}
               {showNames && (
                 <SvgText x={cx} y={hasPhoto ? cy + 31 : cy + 27} textAnchor="middle"
-                  fontSize={8.5} fill="#1b4332" fontWeight="700"
+                  fontSize={8.5} fill={theme.primaryDark} fontWeight="700"
                   opacity={isMoving ? 0.4 : 1}>
                   {name}
                 </SvgText>

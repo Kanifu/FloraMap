@@ -16,11 +16,15 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useGardenStore } from '@/store/gardenStore';
 import { SeedPacket } from '@/models';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 const newId = () => `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const CURRENT_YEAR = new Date().getFullYear();
 
 const SeedInventoryScreen = (): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation();
   const seedPackets = useGardenStore((s) => s.seedPackets);
   const addSeedPacket = useGardenStore((s) => s.addSeedPacket);
@@ -249,26 +253,26 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.card },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#e9ecef',
+    borderBottomWidth: 1, borderBottomColor: t.border,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332', flex: 1, textAlign: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: t.primaryDark, flex: 1, textAlign: 'center' },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backBtnText: { fontSize: 22, color: '#1b4332', fontWeight: '700' },
+  backBtnText: { fontSize: 22, color: t.primaryDark, fontWeight: '700' },
   addBtn: {
-    backgroundColor: '#2d6a4f', paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: t.primary, paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 20,
   },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   listContent: { padding: 12, gap: 8, paddingBottom: 32 },
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyText: { fontSize: 16, color: '#aaa', textAlign: 'center', lineHeight: 24 },
+  emptyText: { fontSize: 16, color: t.textMuted, textAlign: 'center', lineHeight: 24 },
   card: {
-    backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef',
+    backgroundColor: t.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: t.border,
     padding: 14, gap: 10,
   },
   cardUsedUp: { opacity: 0.6 },
@@ -276,59 +280,58 @@ const styles = StyleSheet.create({
   cardEmoji: { fontSize: 32, marginTop: 2 },
   cardInfo: { flex: 1, gap: 4 },
   cardNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  cardName: { fontSize: 16, fontWeight: '700', color: '#1b4332' },
-  cardSpecies: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
-  textMuted: { color: '#aaa' },
+  cardName: { fontSize: 16, fontWeight: '700', color: t.primaryDark },
+  cardSpecies: { fontSize: 12, color: t.textSecondary, fontStyle: 'italic' },
+  textMuted: { color: t.textMuted },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
   chip: {
-    backgroundColor: '#e9ecef', paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: 10,
   },
-  chipAmber: { backgroundColor: '#fff3cd', borderWidth: 1, borderColor: '#f4a261' },
-  chipText: { fontSize: 11, color: '#6b705c', fontWeight: '600' },
-  chipTextAmber: { color: '#7c3d00' },
+  chipAmber: { backgroundColor: t.warningLight, borderWidth: 1, borderColor: t.warning },
+  chipText: { fontSize: 11, color: t.textSecondary, fontWeight: '600' },
+  chipTextAmber: { color: t.warning },
   chipUsedUp: {
-    backgroundColor: '#d8f3dc', paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: t.primaryLight, paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: 10,
   },
-  chipUsedUpText: { fontSize: 11, color: '#2d6a4f', fontWeight: '700' },
+  chipUsedUpText: { fontSize: 11, color: t.primary, fontWeight: '700' },
   expiredBadge: {
-    backgroundColor: '#fff5f5', paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: 8, borderWidth: 1, borderColor: '#f4bfc0',
+    backgroundColor: t.dangerLight, paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 8, borderWidth: 1, borderColor: t.danger,
   },
-  expiredBadgeText: { fontSize: 11, color: '#e63946', fontWeight: '700' },
-  cardNotes: { fontSize: 12, color: '#6b705c', fontStyle: 'italic', marginTop: 2 },
+  expiredBadgeText: { fontSize: 11, color: t.danger, fontWeight: '700' },
+  cardNotes: { fontSize: 12, color: t.textSecondary, fontStyle: 'italic', marginTop: 2 },
   usedUpBtn: {
     alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 10, borderWidth: 1, borderColor: '#b7e4c7',
-    backgroundColor: '#f1f8f3',
+    borderRadius: 10, borderWidth: 1, borderColor: t.borderLight,
+    backgroundColor: t.primaryBg,
   },
-  usedUpBtnActive: { backgroundColor: '#d8f3dc', borderColor: '#2d6a4f' },
-  usedUpBtnText: { fontSize: 12, fontWeight: '700', color: '#2d6a4f' },
-  // Modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  usedUpBtnActive: { backgroundColor: t.primaryLight, borderColor: t.primary },
+  usedUpBtnText: { fontSize: 12, fontWeight: '700', color: t.primary },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: t.overlay },
   modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    backgroundColor: t.card, borderTopLeftRadius: 22, borderTopRightRadius: 22,
     padding: 24, gap: 12, paddingBottom: 36,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1b4332' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: t.primaryDark },
   input: {
-    backgroundColor: '#f8f9fa', borderRadius: 12, borderWidth: 1, borderColor: '#e9ecef',
-    paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#1b4332',
+    backgroundColor: t.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: t.border,
+    paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: t.text,
     marginBottom: 8,
   },
   inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 4 },
   cancelBtn: {
-    flex: 1, borderWidth: 1, borderColor: '#e9ecef', borderRadius: 12,
+    flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',
   },
-  cancelBtnText: { color: '#6b705c', fontWeight: '600', fontSize: 15 },
+  cancelBtnText: { color: t.textSecondary, fontWeight: '600', fontSize: 15 },
   saveBtn: {
-    flex: 2, backgroundColor: '#2d6a4f', borderRadius: 12,
+    flex: 2, backgroundColor: t.primary, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',
   },
-  saveBtnDisabled: { backgroundColor: '#ccc' },
+  saveBtnDisabled: { backgroundColor: t.textMuted },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
 

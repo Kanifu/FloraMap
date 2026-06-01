@@ -6,6 +6,8 @@ import {
 import { Garden, MaintenanceTaskType, Plant, MaintenanceTask } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -33,6 +35,8 @@ interface TaskItem {
 export const TodaySheet = ({
   visible, onClose, garden, weatherRainExpected, onOpenPlant, onOpenMaintenance,
 }: Props): React.JSX.Element | null => {
+  const theme = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
 
@@ -112,14 +116,14 @@ export const TodaySheet = ({
   );
 };
 
-const s = StyleSheet.create({
+const makeStyles = (t: Theme) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: t.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 32,
@@ -132,7 +136,7 @@ const s = StyleSheet.create({
   },
   handle: {
     width: 36, height: 4,
-    backgroundColor: '#ddd',
+    backgroundColor: t.border,
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 10, marginBottom: 4,
@@ -140,37 +144,37 @@ const s = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1b4332',
+    color: t.primaryDark,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: t.border,
   },
   list: { paddingHorizontal: 16, paddingTop: 8 },
   empty: { alignItems: 'center', paddingVertical: 32 },
-  emptyText: { fontSize: 15, color: '#52b788' },
+  emptyText: { fontSize: 15, color: t.primary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fdf9',
+    backgroundColor: t.primaryBg,
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#d8f3dc',
+    borderColor: t.borderLight,
   },
-  rowOverdue: { backgroundColor: '#fff5f5', borderColor: '#ffd0d0' },
+  rowOverdue: { backgroundColor: t.dangerLight, borderColor: t.danger },
   rowIcon: { fontSize: 22, marginRight: 12 },
   rowBody: { flex: 1 },
-  plantName: { fontSize: 14, fontWeight: '700', color: '#1b4332' },
-  plantNameOverdue: { color: '#c1121f' },
-  taskLabel: { fontSize: 13, color: '#2d6a4f', marginTop: 1 },
-  taskLabelOverdue: { color: '#c1121f' },
-  dueLabel: { fontSize: 11, color: '#888', marginTop: 2 },
-  rainHint: { fontSize: 11, color: '#1565c0', marginTop: 2 },
+  plantName: { fontSize: 14, fontWeight: '700', color: t.primaryDark },
+  plantNameOverdue: { color: t.danger },
+  taskLabel: { fontSize: 13, color: t.primary, marginTop: 1 },
+  taskLabelOverdue: { color: t.danger },
+  dueLabel: { fontSize: 11, color: t.textMuted, marginTop: 2 },
+  rainHint: { fontSize: 11, color: t.info, marginTop: 2 },
   checkBtn: {
     width: 32, height: 32,
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -179,12 +183,12 @@ const s = StyleSheet.create({
   allTasksBtn: {
     marginHorizontal: 16,
     marginTop: 12,
-    backgroundColor: '#f1f8f3',
+    backgroundColor: t.primaryBg,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#b7e4c7',
+    borderColor: t.borderLight,
   },
-  allTasksBtnText: { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
+  allTasksBtnText: { fontSize: 14, color: t.primary, fontWeight: '700' },
 });

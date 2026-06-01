@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +22,8 @@ import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { RootStackParamList } from '@/navigation/AppNavigator';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 interface Message {
   id: string;
@@ -87,6 +90,8 @@ const makeGardenTask = (task: AssistantTask): GardenTask => ({
 type AssistantNavProp = StackNavigationProp<RootStackParamList, 'Assistant'>;
 
 const AssistantScreen = (): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation<AssistantNavProp>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -184,11 +189,21 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een foto te maken.');
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
 
   const handlePickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Toestemming nodig', 'Geef toegang tot je fotobibliotheek om een foto te kiezen.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
@@ -438,20 +453,20 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.card },
   header: {
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: t.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#1b4332' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: t.primaryDark },
   backBtn: { paddingHorizontal: 4, paddingVertical: 6 },
-  backBtnText: { fontSize: 15, color: '#2d6a4f', fontWeight: '600' },
+  backBtnText: { fontSize: 15, color: t.primary, fontWeight: '600' },
   feedbackBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   feedbackBtnText: { fontSize: 22 },
   messageList: { padding: 16, gap: 12, flexGrow: 1 },
@@ -459,9 +474,9 @@ const styles = StyleSheet.create({
   userRow: { alignItems: 'flex-end' },
   assistantRow: { alignItems: 'flex-start' },
   bubble: { maxWidth: '80%', padding: 12, borderRadius: 16 },
-  userBubble: { backgroundColor: '#2d6a4f', borderBottomRightRadius: 4 },
+  userBubble: { backgroundColor: t.primary, borderBottomRightRadius: 4 },
   assistantBubble: {
-    backgroundColor: '#f1f8f3',
+    backgroundColor: t.primaryBg,
     borderBottomLeftRadius: 4,
     minWidth: 48,
     minHeight: 40,
@@ -469,48 +484,48 @@ const styles = StyleSheet.create({
   },
   bubbleText: { fontSize: 15, lineHeight: 22 },
   userText: { color: '#fff' },
-  assistantText: { color: '#1b4332' },
+  assistantText: { color: t.primaryDark },
   messageImage: { width: 200, height: 150, borderRadius: 12, marginBottom: 4 },
   card: {
-    backgroundColor: '#f1f8f3',
+    backgroundColor: t.primaryBg,
     borderWidth: 1,
-    borderColor: '#2d6a4f',
+    borderColor: t.primary,
     borderRadius: 14,
     padding: 12,
     gap: 8,
     alignSelf: 'stretch',
   },
   taskCard: {
-    backgroundColor: '#fff9f0',
-    borderColor: '#ffb703',
+    backgroundColor: t.warningLight,
+    borderColor: t.warning,
   },
-  cardTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', marginBottom: 2 },
-  plantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10 },
+  cardTitle: { fontSize: 13, fontWeight: '700', color: t.primary, marginBottom: 2 },
+  plantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: t.card, borderRadius: 10, padding: 10 },
   plantInfo: { flex: 1, gap: 2 },
-  plantCommonName: { fontSize: 14, fontWeight: '700', color: '#1b4332' },
-  plantSpecies: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
-  plantConfidence: { fontSize: 11, color: '#aaa' },
+  plantCommonName: { fontSize: 14, fontWeight: '700', color: t.primaryDark },
+  plantSpecies: { fontSize: 12, color: t.textSecondary, fontStyle: 'italic' },
+  plantConfidence: { fontSize: 11, color: t.textMuted },
   tipsRow: { marginTop: 4, gap: 2 },
-  tipText: { fontSize: 12, color: '#2d6a4f', lineHeight: 17 },
-  taskRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10 },
+  tipText: { fontSize: 12, color: t.primary, lineHeight: 17 },
+  taskRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: t.card, borderRadius: 10, padding: 10 },
   taskInfo: { flex: 1, gap: 2 },
-  taskDescription: { fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  taskPlantName: { fontSize: 12, color: '#6b705c', fontStyle: 'italic' },
+  taskDescription: { fontSize: 14, fontWeight: '600', color: t.primaryDark },
+  taskPlantName: { fontSize: 12, color: t.textSecondary, fontStyle: 'italic' },
   urgencyText: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   addButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  addButtonDone: { backgroundColor: '#b7e4c7' },
+  addButtonDone: { backgroundColor: t.borderLight },
   addButtonText: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  addButtonTextDone: { color: '#2d6a4f' },
+  addButtonTextDone: { color: t.primary },
   addAllButton: {
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
@@ -520,77 +535,77 @@ const styles = StyleSheet.create({
   addAllButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12, paddingHorizontal: 32 },
   emptyIcon: { fontSize: 56 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1b4332', textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, color: '#6b705c', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: t.primaryDark, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: t.textSecondary, textAlign: 'center', lineHeight: 20 },
   emptyButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   emptyButton: {
-    backgroundColor: '#f1f8f3',
+    backgroundColor: t.primaryBg,
     borderWidth: 1,
-    borderColor: '#2d6a4f',
+    borderColor: t.primary,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
   },
-  emptyButtonText: { color: '#1b4332', fontWeight: '600', fontSize: 15 },
+  emptyButtonText: { color: t.primaryDark, fontWeight: '600', fontSize: 15 },
   pendingImageRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#f1f8f3',
+    backgroundColor: t.primaryBg,
     borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+    borderTopColor: t.border,
     gap: 10,
   },
   pendingImageThumb: { width: 40, height: 40, borderRadius: 8 },
-  pendingImageLabel: { flex: 1, fontSize: 13, color: '#2d6a4f', fontWeight: '600' },
-  removePending: { fontSize: 18, color: '#aaa', paddingHorizontal: 4 },
+  pendingImageLabel: { flex: 1, fontSize: 13, color: t.primary, fontWeight: '600' },
+  removePending: { fontSize: 18, color: t.textMuted, paddingHorizontal: 4 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+    borderTopColor: t.border,
     gap: 8,
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
   },
   iconButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f1f8f3',
+    backgroundColor: t.primaryBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconButtonText: { fontSize: 20 },
   textInput: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: t.cardAlt,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#1b4332',
+    color: t.text,
     maxHeight: 100,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: t.border,
   },
   sendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendButtonDisabled: { backgroundColor: '#ccc' },
+  sendButtonDisabled: { backgroundColor: t.textMuted },
   sendButtonText: { color: '#fff', fontSize: 20, fontWeight: '700' },
   tipCard: {
-    backgroundColor: '#d8f3dc', borderRadius: 12, padding: 12, marginBottom: 12,
+    backgroundColor: t.primaryLight, borderRadius: 12, padding: 12, marginBottom: 12,
   },
-  tipTitle: { fontWeight: '600', color: '#2d6a4f', marginBottom: 4, fontSize: 14 },
-  tipBody: { color: '#1b4332', lineHeight: 20, fontSize: 14 },
+  tipTitle: { fontWeight: '600', color: t.primary, marginBottom: 4, fontSize: 14 },
+  tipBody: { color: t.primaryDark, lineHeight: 20, fontSize: 14 },
 });
 
 export default AssistantScreen;
