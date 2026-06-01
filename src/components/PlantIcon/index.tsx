@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Plant } from '@/models';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 interface PlantIconProps {
   plant: Plant;
@@ -28,6 +30,8 @@ const hasOverdueTasks = (plant: Plant): boolean => {
 };
 
 export const PlantIcon = ({ plant, onPress, size = 40 }: PlantIconProps): React.JSX.Element => {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const overdue = hasOverdueTasks(plant);
   const emoji = getPlantEmoji(plant.species);
 
@@ -41,18 +45,18 @@ export const PlantIcon = ({ plant, onPress, size = 40 }: PlantIconProps): React.
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Theme) => StyleSheet.create({
   container: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
   circle: {
-    backgroundColor: '#d8f3dc',
+    backgroundColor: t.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#2d6a4f',
+    borderColor: t.primary,
   },
   badge: {
     position: 'absolute',
@@ -61,8 +65,8 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#e63946',
+    backgroundColor: t.danger,
     borderWidth: 1.5,
-    borderColor: '#fff',
+    borderColor: t.card,
   },
 });
