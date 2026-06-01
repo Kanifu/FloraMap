@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 export interface OnboardingResult {
   gridCols: number;
@@ -41,6 +43,8 @@ const EXPERIENCE_OPTIONS: { key: Experience; emoji: string; label: string }[] = 
 ];
 
 export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
+  const theme = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const [step, setStep] = useState(0);
   const [locationGranted, setLocationGranted] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<GardenType[]>([]);
@@ -294,10 +298,10 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (t: Theme) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: t.overlay,
     justifyContent: 'flex-end',
   },
   scrollContent: {
@@ -305,7 +309,7 @@ const s = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 32,
@@ -318,13 +322,13 @@ const s = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 10,
-    color: '#1b4332',
+    color: t.primaryDark,
   },
   body: {
     fontSize: 15,
     lineHeight: 23,
     textAlign: 'center',
-    color: '#6b705c',
+    color: t.textSecondary,
     marginBottom: 20,
   },
   dots: { flexDirection: 'row', gap: 7, marginBottom: 28, marginTop: 16 },
@@ -332,11 +336,11 @@ const s = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#d8f3dc',
+    backgroundColor: t.primaryLight,
   },
-  dotActive: { backgroundColor: '#2d6a4f', width: 22 },
+  dotActive: { backgroundColor: t.primary, width: 22 },
   btn: {
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 14,
     paddingVertical: 15,
     paddingHorizontal: 32,
@@ -345,10 +349,9 @@ const s = StyleSheet.create({
   },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   backLink: { marginTop: 14, padding: 8 },
-  backLinkText: { color: '#aaa', fontSize: 14 },
-  // Locatie stap
+  backLinkText: { color: t.textMuted, fontSize: 14 },
   locationBtn: {
-    backgroundColor: '#2d6a4f',
+    backgroundColor: t.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -358,7 +361,7 @@ const s = StyleSheet.create({
   },
   locationBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   locationGranted: {
-    backgroundColor: '#d8f3dc',
+    backgroundColor: t.primaryLight,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -366,10 +369,9 @@ const s = StyleSheet.create({
     width: '100%',
     marginBottom: 12,
   },
-  locationGrantedText: { color: '#2d6a4f', fontSize: 15, fontWeight: '600' },
+  locationGrantedText: { color: t.primary, fontSize: 15, fontWeight: '600' },
   skipLink: { padding: 8 },
-  skipLinkText: { color: '#aaa', fontSize: 14 },
-  // Tuintype stap
+  skipLinkText: { color: t.textMuted, fontSize: 14 },
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -384,22 +386,20 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa',
+    borderColor: t.border,
+    backgroundColor: t.cardAlt,
     minWidth: 90,
   },
-  typeBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
+  typeBtnActive: { borderColor: t.primary, backgroundColor: t.primaryLight },
   typeBtnEmoji: { fontSize: 24, marginBottom: 4 },
-  typeBtnLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600' },
-  typeBtnLabelActive: { color: '#2d6a4f' },
-  // Scan/kaart info stap
-  bold: { fontWeight: '700', color: '#1b4332' },
+  typeBtnLabel: { fontSize: 12, color: t.textSecondary, fontWeight: '600' },
+  typeBtnLabelActive: { color: t.primary },
+  bold: { fontWeight: '700', color: t.primaryDark },
   infoBox: {
-    backgroundColor: '#f1f8f3', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#b7e4c7', width: '100%', gap: 6,
+    backgroundColor: t.primaryBg, borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: t.borderLight, width: '100%', gap: 6,
   },
-  infoText: { fontSize: 14, color: '#1b4332', lineHeight: 20 },
-  // Ervaring stap
+  infoText: { fontSize: 14, color: t.primaryDark, lineHeight: 20 },
   expRow: {
     flexDirection: 'row',
     gap: 10,
@@ -412,12 +412,12 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa',
+    borderColor: t.border,
+    backgroundColor: t.cardAlt,
     gap: 6,
   },
-  expBtnActive: { borderColor: '#2d6a4f', backgroundColor: '#d8f3dc' },
+  expBtnActive: { borderColor: t.primary, backgroundColor: t.primaryLight },
   expEmoji: { fontSize: 24 },
-  expLabel: { fontSize: 12, color: '#6b705c', fontWeight: '600' },
-  expLabelActive: { color: '#2d6a4f' },
+  expLabel: { fontSize: 12, color: t.textSecondary, fontWeight: '600' },
+  expLabelActive: { color: t.primary },
 });

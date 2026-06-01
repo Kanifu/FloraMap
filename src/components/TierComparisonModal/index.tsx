@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Pressable,
@@ -6,6 +6,8 @@ import {
 import { FEATURE_CONFIGS, FeatureKey } from '@/hooks/useFeatureFlag';
 import { useGardenStore } from '@/store/gardenStore';
 import { TIER_RANK } from '@/constants/tiers';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -35,6 +37,8 @@ const TIER_BG     = ['#f8f9fa', '#d8f3dc', '#1b4332'];
 const TIER_TEXT   = ['#1b4332', '#1b4332', '#fff'];
 
 export function TierComparisonModal({ visible, onClose }: Props): React.JSX.Element {
+  const theme = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const userTier = useGardenStore((s) => s.userTier);
 
   return (
@@ -121,26 +125,27 @@ export function TierComparisonModal({ visible, onClose }: Props): React.JSX.Elem
   );
 }
 
-const s = StyleSheet.create({
-  backdrop:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet:      { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%', paddingBottom: 8 },
-  handle:     { width: 36, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  title:      { fontSize: 20, fontWeight: '700', color: '#1b4332', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  headerRow:  { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  backdrop:   { flex: 1, backgroundColor: t.overlay, justifyContent: 'flex-end' },
+  sheet:      { backgroundColor: t.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%', paddingBottom: 8 },
+  handle:     { width: 36, height: 4, backgroundColor: t.border, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+  title:      { fontSize: 20, fontWeight: '700', color: t.primaryDark, paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: t.border },
+  headerRow:  { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: t.border },
   featureCol: { flex: 2 },
   tierCol:    { flex: 1, alignItems: 'center', borderRadius: 10, padding: 8, marginHorizontal: 2 },
-  tierColActive: { borderWidth: 2, borderColor: '#2d6a4f' },
+  tierColActive: { borderWidth: 2, borderColor: t.primary },
   tierLabel:  { fontSize: 12, fontWeight: '700' },
-  currentBadge: { backgroundColor: '#2d6a4f', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
+  // Premium column stays brand green in both themes — intentional
+  currentBadge: { backgroundColor: t.primary, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
   currentBadgeText: { fontSize: 9, color: '#fff', fontWeight: '700' },
   scroll:     { paddingHorizontal: 12 },
-  row:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f0f0f0' },
-  featureText:{ flex: 2, fontSize: 13, color: '#1b4332' },
+  row:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
+  featureText:{ flex: 2, fontSize: 13, color: t.text },
   tierCell:   { flex: 1, alignItems: 'center' },
-  checkIcon:  { fontSize: 14, color: '#2d6a4f', fontWeight: '700' },
-  lockIcon:   { fontSize: 14, color: '#ccc' },
-  footer:     { padding: 16, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
-  footerNote: { fontSize: 12, color: '#aaa', textAlign: 'center', marginBottom: 10 },
-  closeBtn:   { backgroundColor: '#2d6a4f', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  checkIcon:  { fontSize: 14, color: t.primary, fontWeight: '700' },
+  lockIcon:   { fontSize: 14, color: t.textMuted },
+  footer:     { padding: 16, borderTopWidth: 1, borderTopColor: t.border },
+  footerNote: { fontSize: 12, color: t.textMuted, textAlign: 'center', marginBottom: 10 },
+  closeBtn:   { backgroundColor: t.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   closeBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
