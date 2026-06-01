@@ -225,9 +225,10 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
 const MapScreen = (): React.JSX.Element => {
   const navigation = useNavigation<MapNavProp>();
   const weather    = useWeather();
-  const garden      = useGardenStore((s) => s.garden);
-  const setGarden   = useGardenStore((s) => s.setGarden);
-  const removePlant  = useGardenStore((s) => s.removePlant);
+  const garden         = useGardenStore((s) => s.garden);
+  const setGarden      = useGardenStore((s) => s.setGarden);
+  const storeScan      = useGardenStore((s) => s.setScanning);
+  const removePlant    = useGardenStore((s) => s.removePlant);
   const updatePlant  = useGardenStore((s) => s.updatePlant);
   const addPlant     = useGardenStore((s) => s.addPlant);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
@@ -668,11 +669,25 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (fromGallery) {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Toestemming nodig', 'Geef toegang tot je fotobibliotheek om een scan te doen.');
+        return;
+      }
+    } else {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een scan te doen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
     if (result.canceled) return;
     setScanning(true);
+    storeScan(true);
     try {
       const gardenPlants = garden?.plants.map((p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`) ?? [];
       const response = await gardenAssistantService.chat('', result.assets[0].uri, [], gardenPlants);
@@ -685,6 +700,7 @@ const MapScreen = (): React.JSX.Element => {
       Alert.alert('Scannen mislukt', e instanceof Error ? e.message : 'Onbekende fout.');
     } finally {
       setScanning(false);
+      storeScan(false);
     }
   };
 
