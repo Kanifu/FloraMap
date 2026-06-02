@@ -110,6 +110,12 @@ interface GardenMapProps {
 const LONG_PRESS_MS = 300;
 const EMOJI_STEP    = 38;   // px between emoji centres in zone grid
 
+const STATUS_COLORS: Record<string, string> = {
+  overdue: '#e63946',
+  water:   '#3a86ff',
+  soon:    '#ffb703',
+};
+
 const GardenMapBase = ({
   garden,
   onPlantPress,
@@ -121,6 +127,7 @@ const GardenMapBase = ({
   companionPairs = [],
   showCompanionOverlay = false,
   thirstyPlantIds = [],
+  plantStatuses = {},
   showNames = true,
   renderScale = 1,
 }: GardenMapProps): React.JSX.Element => {
@@ -257,6 +264,7 @@ const GardenMapBase = ({
           const color  = plant.color ?? '#2d6a4f';
           const emoji  = getPlantEmoji(plant.commonName, plant.species);
           const alpha  = isMoving ? 0.35 : 1;
+          const zoneStatusColor = isZone ? (plantStatuses[plant.id] ? STATUS_COLORS[plantStatuses[plant.id]] : null) : null;
 
           // ── Zone (multi-cell rectangle) ────────────────────────────────────
           if (isZone) {
@@ -353,6 +361,12 @@ const GardenMapBase = ({
                   </G>
                 )}
 
+                {/* Zone status badge — top-left corner */}
+                {zoneStatusColor && !isMoving && !plant.imageUri && (
+                  <Circle cx={zLeft + 10} cy={zTop + 10} r={7}
+                    fill={zoneStatusColor} opacity={0.92} />
+                )}
+
                 {/* Transparent touch target */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH} fill="transparent" rx={10}
                   onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
@@ -371,6 +385,8 @@ const GardenMapBase = ({
             : plant.commonName;
 
           const hasPhoto = !!plant.imageUri;
+          const plantStatus = plantStatuses[plant.id];
+          const statusColor = plantStatus ? STATUS_COLORS[plantStatus] : null;
 
           return (
             <G key={plant.id}>
@@ -417,6 +433,11 @@ const GardenMapBase = ({
                   opacity={isMoving ? 0.4 : 1}>
                   {name}
                 </SvgText>
+              )}
+              {/* Status badge — overdue (red), water (blue), soon (orange) */}
+              {statusColor && !isMoving && (
+                <Circle cx={cx + 14} cy={cy - 14} r={6}
+                  fill={statusColor} opacity={0.92} />
               )}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={22} fill="transparent"

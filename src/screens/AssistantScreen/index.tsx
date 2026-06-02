@@ -306,7 +306,7 @@ const AssistantScreen = (): React.JSX.Element => {
               );
             })}
             {item.identifiedPlants.length > 1 && (
-              <TouchableOpacity style={styles.addAllButton} onPress={() => handleAddAll(item.identifiedPlants!, item.id)}>
+              <TouchableOpacity style={styles.addAllButton} onPress={() => handleAddAll(item.identifiedPlants, item.id)}>
                 <Text style={styles.addAllButtonText}>Alle {item.identifiedPlants.length} toevoegen aan tuin</Text>
               </TouchableOpacity>
             )}
