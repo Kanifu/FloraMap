@@ -276,6 +276,18 @@ const MapScreen = (): React.JSX.Element => {
     didCenter.current = true;
   }, [viewport]);
 
+  // Re-center map when active garden changes so user starts in the middle of the new garden
+  const activeGardenId = useGardenStore((s) => s.activeGardenId);
+  useEffect(() => {
+    if (viewport.w === 0 || viewport.h === 0) return;
+    const cx = Math.max(0, (MAP_WIDTH  - viewport.w) / 2);
+    const cy = Math.max(0, (MAP_HEIGHT - viewport.h) / 2);
+    requestAnimationFrame(() => {
+      hScrollRef.current?.scrollTo({ x: cx, animated: false });
+      vScrollRef.current?.scrollTo({ y: cy, animated: false });
+    });
+  }, [activeGardenId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
   const [firstPoint,          setFirstPoint]          = useState<{ x: number; y: number } | null>(null);
@@ -773,7 +785,7 @@ const MapScreen = (): React.JSX.Element => {
     setBoundaryDrawStep('first');
   }, [ensureGarden]);
 
-  const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
+  const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [], boundaries: [], gridCols: 25, gridRows: 25 };
 
   return (
     <SafeAreaView style={styles.container}>

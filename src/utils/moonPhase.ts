@@ -110,7 +110,7 @@ export const getMoonInfo = (d: Date = new Date()): MoonInfo => {
 
   // Element: rotate through 4 elements each ~7 days
   const elements: MoonElement[] = ['fire', 'water', 'earth', 'air'];
-  const element = elements[Math.floor((age / SYNODIC) * 4) % 4];
+  const element = elements[Math.floor((age / SYNODIC) * 4) % elements.length] ?? 'fire';
 
   return {
     phase,

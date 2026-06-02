@@ -24,8 +24,10 @@ export const checkCropRotation = (
   }
   // Check rotation history
   for (const rec of rotationHistory) {
+    const removedTime = new Date(rec.removedDate).getTime();
+    if (isNaN(removedTime)) continue;
     if (rec.plantFamily === family && distance(plant.x, plant.y, rec.x, rec.y) <= 3 &&
-        new Date(rec.removedDate) > twoYearsAgo) {
+        removedTime > twoYearsAgo.getTime()) {
       return `⚠️ ${family}-gewas stond hier recent — wacht 2 jaar voor herhaalteelt om ziektes te voorkomen.`;
     }
   }

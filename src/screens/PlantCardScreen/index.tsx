@@ -602,7 +602,7 @@ const PlantCardScreen = (): React.JSX.Element => {
 
           {/* ── Harvest log ── */}
           {plant.harvestMonths && plant.harvestMonths.length > 0 && (() => {
-            const log = [...(plant.harvestLog ?? [])].sort((a, b) => b.date.localeCompare(a.date));
+            const log = [...(plant.harvestLog ?? [])].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
             const totalG = log.reduce((s, e) => s + (e.weightG ?? 0), 0);
             const totalCount = log.reduce((s, e) => s + (e.count ?? 0), 0);
             return (
