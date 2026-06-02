@@ -11,7 +11,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus } from '@/models';
+import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal, OnboardingResult } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
@@ -242,7 +242,7 @@ const MapScreen = (): React.JSX.Element => {
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
   const renameGarden           = useGardenStore((s) => s.renameGarden);
 
-  const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
+  const unlockedBadgeCount = ACHIEVEMENTS.filter((a) => !!unlockedAchievements[a.id]).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
     .filter((a) => unlockedAchievements[a.id])
     .sort((a, b) => (unlockedAchievements[b.id] ?? '').localeCompare(unlockedAchievements[a.id] ?? ''))
@@ -275,6 +275,18 @@ const MapScreen = (): React.JSX.Element => {
     });
     didCenter.current = true;
   }, [viewport]);
+
+  // Re-center map when active garden changes so user starts in the middle of the new garden
+  const activeGardenId = useGardenStore((s) => s.activeGardenId);
+  useEffect(() => {
+    if (viewport.w === 0 || viewport.h === 0) return;
+    const cx = Math.max(0, (MAP_WIDTH  - viewport.w) / 2);
+    const cy = Math.max(0, (MAP_HEIGHT - viewport.h) / 2);
+    requestAnimationFrame(() => {
+      hScrollRef.current?.scrollTo({ x: cx, animated: false });
+      vScrollRef.current?.scrollTo({ y: cy, animated: false });
+    });
+  }, [activeGardenId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
@@ -441,28 +453,6 @@ const MapScreen = (): React.JSX.Element => {
     return result;
   }, [garden]);
 
-  const plantStatusMap = useMemo((): Map<string, PlantStatus> => {
-    if (!garden) return new Map();
-    const now = new Date().toISOString();
-    const currentMonth = new Date().getMonth();
-    return new Map(
-      garden.plants.map((plant) => {
-        const overdue = plant.maintenanceTasks.filter(
-          (t) => !t.completedDate && t.dueDate < now,
-        );
-        return [
-          plant.id,
-          {
-            needsWater:     overdue.some((t) => t.type === 'water'),
-            needsFertilize: overdue.some((t) => t.type === 'fertilize'),
-            needsPrune:     overdue.some((t) => t.type === 'prune'),
-            harvestReady:   (plant.harvestMonths ?? []).includes(currentMonth),
-            overdueCount:   overdue.length,
-          },
-        ];
-      }),
-    );
-  }, [garden]);
 
   const companionPairs = useMemo<CompanionPair[]>(() => {
     if (!garden || !showCompanionOverlay) return [];
@@ -773,7 +763,7 @@ const MapScreen = (): React.JSX.Element => {
     setBoundaryDrawStep('first');
   }, [ensureGarden]);
 
-  const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
+  const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [], boundaries: [], gridCols: 25, gridRows: 25 };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -904,7 +894,7 @@ const MapScreen = (): React.JSX.Element => {
                 companionPairs={companionPairs}
                 showCompanionOverlay={showCompanionOverlay}
                 plantStatuses={plantStatuses}
-                plantStatusMap={plantStatusMap}
+
                 boundaries={currentGarden.boundaries ?? []}
                 showNames={showNames}
                 renderScale={mapScale}

@@ -23,7 +23,7 @@ const plantRows = (plants: Plant[]): string =>
     return `
     <tr>
       <td><strong>${escapHtml(p.commonName)}</strong></td>
-      <td><em>${escapHtml(p.species)}</em></td>
+      <td><em>${p.species ? escapHtml(p.species) : '—'}</em></td>
       <td>${formatDate(p.plantedDate)}</td>
       <td>${nextTask ? `${TASK_ICONS[nextTask.type]} ${TASK_LABELS[nextTask.type]} — ${formatDate(nextTask.dueDate)}` : '✅ Geen taken'}</td>
     </tr>`;
@@ -111,7 +111,7 @@ export const generateGardenHTML = (garden: Garden, appVersion: string): string =
   <table>
     <thead><tr><th>Zone</th><th>pH</th><th>Bodemtype</th><th>Getest</th><th>Toevoegingen</th></tr></thead>
     <tbody>
-    ${garden.soilProfiles!.map((sp) => `
+    ${(garden.soilProfiles ?? []).map((sp) => `
       <tr>
         <td><strong>${escapHtml(sp.zoneName)}</strong></td>
         <td>${sp.ph?.toFixed(1) ?? '—'}</td>

@@ -350,20 +350,23 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {__DEV__ && (
+              <>
+                <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+                <View style={styles.tierDebugRow}>
+                  {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                      onPress={() => setUserTier(t)}>
+                      <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -410,7 +413,7 @@ const AboutScreen = (): React.JSX.Element => {
         {/* Achievements */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            Prestaties ({Object.keys(unlockedAchievements).length}/{ACHIEVEMENTS.length})
+            Prestaties ({ACHIEVEMENTS.filter((a) => !!unlockedAchievements[a.id]).length}/{ACHIEVEMENTS.length})
           </Text>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
