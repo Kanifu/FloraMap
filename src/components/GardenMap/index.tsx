@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line, ClipPath, Image as SvgImage } from 'react-native-svg';
-import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
+import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM    = 30;
@@ -100,8 +100,7 @@ interface GardenMapProps {
   showCompanionOverlay?: boolean;
   thirstyPlantIds?: string[];
   plantStatuses?: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'>;
-  plantStatusMap?: unknown;
-  boundaries?: unknown[];
+  boundaries?: GardenBoundary[];
   showNames?: boolean;
   renderScale?: number;
   onBoundaryPress?: (id: string) => void;

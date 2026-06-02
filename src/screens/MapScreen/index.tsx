@@ -11,7 +11,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus } from '@/models';
+import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal, OnboardingResult } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
@@ -453,28 +453,6 @@ const MapScreen = (): React.JSX.Element => {
     return result;
   }, [garden]);
 
-  const plantStatusMap = useMemo((): Map<string, PlantStatus> => {
-    if (!garden) return new Map();
-    const now = new Date().toISOString();
-    const currentMonth = new Date().getMonth();
-    return new Map(
-      garden.plants.map((plant) => {
-        const overdue = plant.maintenanceTasks.filter(
-          (t) => !t.completedDate && t.dueDate < now,
-        );
-        return [
-          plant.id,
-          {
-            needsWater:     overdue.some((t) => t.type === 'water'),
-            needsFertilize: overdue.some((t) => t.type === 'fertilize'),
-            needsPrune:     overdue.some((t) => t.type === 'prune'),
-            harvestReady:   (plant.harvestMonths ?? []).includes(currentMonth),
-            overdueCount:   overdue.length,
-          },
-        ];
-      }),
-    );
-  }, [garden]);
 
   const companionPairs = useMemo<CompanionPair[]>(() => {
     if (!garden || !showCompanionOverlay) return [];
@@ -916,7 +894,7 @@ const MapScreen = (): React.JSX.Element => {
                 companionPairs={companionPairs}
                 showCompanionOverlay={showCompanionOverlay}
                 plantStatuses={plantStatuses}
-                plantStatusMap={plantStatusMap}
+
                 boundaries={currentGarden.boundaries ?? []}
                 showNames={showNames}
                 renderScale={mapScale}
