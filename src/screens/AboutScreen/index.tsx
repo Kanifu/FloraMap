@@ -413,7 +413,7 @@ const AboutScreen = (): React.JSX.Element => {
         {/* Achievements */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            Prestaties ({Object.keys(unlockedAchievements).length}/{ACHIEVEMENTS.length})
+            Prestaties ({ACHIEVEMENTS.filter((a) => !!unlockedAchievements[a.id]).length}/{ACHIEVEMENTS.length})
           </Text>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>

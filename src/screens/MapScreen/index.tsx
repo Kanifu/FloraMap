@@ -242,7 +242,7 @@ const MapScreen = (): React.JSX.Element => {
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
   const renameGarden           = useGardenStore((s) => s.renameGarden);
 
-  const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
+  const unlockedBadgeCount = ACHIEVEMENTS.filter((a) => !!unlockedAchievements[a.id]).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
     .filter((a) => unlockedAchievements[a.id])
     .sort((a, b) => (unlockedAchievements[b.id] ?? '').localeCompare(unlockedAchievements[a.id] ?? ''))
