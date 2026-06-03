@@ -624,11 +624,11 @@ const MapScreen = (): React.JSX.Element => {
 
   const handleClearGarden = useCallback(() => {
     Alert.alert(
-      'Tuin verwijderen',
-      'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+      'Tuin leegmaken',
+      'Wil je alle planten en taken verwijderen? Dit kan niet ongedaan worden gemaakt.',
       [
         { text: 'Annuleren', style: 'cancel' },
-        { text: 'Verwijderen', style: 'destructive', onPress: () => clearGarden() },
+        { text: 'Leegmaken', style: 'destructive', onPress: () => clearGarden() },
       ],
     );
   }, [clearGarden]);

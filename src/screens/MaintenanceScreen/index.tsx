@@ -216,7 +216,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const completeGardenTask = useGardenStore((s) => s.completeGardenTask);
-  const recordTaskCompletion = useGardenStore((s) => s.recordTaskCompletion);
   const gardenStats = useGardenStore((s) => s.gardenStats);
   const weather                              = useWeather();
   const [activeTab, setActiveTab]           = useState<Tab>('taken');
@@ -345,18 +344,16 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const plant = garden?.plants.find((p) => p.id === plantId);
     const task  = plant?.maintenanceTasks.find((t) => t.id === taskId);
     completeMaintenanceTask(plantId, taskId);
-    recordTaskCompletion();
     if (task?.intervalDays) {
       const msg = `✓ ${TASK_LABELS[task.type]} klaar · volgende beurt over ${task.intervalDays} dagen`;
       setToast(msg);
       setTimeout(() => setToast(null), 3000);
     }
-  }, [completeMaintenanceTask, recordTaskCompletion, garden]);
+  }, [completeMaintenanceTask, garden]);
 
   const handleGardenTaskComplete = useCallback((taskId: string) => {
     completeGardenTask(taskId);
-    recordTaskCompletion();
-  }, [completeGardenTask, recordTaskCompletion]);
+  }, [completeGardenTask]);
 
   const handleNavigate = useCallback((plantId: string) => {
     navigation.navigate('PlantCard', { plantId });
