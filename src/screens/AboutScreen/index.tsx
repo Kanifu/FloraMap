@@ -220,7 +220,8 @@ const AboutScreen = (): React.JSX.Element => {
 
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
-    if (!garden) {
+    const state = useGardenStore.getState();
+    if (!state.garden && state.gardens.length === 0) {
       Alert.alert('Geen tuin', 'Er is nog geen tuindata om te exporteren.');
       return;
     }
@@ -230,7 +231,23 @@ const AboutScreen = (): React.JSX.Element => {
       return;
     }
     try {
-      const json = JSON.stringify({ version: VERSION, exportedAt: new Date().toISOString(), garden }, null, 2);
+      const backup = {
+        version: VERSION,
+        exportedAt: new Date().toISOString(),
+        garden: state.garden,
+        gardens: state.gardens,
+        activeGardenId: state.activeGardenId,
+        unlockedAchievements: state.unlockedAchievements,
+        totalTasksCompleted: state.totalTasksCompleted,
+        currentStreak: state.currentStreak,
+        longestStreak: state.longestStreak,
+        lastTaskDate: state.lastTaskDate,
+        totalScans: state.totalScans,
+        userTier: state.userTier,
+        rotationHistory: state.rotationHistory,
+        seedPackets: state.seedPackets,
+      };
+      const json = JSON.stringify(backup, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}floramap-backup.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(fileUri, {
@@ -255,24 +272,58 @@ const AboutScreen = (): React.JSX.Element => {
       const raw = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
       const parsed = JSON.parse(raw);
 
-      // Basic validation
-      const importedGarden: Garden = parsed.garden ?? parsed;
-      if (!importedGarden.id || !Array.isArray(importedGarden.plants)) {
+      // Support both old (single garden) and new (full state) backup format
+      const importedGarden: Garden | null = parsed.garden ?? (parsed.id && Array.isArray(parsed.plants) ? parsed : null);
+      if (!importedGarden || !importedGarden.id || !Array.isArray(importedGarden.plants)) {
         Alert.alert('Ongeldig bestand', 'Dit bestand bevat geen geldige FloraMap-data.');
         return;
       }
 
+      const gardenNames = parsed.gardens?.length > 0
+        ? `${parsed.gardens.length} tuin(en)`
+        : `"${importedGarden.name}"`;
+
       Alert.alert(
         'Backup importeren',
-        `Wil je de tuindata van "${importedGarden.name}" importeren? Je huidige tuin wordt overschreven.`,
+        `Wil je ${gardenNames} herstellen? Alle huidige data wordt overschreven.`,
         [
           { text: 'Annuleren', style: 'cancel' },
           {
             text: 'Importeren',
             style: 'destructive',
             onPress: () => {
-              setGarden(importedGarden);
-              Alert.alert('Gelukt! 🌿', 'Je tuin is hersteld vanuit de backup.');
+              const unlockedAchievements = parsed.unlockedAchievements ?? {};
+              // Rebuild gardenStats from restored fields
+              const restoredStreak = parsed.currentStreak ?? 0;
+              const restoredLongest = parsed.longestStreak ?? 0;
+              const restoredTotal = parsed.totalTasksCompleted ?? 0;
+              const restoredLastDate = parsed.lastTaskDate ?? null;
+              const restoredBadges = ACHIEVEMENTS
+                .filter((a) => unlockedAchievements[a.id])
+                .map((a) => ({ id: a.id, name: a.title, emoji: a.emoji, unlockedAt: unlockedAchievements[a.id] }));
+
+              useGardenStore.setState({
+                garden: importedGarden,
+                gardens: parsed.gardens ?? [importedGarden],
+                activeGardenId: parsed.activeGardenId ?? importedGarden.id,
+                unlockedAchievements,
+                totalTasksCompleted: restoredTotal,
+                currentStreak:       restoredStreak,
+                longestStreak:       restoredLongest,
+                lastTaskDate:        restoredLastDate,
+                totalScans:          parsed.totalScans ?? 0,
+                userTier:            parsed.userTier ?? 'free',
+                rotationHistory:     parsed.rotationHistory ?? [],
+                seedPackets:         parsed.seedPackets ?? [],
+                gardenStats: {
+                  currentStreak:       restoredStreak,
+                  longestStreak:       restoredLongest,
+                  totalTasksCompleted: restoredTotal,
+                  lastCompletionDate:  restoredLastDate ?? undefined,
+                  badges:              restoredBadges,
+                },
+              });
+              Alert.alert('Gelukt! 🌿', 'Je tuindata is hersteld vanuit de backup.');
             },
           },
         ],
