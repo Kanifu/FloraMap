@@ -28,6 +28,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   const updateSeedPacket = useGardenStore((s) => s.updateSeedPacket);
 
   const [showModal, setShowModal] = useState(false);
+  const [editingPacket, setEditingPacket] = useState<SeedPacket | null>(null);
   const [modalCommonName, setModalCommonName] = useState('');
   const [modalSpecies, setModalSpecies] = useState('');
   const [modalEmoji, setModalEmoji] = useState('');
@@ -48,6 +49,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   }, [seedPackets]);
 
   const resetModal = () => {
+    setEditingPacket(null);
     setModalCommonName('');
     setModalSpecies('');
     setModalEmoji('');
@@ -56,10 +58,20 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     setModalNotes('');
   };
 
-  const handleAdd = () => {
+  const openEdit = (packet: SeedPacket) => {
+    setEditingPacket(packet);
+    setModalCommonName(packet.commonName);
+    setModalSpecies(packet.species ?? '');
+    setModalEmoji(packet.emoji ?? '');
+    setModalExpiryYear(packet.expiryYear !== undefined ? String(packet.expiryYear) : '');
+    setModalAmountGrams(packet.amountGrams !== undefined ? String(packet.amountGrams) : '');
+    setModalNotes(packet.notes ?? '');
+    setShowModal(true);
+  };
+
+  const handleSave = () => {
     if (!modalCommonName.trim()) return;
-    const packet: SeedPacket = {
-      id: newId(),
+    const fields = {
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
@@ -67,7 +79,11 @@ const SeedInventoryScreen = (): React.JSX.Element => {
       amountGrams: modalAmountGrams ? parseFloat(modalAmountGrams) : undefined,
       notes: modalNotes.trim() || undefined,
     };
-    addSeedPacket(packet);
+    if (editingPacket) {
+      updateSeedPacket({ ...editingPacket, ...fields });
+    } else {
+      addSeedPacket({ id: newId(), ...fields });
+    }
     setShowModal(false);
     resetModal();
   };
@@ -94,6 +110,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     return (
       <TouchableOpacity
         style={[styles.card, item.isUsedUp && styles.cardUsedUp]}
+        onPress={() => openEdit(item)}
         onLongPress={() => handleDelete(item)}
         activeOpacity={0.8}>
         <View style={styles.cardMain}>
@@ -151,7 +168,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌱 Zaadvoorraad</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
+        <TouchableOpacity style={styles.addBtn} onPress={() => { resetModal(); setShowModal(true); }}>
           <Text style={styles.addBtnText}>＋ Toevoegen</Text>
         </TouchableOpacity>
       </View>
@@ -170,11 +187,11 @@ const SeedInventoryScreen = (): React.JSX.Element => {
         }
       />
 
-      {/* Add modal */}
+      {/* Add / edit modal */}
       <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); resetModal(); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={[styles.modalSheet, { maxHeight: '90%' }]}>
-            <Text style={styles.modalTitle}>🌱 Zaadpakket toevoegen</Text>
+            <Text style={styles.modalTitle}>{editingPacket ? '✏️ Zaadpakket bewerken' : '🌱 Zaadpakket toevoegen'}</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <TextInput
                 style={styles.input}
@@ -237,9 +254,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveBtn, !modalCommonName.trim() && styles.saveBtnDisabled]}
-                onPress={handleAdd}
+                onPress={handleSave}
                 disabled={!modalCommonName.trim()}>
-                <Text style={styles.saveBtnText}>Opslaan</Text>
+                <Text style={styles.saveBtnText}>{editingPacket ? 'Bijwerken' : 'Opslaan'}</Text>
               </TouchableOpacity>
             </View>
           </View>
