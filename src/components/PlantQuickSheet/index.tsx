@@ -27,7 +27,6 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
 
 export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRainExpected }: Props): React.JSX.Element | null => {
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
-  const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
 
   const [isEditingName, setIsEditingName] = useState(false);
@@ -37,8 +36,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   const handleComplete = useCallback((taskId: string) => {
     if (!plant) return;
     completeMaintenanceTask(plant.id, taskId);
-    recordTaskCompletion();
-  }, [plant, completeMaintenanceTask, recordTaskCompletion]);
+  }, [plant, completeMaintenanceTask]);
 
   const handleStartEdit = useCallback(() => {
     if (!plant) return;
