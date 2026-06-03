@@ -231,13 +231,3 @@ export interface GardenStats {
   lastCompletionDate?: string;  // YYYY-MM-DD
   badges: Badge[];
 }
-
-export const BADGE_DEFINITIONS: Omit<Badge, 'unlockedAt'>[] = [
-  { id: 'first_task',  name: 'Eerste stap',     emoji: '🌱', description: 'Eerste taak voltooid' },
-  { id: 'streak_3',   name: 'Op dreef',          emoji: '🔥', description: '3 dagen op rij actief' },
-  { id: 'streak_7',   name: 'Groene week',       emoji: '🌿', description: '7 dagen streak' },
-  { id: 'streak_30',  name: 'Tuinmeester',       emoji: '🏆', description: '30 dagen streak' },
-  { id: 'tasks_10',   name: 'Vlijtige tuinier',  emoji: '💪', description: '10 taken voltooid' },
-  { id: 'tasks_50',   name: 'Doorgewinterd',     emoji: '⭐', description: '50 taken voltooid' },
-  { id: 'tasks_100',  name: 'Groene duim',       emoji: '🎯', description: '100 taken voltooid' },
-];
