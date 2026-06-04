@@ -2,7 +2,7 @@
 
 **Jouw slimme tuinplanner** — plan en beheer je tuin, herken planten met AI, en houd onderhoudstaken bij.
 
-[![Version](https://img.shields.io/badge/versie-1.4.0-2d6a4f?style=flat-square)](app.json)
+[![Version](https://img.shields.io/badge/versie-2.0.0-2d6a4f?style=flat-square)](app.json)
 [![Platform](https://img.shields.io/badge/platform-Android-brightgreen?style=flat-square)](https://play.google.com)
 [![Expo SDK](https://img.shields.io/badge/Expo-SDK%2052-000?style=flat-square&logo=expo)](https://expo.dev)
 [![License](https://img.shields.io/badge/licentie-MIT-blue?style=flat-square)](LICENSE)
@@ -84,7 +84,7 @@ FloraMap is een React Native tuinplanner voor Android (iOS-ready) die je helpt b
 ```
 FloraMap/
 ├── App.tsx                         # Root: GestureHandlerRootView + navigatie
-├── app.json                        # Expo config (v1.4.0)
+├── app.json                        # Expo config (v2.0.0)
 ├── cloudflare-worker/
 │   └── worker.js                   # Gemini API proxy (deploy naar Cloudflare)
 └── src/

@@ -1,3 +1,4 @@
+/* global Response */
 /**
  * FloraMap — Gemini API Proxy
  *
@@ -41,7 +42,7 @@ export default {
       const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
       const day = new Date().toISOString().slice(0, 10);
       const key = `rl:${ip}:${day}`;
-      const count = parseInt((await env.RATE_LIMIT.get(key)) ?? '0');
+      const count = parseInt((await env.RATE_LIMIT.get(key)) ?? '0', 10);
       if (count >= DAILY_LIMIT) {
         return new Response(
           JSON.stringify({ error: { message: 'Dagelijks limiet bereikt. Probeer morgen opnieuw.' } }),

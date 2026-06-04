@@ -237,7 +237,7 @@ export const BADGE_DEFINITIONS: Omit<Badge, 'unlockedAt'>[] = [
   { id: 'streak_3',   name: 'Op dreef',          emoji: '🔥', description: '3 dagen op rij actief' },
   { id: 'streak_7',   name: 'Groene week',       emoji: '🌿', description: '7 dagen streak' },
   { id: 'streak_30',  name: 'Tuinmeester',       emoji: '🏆', description: '30 dagen streak' },
-  { id: 'tasks_10',   name: 'Vlijtige tuinier',  emoji: '💪', description: '10 taken voltooid' },
-  { id: 'tasks_50',   name: 'Doorgewinterd',     emoji: '⭐', description: '50 taken voltooid' },
-  { id: 'tasks_100',  name: 'Groene duim',       emoji: '🎯', description: '100 taken voltooid' },
+  { id: 'ten_tasks',  name: 'Vlijtige tuinier',  emoji: '💪', description: '10 taken voltooid' },
+  { id: 'fifty_tasks', name: 'Doorgewinterd',    emoji: '⭐', description: '50 taken voltooid' },
+  { id: 'hundred_tasks', name: 'Groene duim',    emoji: '🎯', description: '100 taken voltooid' },
 ];

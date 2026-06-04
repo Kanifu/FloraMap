@@ -262,9 +262,9 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           streak_3:   newStreak >= 3,
           streak_7:   newStreak >= 7,
           streak_30:  newStreak >= 30,
-          tasks_10:   newTotal >= 10,
-          tasks_50:   newTotal >= 50,
-          tasks_100:  newTotal >= 100,
+          ten_tasks: newTotal >= 10,
+          fifty_tasks: newTotal >= 50,
+          hundred_tasks: newTotal >= 100,
         };
         for (const def of BADGE_DEFINITIONS) {
           if (badgeCriteria[def.id]) toUnlock.push(def.id);

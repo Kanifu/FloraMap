@@ -239,7 +239,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
       tempMax: weather.tempMax,
     }).catch(() => {});
     checkAndScheduleWeatherAlerts().catch(() => {});
-  }, [weather.loaded]);
+  }, [garden, weather.loaded, weather.rainExpected, weather.droughtDays, weather.tempMax]);
 
   // Show toast when a new badge is earned
   useEffect(() => {
@@ -345,13 +345,12 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const plant = garden?.plants.find((p) => p.id === plantId);
     const task  = plant?.maintenanceTasks.find((t) => t.id === taskId);
     completeMaintenanceTask(plantId, taskId);
-    recordTaskCompletion();
     if (task?.intervalDays) {
       const msg = `✓ ${TASK_LABELS[task.type]} klaar · volgende beurt over ${task.intervalDays} dagen`;
       setToast(msg);
       setTimeout(() => setToast(null), 3000);
     }
-  }, [completeMaintenanceTask, recordTaskCompletion, garden]);
+  }, [completeMaintenanceTask, garden]);
 
   const handleGardenTaskComplete = useCallback((taskId: string) => {
     completeGardenTask(taskId);

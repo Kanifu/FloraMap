@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line, ClipPath, Image as SvgImage } from 'react-native-svg';
-import { Garden, Plant, GardenPolygon, GardenPolygonType } from '@/models';
+import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM    = 30;
@@ -101,7 +101,7 @@ interface GardenMapProps {
   thirstyPlantIds?: string[];
   plantStatuses?: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'>;
   plantStatusMap?: unknown;
-  boundaries?: unknown[];
+  boundaries?: GardenBoundary[];
   showNames?: boolean;
   renderScale?: number;
   onBoundaryPress?: (id: string) => void;
@@ -109,6 +109,17 @@ interface GardenMapProps {
 
 const LONG_PRESS_MS = 300;
 const EMOJI_STEP    = 38;   // px between emoji centres in zone grid
+
+const BOUNDARY_STYLE: Record<string, { stroke: string; fill: string; opacity: number; dash?: string }> = {
+  fence:  { stroke: '#7a4f2d', fill: '#7a4f2d', opacity: 0.22, dash: '8,4' },
+  wall:   { stroke: '#6c757d', fill: '#adb5bd', opacity: 0.28 },
+  hedge:  { stroke: '#2d6a4f', fill: '#52b788', opacity: 0.22 },
+  forest: { stroke: '#1b4332', fill: '#2d6a4f', opacity: 0.24 },
+  lawn:   { stroke: '#52b788', fill: '#95d5b2', opacity: 0.22 },
+  patio:  { stroke: '#6c757d', fill: '#ced4da', opacity: 0.28 },
+  pond:   { stroke: '#3a86ff', fill: '#90e0ef', opacity: 0.34 },
+  path:   { stroke: '#8d6e63', fill: '#d7ccc8', opacity: 0.34, dash: '6,3' },
+};
 
 const GardenMapBase = ({
   garden,
@@ -121,8 +132,11 @@ const GardenMapBase = ({
   companionPairs = [],
   showCompanionOverlay = false,
   thirstyPlantIds = [],
+  plantStatuses = {},
+  boundaries = [],
   showNames = true,
   renderScale = 1,
+  onBoundaryPress,
 }: GardenMapProps): React.JSX.Element => {
 
   const effCols   = garden.gridCols ?? GRID_COLS;
@@ -225,6 +239,77 @@ const GardenMapBase = ({
           <Polygon key={polygon.id} points={toSvgPoints(polygon)} fill={POLYGON_COLORS[polygon.type]} />
         ))}
 
+        {/* Garden boundaries and surfaces */}
+        {boundaries.map((boundary) => {
+          const style = BOUNDARY_STYLE[boundary.type] ?? BOUNDARY_STYLE.path;
+          if (
+            boundary.x1 !== undefined &&
+            boundary.y1 !== undefined &&
+            boundary.x2 !== undefined &&
+            boundary.y2 !== undefined
+          ) {
+            const x1 = boundary.x1 * SCALE;
+            const y1 = boundary.y1 * SCALE;
+            const x2 = boundary.x2 * SCALE;
+            const y2 = boundary.y2 * SCALE;
+            return (
+              <G key={boundary.id}>
+                <Line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={style.stroke}
+                  strokeWidth={8}
+                  strokeLinecap="round"
+                  strokeDasharray={style.dash}
+                  opacity={0.78}
+                />
+                <Line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="transparent"
+                  strokeWidth={28}
+                  strokeLinecap="round"
+                  onPress={!isInteractive ? () => onBoundaryPress?.(boundary.id) : undefined}
+                />
+              </G>
+            );
+          }
+
+          const x = boundary.x ?? 1;
+          const y = boundary.y ?? 1;
+          const w = boundary.width ?? 1;
+          const h = boundary.height ?? 1;
+          return (
+            <G key={boundary.id}>
+              <Rect
+                x={rx(x)}
+                y={ry(y)}
+                width={w * SCALE}
+                height={h * SCALE}
+                rx={8}
+                fill={style.fill}
+                opacity={style.opacity}
+                stroke={style.stroke}
+                strokeWidth={2}
+                strokeDasharray={style.dash}
+              />
+              <Rect
+                x={rx(x)}
+                y={ry(y)}
+                width={w * SCALE}
+                height={h * SCALE}
+                rx={8}
+                fill="transparent"
+                onPress={!isInteractive ? () => onBoundaryPress?.(boundary.id) : undefined}
+              />
+            </G>
+          );
+        })}
+
         {/* ── Companion overlay ─────────────────────────────────────────────── */}
         {showCompanionOverlay && companionPairs.map((pair, idx) => {
           const pA = garden.plants.find((p) => p.id === pair.plantIdA);
@@ -250,7 +335,8 @@ const GardenMapBase = ({
         {/* ── Plants & zones ────────────────────────────────────────────────── */}
         {garden.plants.map((plant) => {
           const isMoving  = plant.id === movingPlantId;
-          const isThirsty = thirstySet.has(plant.id);
+          const status = plantStatuses[plant.id];
+          const isThirsty = thirstySet.has(plant.id) || status === 'water';
           const w = plant.width  ?? 1;
           const h = plant.height ?? 1;
           const isZone = w > 1 || h > 1;
@@ -309,6 +395,15 @@ const GardenMapBase = ({
                   <Rect x={zLeft} y={zTop} width={zW} height={zH}
                     fill="none" stroke="#3a86ff" strokeWidth={2.5}
                     strokeDasharray="6,4" opacity={0.75} rx={10} />
+                )}
+                {status === 'overdue' && (
+                  <Circle cx={zLeft + zW - 14} cy={zTop + 14} r={9} fill="#e63946" />
+                )}
+                {status === 'soon' && (
+                  <Circle cx={zLeft + zW - 14} cy={zTop + 14} r={9} fill="#ffb703" />
+                )}
+                {status === 'done_today' && (
+                  <Circle cx={zLeft + zW - 14} cy={zTop + 14} r={9} fill="#2d6a4f" />
                 )}
 
                 {/* Tiled emoji pattern */}
@@ -384,6 +479,15 @@ const GardenMapBase = ({
               {isMoving && (
                 <Circle cx={cx} cy={cy} r={22}
                   fill="none" stroke="#ffb703" strokeWidth={2.5} opacity={0.7} />
+              )}
+              {status === 'overdue' && (
+                <Circle cx={cx + 15} cy={cy - 15} r={7} fill="#e63946" />
+              )}
+              {status === 'soon' && (
+                <Circle cx={cx + 15} cy={cy - 15} r={7} fill="#ffb703" />
+              )}
+              {status === 'done_today' && (
+                <Circle cx={cx + 15} cy={cy - 15} r={7} fill="#2d6a4f" />
               )}
 
               {hasPhoto ? (

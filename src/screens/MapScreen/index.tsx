@@ -349,7 +349,7 @@ const MapScreen = (): React.JSX.Element => {
         { text: 'Annuleren', style: 'cancel', onPress: () => setSelectedBoundaryId(null) },
       ],
     );
-  }, [selectedBoundaryId]);
+  }, [selectedBoundaryId, garden?.boundaries, removeBoundary]);
 
   // ── new-plant modal state ─────────────────────────────────────────────────
   const [showModal,       setShowModal]       = useState(false);
@@ -596,7 +596,7 @@ const MapScreen = (): React.JSX.Element => {
         setShowModal(true);
       }
     }
-  }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, boundaryEditId, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updateBoundary, updatePlant, ensureGarden]);
+  }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, boundaryEditId, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updateBoundary, updatePlant, ensureGarden, rotationHistory]);
 
   const handleCreateGarden = useCallback(() => {
     const name = newGardenName.trim() || 'Nieuwe tuin';

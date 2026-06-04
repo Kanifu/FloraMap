@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -111,9 +111,10 @@ const AssistantScreen = (): React.JSX.Element => {
   const addGardenTask = useGardenStore((s) => s.addGardenTask);
 
   // Include positions for companion planting / placement advice
-  const gardenPlants = garden?.plants.map(
-    (p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`,
-  ) ?? [];
+  const gardenPlants = useMemo(
+    () => garden?.plants.map((p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`) ?? [],
+    [garden?.plants],
+  );
 
   const buildHistory = useCallback((): ChatTurn[] => {
     return messages
