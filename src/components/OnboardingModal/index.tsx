@@ -71,8 +71,6 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
 
   const handleNext = async () => {
     if (step === 1) {
-      // Stap 2 navigatie via locationRequest of skip
-      await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(2);
       return;
     }
