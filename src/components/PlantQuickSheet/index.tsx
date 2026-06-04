@@ -27,18 +27,17 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
 
 export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRainExpected }: Props): React.JSX.Element | null => {
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
-  const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
   const updatePlant             = useGardenStore((s) => s.updatePlant);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName,      setEditName]      = useState('');
   const [editSpecies,   setEditSpecies]   = useState('');
+  const [showAllTasks,  setShowAllTasks]  = useState(false);
 
   const handleComplete = useCallback((taskId: string) => {
     if (!plant) return;
     completeMaintenanceTask(plant.id, taskId);
-    recordTaskCompletion();
-  }, [plant, completeMaintenanceTask, recordTaskCompletion]);
+  }, [plant, completeMaintenanceTask]);
 
   const handleStartEdit = useCallback(() => {
     if (!plant) return;
@@ -167,32 +166,39 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 <Text style={s.emptyTasksText}>🎉 Geen openstaande taken!</Text>
               </View>
             ) : (
-              activeTasks.slice(0, 4).map((task) => {
-                const isOverdue = task.dueDate < now;
-                const isWaterInRain = task.type === 'water' && weatherRainExpected;
-                return (
-                  <TouchableOpacity
-                    key={task.id}
-                    style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
-                    onPress={() => handleComplete(task.id)}
-                    activeOpacity={0.75}>
-                    <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
-                    <View style={s.taskBtnBody}>
-                      <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
-                        {TASK_LABELS[task.type]}
-                        {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
-                      </Text>
-                      <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
-                      {isWaterInRain && (
-                        <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
-                      )}
-                    </View>
-                    <View style={s.taskBtnCheck}>
-                      <Text style={s.taskBtnCheckText}>✓</Text>
-                    </View>
+              <>
+                {(showAllTasks ? activeTasks : activeTasks.slice(0, 4)).map((task) => {
+                  const isOverdue = task.dueDate < now;
+                  const isWaterInRain = task.type === 'water' && weatherRainExpected;
+                  return (
+                    <TouchableOpacity
+                      key={task.id}
+                      style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
+                      onPress={() => handleComplete(task.id)}
+                      activeOpacity={0.75}>
+                      <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
+                      <View style={s.taskBtnBody}>
+                        <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
+                          {TASK_LABELS[task.type]}
+                          {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
+                        </Text>
+                        <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
+                        {isWaterInRain && (
+                          <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
+                        )}
+                      </View>
+                      <View style={s.taskBtnCheck}>
+                        <Text style={s.taskBtnCheckText}>✓</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                {activeTasks.length > 4 && !showAllTasks && (
+                  <TouchableOpacity onPress={() => setShowAllTasks(true)} style={s.showMoreBtn}>
+                    <Text style={s.showMoreBtnText}>+ {activeTasks.length - 4} meer taken tonen</Text>
                   </TouchableOpacity>
-                );
-              })
+                )}
+              </>
             )}
 
             {/* Care tips section */}
@@ -326,6 +332,8 @@ const s = StyleSheet.create({
   tipsSectionTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', marginBottom: 4 },
   tipRow: { fontSize: 12, color: '#555', lineHeight: 18, marginLeft: 4 },
   moreTips: { fontSize: 11, color: '#888', marginTop: 2, fontStyle: 'italic' },
+  showMoreBtn: { paddingVertical: 8, alignItems: 'center', marginTop: 2 },
+  showMoreBtnText: { fontSize: 13, color: '#2d6a4f', fontWeight: '600' },
   detailsBtn: {
     marginHorizontal: 16,
     marginTop: 12,
