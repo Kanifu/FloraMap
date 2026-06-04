@@ -11,8 +11,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { GardenMap, CELL_CM } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus } from '@/models';
-import { gardenAssistantService, IdentifiedPlant, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus, GardenTask } from '@/models';
+import { gardenAssistantService, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal, OnboardingResult } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
 import { TodaySheet } from '@/components/TodaySheet';
@@ -60,6 +60,16 @@ const BOUNDARY_TYPES: { type: BoundaryType; emoji: string; label: string; isLine
 ];
 
 const addDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+
+const urgencyDays: Record<string, number> = { high: 0, medium: 3, low: 7 };
+
+const makeGardenTaskFromAssistant = (task: AssistantTask): GardenTask => ({
+  id: `gtask-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  description: task.description,
+  urgency: task.urgency,
+  plantName: task.plantName,
+  dueDate: new Date(Date.now() + (urgencyDays[task.urgency] ?? 3) * 86_400_000).toISOString(),
+});
 
 const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] => {
   switch (type) {
@@ -230,7 +240,9 @@ const MapScreen = (): React.JSX.Element => {
   const removePlant  = useGardenStore((s) => s.removePlant);
   const updatePlant  = useGardenStore((s) => s.updatePlant);
   const addPlant     = useGardenStore((s) => s.addPlant);
+  const addGardenTask = useGardenStore((s) => s.addGardenTask);
   const clearGarden  = useGardenStore((s) => s.clearGarden);
+  const setStoreScanning = useGardenStore((s) => s.setScanning);
   const addBoundary  = useGardenStore((s) => s.addBoundary);
   const removeBoundary = useGardenStore((s) => s.removeBoundary);
   const updateBoundary = useGardenStore((s) => s.updateBoundary);
@@ -380,6 +392,14 @@ const MapScreen = (): React.JSX.Element => {
   const [diseaseScanning,   setDiseaseScanning]   = useState(false);
   const [showDiseaseResult, setShowDiseaseResult] = useState(false);
   const [diseaseText,       setDiseaseText]       = useState('');
+
+  // ── combined AI sheet state ───────────────────────────────────────────────
+  const [showAiSheet,       setShowAiSheet]       = useState(false);
+  const [aiInput,           setAiInput]           = useState('');
+  const [aiLoading,         setAiLoading]         = useState(false);
+  const [aiAnswer,          setAiAnswer]          = useState('');
+  const [aiPlants,          setAiPlants]          = useState<IdentifiedPlant[]>([]);
+  const [aiTasks,           setAiTasks]           = useState<AssistantTask[]>([]);
 
   const ensureGarden = useCallback((): Garden => {
     const current = useGardenStore.getState().garden;
@@ -673,11 +693,13 @@ const MapScreen = (): React.JSX.Element => {
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
     if (result.canceled) return;
     setScanning(true);
+    setStoreScanning(true);
     try {
       const gardenPlants = garden?.plants.map((p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`) ?? [];
       const response = await gardenAssistantService.chat('', result.assets[0].uri, [], gardenPlants);
       if (response.identifiedPlants && response.identifiedPlants.length > 0) {
         setPlantsToPlace(response.identifiedPlants);
+        setShowAiSheet(false);
       } else {
         Alert.alert('Geen planten herkend', 'Probeer een duidelijkere foto.');
       }
@@ -685,17 +707,45 @@ const MapScreen = (): React.JSX.Element => {
       Alert.alert('Scannen mislukt', e instanceof Error ? e.message : 'Onbekende fout.');
     } finally {
       setScanning(false);
+      setStoreScanning(false);
     }
   };
 
-  const handleScanPress = () => {
-    Alert.alert('Plant toevoegen', 'Kies een methode', [
-      { text: '📷 Camera',    onPress: () => handleScan(false) },
-      { text: '🖼️ Galerij',   onPress: () => handleScan(true) },
-      { text: '🔍 Database',  onPress: () => { setPlantSearchQuery(''); setShowPlantSearch(true); } },
-      { text: '🐛 Ziekte scan', onPress: () => handleDiseaseScan() },
-      { text: 'Annuleren', style: 'cancel' },
-    ]);
+  const handleOpenAiSheet = () => {
+    setFabMode('idle');
+    setShowAiSheet(true);
+  };
+
+  const handleSendAiPrompt = async () => {
+    const prompt = aiInput.trim();
+    if (!prompt) return;
+    setAiLoading(true);
+    setAiAnswer('');
+    setAiPlants([]);
+    setAiTasks([]);
+    try {
+      const gardenPlants = garden?.plants.map((p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`) ?? [];
+      const response = await gardenAssistantService.chat(prompt, null, [], gardenPlants);
+      setAiAnswer(response.text);
+      setAiPlants(response.identifiedPlants ?? []);
+      setAiTasks(response.detectedTasks ?? []);
+      setAiInput('');
+    } catch (e) {
+      Alert.alert('Assistent mislukt', e instanceof Error ? e.message : 'Onbekende fout.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handlePlaceAiPlant = (plant: IdentifiedPlant) => {
+    ensureGarden();
+    setPlantsToPlace([plant]);
+    setShowAiSheet(false);
+  };
+
+  const handleAddAiTask = (task: AssistantTask) => {
+    ensureGarden();
+    addGardenTask(makeGardenTaskFromAssistant(task));
   };
 
   const startManualAdd = () => {
@@ -942,17 +992,12 @@ const MapScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         )}
 
-        {/* FAB menu — assistant is primary, scan secondary */}
+        {/* FAB menu */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); navigation.navigate('Assistant'); }} activeOpacity={0.85}>
-              <Text style={styles.fabMenuIcon}>💬</Text>
-              <Text style={styles.fabMenuLabel}>Assistent — tips & planten toevoegen</Text>
-            </TouchableOpacity>
-            <View style={styles.fabMenuDivider} />
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); handleScanPress(); }} activeOpacity={0.85}>
-              <Text style={styles.fabMenuIcon}>📷</Text>
-              <Text style={styles.fabMenuLabel}>Plant scannen / herkennen</Text>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={handleOpenAiSheet} activeOpacity={0.85}>
+              <Text style={styles.fabMenuIcon}>✨</Text>
+              <Text style={styles.fabMenuLabel}>AI toevoegen / scannen</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
               <Text style={styles.fabMenuIcon}>✏️</Text>
@@ -978,7 +1023,7 @@ const MapScreen = (): React.JSX.Element => {
             <Text style={styles.emptyCardSubtitle}>
               Scan een foto om planten te herkennen, of voeg ze handmatig toe.
             </Text>
-            <TouchableOpacity style={styles.emptyCardScanBtn} onPress={handleScanPress} disabled={scanning} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.emptyCardScanBtn} onPress={handleOpenAiSheet} disabled={scanning} activeOpacity={0.85}>
               {scanning
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={styles.emptyCardScanBtnText}>📷 Scan planten</Text>}
@@ -1208,6 +1253,93 @@ const MapScreen = (): React.JSX.Element => {
         </View>
       </Modal>
 
+      {/* Combined AI assistant / scan sheet */}
+      <Modal visible={showAiSheet} transparent animationType="slide" onRequestClose={() => setShowAiSheet(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={[styles.modalSheet, styles.aiSheet]}>
+            <View style={styles.aiHeader}>
+              <View>
+                <Text style={styles.modalTitle}>✨ AI toevoegen</Text>
+                <Text style={styles.modalSubtitle}>Vraag advies, scan een plant of voeg direct iets toe.</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAiSheet(false)} style={styles.aiCloseBtn}>
+                <Text style={styles.aiCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.aiActionGrid}>
+              <TouchableOpacity style={styles.aiActionBtn} onPress={() => handleScan(false)} disabled={scanning}>
+                <Text style={styles.aiActionIcon}>📷</Text>
+                <Text style={styles.aiActionLabel}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.aiActionBtn} onPress={() => handleScan(true)} disabled={scanning}>
+                <Text style={styles.aiActionIcon}>🖼️</Text>
+                <Text style={styles.aiActionLabel}>Galerij</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.aiActionBtn}
+                onPress={() => { setPlantSearchQuery(''); setShowPlantSearch(true); setShowAiSheet(false); }}>
+                <Text style={styles.aiActionIcon}>🔍</Text>
+                <Text style={styles.aiActionLabel}>Database</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.aiActionBtn} onPress={handleDiseaseScan} disabled={diseaseScanning}>
+                <Text style={styles.aiActionIcon}>🐛</Text>
+                <Text style={styles.aiActionLabel}>Ziekte</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.aiPromptRow}>
+              <TextInput
+                style={styles.aiInput}
+                value={aiInput}
+                onChangeText={setAiInput}
+                placeholder="Bijv. waar zet ik basilicum naast tomaat?"
+                placeholderTextColor="#9aa89f"
+                multiline
+              />
+              <TouchableOpacity
+                style={[styles.aiSendBtn, (!aiInput.trim() || aiLoading) && styles.aiSendBtnDisabled]}
+                onPress={handleSendAiPrompt}
+                disabled={!aiInput.trim() || aiLoading}>
+                {aiLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.aiSendText}>→</Text>}
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.aiResults} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {aiAnswer ? <Text style={styles.aiAnswer}>{aiAnswer}</Text> : null}
+
+              {aiPlants.map((plant) => (
+                <View key={`${plant.species}-${plant.commonName}`} style={styles.aiResultCard}>
+                  <View style={styles.aiResultBody}>
+                    <Text style={styles.aiResultTitle}>{plant.commonName}</Text>
+                    <Text style={styles.aiResultSub}>{plant.species}</Text>
+                    <Text style={styles.aiResultMeta}>{Math.round(plant.confidence * 100)}% zekerheid</Text>
+                  </View>
+                  <TouchableOpacity style={styles.aiResultBtn} onPress={() => handlePlaceAiPlant(plant)}>
+                    <Text style={styles.aiResultBtnText}>Plaatsen</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {aiTasks.map((task, idx) => (
+                <View key={`${task.description}-${idx}`} style={styles.aiResultCard}>
+                  <View style={styles.aiResultBody}>
+                    <Text style={styles.aiResultTitle}>{task.description}</Text>
+                    {task.plantName ? <Text style={styles.aiResultSub}>{task.plantName}</Text> : null}
+                    <Text style={styles.aiResultMeta}>
+                      {task.urgency === 'high' ? 'Vandaag' : task.urgency === 'medium' ? 'Binnen 3 dagen' : 'Binnen een week'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.aiResultBtn} onPress={() => handleAddAiTask(task)}>
+                    <Text style={styles.aiResultBtnText}>Taak</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* New plant/zone modal */}
       <Modal visible={showModal} transparent animationType="slide">
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -1380,8 +1512,8 @@ const MapScreen = (): React.JSX.Element => {
         showNames={showNames}
         onToggleCompanion={() => setShowCompanionOverlay((v) => !v)}
         onToggleNames={() => setShowNames((v) => !v)}
-        onScan={handleScanPress}
-        onOpenAssistant={() => navigation.navigate('Assistant')}
+        onScan={handleOpenAiSheet}
+        onOpenAssistant={handleOpenAiSheet}
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
         onOpenAbout={() => navigation.navigate('About')}
@@ -1664,6 +1796,54 @@ const styles = StyleSheet.create({
   },
   modalConfirmBtnDisabled: { backgroundColor: '#ccc' },
   modalConfirmText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  aiSheet: { maxHeight: '86%' },
+  aiHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  aiCloseBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
+  },
+  aiCloseText: { fontSize: 24, color: '#1b4332', lineHeight: 26 },
+  aiActionGrid: { flexDirection: 'row', gap: 8 },
+  aiActionBtn: {
+    flex: 1, alignItems: 'center', gap: 5,
+    backgroundColor: '#f1f8f3', borderRadius: 12,
+    borderWidth: 1, borderColor: '#b7e4c7',
+    paddingVertical: 10,
+  },
+  aiActionIcon: { fontSize: 21 },
+  aiActionLabel: { fontSize: 11, color: '#1b4332', fontWeight: '700' },
+  aiPromptRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  aiInput: {
+    flex: 1, minHeight: 48, maxHeight: 96,
+    backgroundColor: '#f8f9fa', borderRadius: 12,
+    borderWidth: 1, borderColor: '#e9ecef',
+    paddingHorizontal: 14, paddingVertical: 10,
+    color: '#1b4332', fontSize: 14,
+  },
+  aiSendBtn: {
+    width: 48, height: 48, borderRadius: 14,
+    backgroundColor: '#2d6a4f', alignItems: 'center', justifyContent: 'center',
+  },
+  aiSendBtnDisabled: { backgroundColor: '#a8b8ad' },
+  aiSendText: { color: '#fff', fontSize: 24, fontWeight: '700', lineHeight: 26 },
+  aiResults: { maxHeight: 300 },
+  aiAnswer: {
+    backgroundColor: '#f1f8f3', borderRadius: 12,
+    padding: 12, color: '#1b4332', fontSize: 14, lineHeight: 20,
+    marginBottom: 8,
+  },
+  aiResultCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#fff', borderRadius: 12,
+    borderWidth: 1, borderColor: '#e9ecef',
+    padding: 12, marginBottom: 8,
+  },
+  aiResultBody: { flex: 1 },
+  aiResultTitle: { fontSize: 15, fontWeight: '700', color: '#1b4332' },
+  aiResultSub: { fontSize: 12, color: '#6b705c', fontStyle: 'italic', marginTop: 1 },
+  aiResultMeta: { fontSize: 11, color: '#95a99c', marginTop: 3, fontWeight: '600' },
+  aiResultBtn: { backgroundColor: '#2d6a4f', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  aiResultBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   loadingOverlay: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)', gap: 16,

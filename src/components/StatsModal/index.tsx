@@ -31,6 +31,15 @@ const TASK_ICON_LABEL: Record<string, { icon: string; label: string }> = {
   treat:     { icon: '🩹', label: 'Behandelen' },
 };
 
+const CATEGORY_LABELS: Record<string, string> = {
+  tuin: 'Tuin',
+  onderhoud: 'Onderhoud',
+  foto: 'Foto’s',
+  oogst: 'Oogst',
+  scan: 'Scans',
+  special: 'Special',
+};
+
 export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   const garden               = useGardenStore((s) => s.garden);
   const gardenStats          = useGardenStore((s) => s.gardenStats);
@@ -41,11 +50,11 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   const totalCompleted = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length, 0);
   const activeTasks    = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length, 0);
   const totalHarvestGrams = plants.reduce((sum, p) =>
-    sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0), 0);
+    sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0), 0);
 
   const harvestRanking = plants
     .map((p) => ({ id: p.id, name: p.commonName, emoji: getPlantEmoji(p.commonName),
-      totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0) }))
+      totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0) }))
     .filter((p) => p.totalGrams > 0)
     .sort((a, b) => b.totalGrams - a.totalGrams)
     .slice(0, 5);
@@ -58,6 +67,13 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   }
   const taskTypeEntries = Object.entries(taskTypeCounts).sort((a, b) => b[1] - a[1]);
   const maxTaskCount = taskTypeEntries.length > 0 ? taskTypeEntries[0][1] : 1;
+  const achievementGroups = Object.entries(
+    ACHIEVEMENTS.reduce<Record<string, typeof ACHIEVEMENTS>>((groups, achievement) => {
+      const key = achievement.category;
+      groups[key] = [...(groups[key] ?? []), achievement];
+      return groups;
+    }, {}),
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -94,20 +110,26 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
             {/* Achievements — full list with locked/unlocked state */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>🏆 Prestaties ({Object.keys(unlockedAchievements).length}/{ACHIEVEMENTS.length})</Text>
-              <View style={s.badgesWrap}>
-                {ACHIEVEMENTS.map((a) => {
-                  const unlocked = !!unlockedAchievements[a.id];
-                  return (
-                    <View key={a.id} style={[s.badgeChip, !unlocked && s.badgeChipLocked]}>
-                      <Text style={[s.badgeEmoji, !unlocked && s.badgeEmojiLocked]}>{a.emoji}</Text>
-                      <View>
-                        <Text style={[s.badgeName, !unlocked && s.badgeNameLocked]}>{a.title}</Text>
-                        <Text style={s.badgeDesc}>{a.description}</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
+              {achievementGroups.map(([category, achievements]) => (
+                <View key={category} style={s.achievementGroup}>
+                  <Text style={s.achievementGroupTitle}>{CATEGORY_LABELS[category] ?? category}</Text>
+                  <View style={s.badgesWrap}>
+                    {achievements.map((a) => {
+                      const unlocked = !!unlockedAchievements[a.id];
+                      return (
+                        <View key={a.id} style={[s.badgeChip, !unlocked && s.badgeChipLocked]}>
+                          <Text style={[s.badgeEmoji, !unlocked && s.badgeEmojiLocked]}>{a.emoji}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[s.badgeName, !unlocked && s.badgeNameLocked]}>{a.title}</Text>
+                            <Text style={s.badgeDesc}>{a.description}</Text>
+                          </View>
+                          {unlocked && <Text style={s.badgeDone}>✓</Text>}
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
             </View>
 
             {/* Oogstranking */}
@@ -177,6 +199,8 @@ const s = StyleSheet.create({
   streakMain:   { fontSize: 18, fontWeight: '700', color: '#1b4332' },
   streakSub:    { fontSize: 13, color: '#2d6a4f' },
   badgesWrap:      { gap: 8 },
+  achievementGroup: { gap: 7, marginTop: 4 },
+  achievementGroupTitle: { fontSize: 12, fontWeight: '800', color: '#2d6a4f', textTransform: 'uppercase', letterSpacing: 0.5 },
   badgeChip:       { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f1f8f3', borderRadius: 12, borderWidth: 1, borderColor: '#b7e4c7', paddingHorizontal: 12, paddingVertical: 8 },
   badgeChipLocked: { backgroundColor: '#f8f9fa', borderColor: '#e9ecef', opacity: 0.6 },
   badgeEmoji:      { fontSize: 22 },
@@ -184,6 +208,7 @@ const s = StyleSheet.create({
   badgeName:       { fontSize: 13, fontWeight: '700', color: '#1b4332' },
   badgeNameLocked: { color: '#aaa' },
   badgeDesc:       { fontSize: 11, color: '#6b705c', marginTop: 1 },
+  badgeDone:       { fontSize: 16, color: '#2d6a4f', fontWeight: '800' },
   emptyHint:       { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
   rankRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#e9ecef' },
   rankNum:      { fontSize: 13, fontWeight: '700', color: '#aaa', width: 24 },

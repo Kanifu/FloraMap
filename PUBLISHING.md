@@ -63,6 +63,10 @@ Belangrijk voor publicatie: als echte in-app aankopen nog niet actief zijn, noem
   - `FLORAMAP_TOKEN`
 - Build lokaal of via EAS:
   - `npm run build:android`
+- Build automatisch met commit en push:
+  - `npm run build:android:auto -- production`
+- Optioneel eigen commitbericht:
+  - `BUILD_COMMIT_MESSAGE="chore: prepare Play Store build" npm run build:android:auto -- production`
 - Upload de `.aab` naar Google Play Console.
 
 ## 5. Store Assets

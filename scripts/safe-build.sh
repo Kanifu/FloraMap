@@ -12,6 +12,8 @@
 # Gebruik:
 #   npm run build:android                  # preview APK (default)
 #   npm run build:android -- production    # productie AAB
+#   npm run build:android:auto -- production
+#   BUILD_COMMIT_MESSAGE="chore: release build" npm run build:android:auto -- production
 #
 set -euo pipefail
 
@@ -19,6 +21,7 @@ set -euo pipefail
 # --yes / -y : sla alle bevestigingsvragen over en mail de link automatisch
 AUTO_YES=0
 PROFILE="preview"
+DEFAULT_COMMIT_MESSAGE="${BUILD_COMMIT_MESSAGE:-chore: prepare FloraMap build}"
 for arg in "$@"; do
   case "$arg" in
     --yes|-y) AUTO_YES=1 ;;
@@ -119,7 +122,12 @@ if [[ -n "$(git status --porcelain)" ]]; then
   yellow "  EAS bouwt alleen wat is GECOMMIT. Niet-gecommitte wijzigingen"
   yellow "  gaan NIET mee in de build."
   if confirm "Wijzigingen nu committen en pushen?"; then
-    read -r -p "Commit-bericht: " msg
+    msg="$DEFAULT_COMMIT_MESSAGE"
+    if [[ "$AUTO_YES" != "1" ]]; then
+      read -r -p "Commit-bericht: " msg
+    else
+      yellow "→ Commit-bericht: $msg"
+    fi
     git add -A
     git commit -m "${msg:-chore: pre-build commit}"
     git push origin "$BRANCH"

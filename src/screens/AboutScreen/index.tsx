@@ -14,7 +14,6 @@ import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
 import { useTheme } from '@/hooks/useTheme';
 import { FeedbackModal } from '@/components/FeedbackModal';
-import { ACHIEVEMENTS } from '@/data/achievements';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { FREE_PLANT_LIMIT, FEATURE_CONFIGS } from '@/hooks/useFeatureFlag';
 import type { Tier } from '@/constants/tiers';
@@ -73,9 +72,6 @@ const AboutScreen = (): React.JSX.Element => {
   const navigation = useNavigation<StackNavigationProp<MaintenanceStackParamList>>();
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
-  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
-  const currentStreak = useGardenStore((s) => s.currentStreak);
-  const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
   const userTier = useGardenStore((s) => s.userTier);
   const setUserTier = useGardenStore((s) => s.setUserTier);
   const [importing, setImporting] = useState(false);
@@ -406,45 +402,6 @@ const AboutScreen = (): React.JSX.Element => {
           </View>
           <Text style={styles.linkChevron}>›</Text>
         </TouchableOpacity>
-
-        {/* Achievements */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Prestaties ({Object.keys(unlockedAchievements).length}/{ACHIEVEMENTS.length})
-          </Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{currentStreak > 0 ? `🔥 ${currentStreak}` : '—'}</Text>
-              <Text style={styles.statLabel}>Dag streak</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{totalTasksCompleted}</Text>
-              <Text style={styles.statLabel}>Taken voltooid</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{garden?.plants.length ?? 0}</Text>
-              <Text style={styles.statLabel}>Planten</Text>
-            </View>
-          </View>
-          <View style={styles.achievementGrid}>
-            {ACHIEVEMENTS.map((achievement) => {
-              const unlockedAt = unlockedAchievements[achievement.id];
-              return (
-                <View
-                  key={achievement.id}
-                  style={[styles.achievementBadge, !unlockedAt && styles.achievementBadgeLocked]}>
-                  <Text style={styles.achievementEmoji}>{achievement.emoji}</Text>
-                  <Text style={styles.achievementTitle}>{achievement.title}</Text>
-                  {unlockedAt && (
-                    <Text style={styles.achievementDate}>
-                      {new Date(unlockedAt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
-                    </Text>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </View>
 
         {SECTIONS.map((section) => (
           <View key={section.title} style={styles.section}>

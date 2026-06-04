@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import Svg, { Path, Rect, Ellipse, Text as SvgText, Circle, G } from 'react-native-svg';
 import { useGardenStore } from '@/store/gardenStore';
 import { useTheme } from '@/hooks/useTheme';
+import { ACHIEVEMENTS } from '@/data/achievements';
 
 interface GrowthPhase {
   emoji: string;
@@ -69,6 +70,7 @@ const VirtualGardenScreen = (): React.JSX.Element => {
   const currentStreak       = useGardenStore((s) => s.currentStreak);
   const totalScans          = useGardenStore((s) => s.totalScans);
   const garden              = useGardenStore((s) => s.garden);
+  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
 
   const drops = totalTasksCompleted * 2 + currentStreak;
 
@@ -82,6 +84,13 @@ const VirtualGardenScreen = (): React.JSX.Element => {
     ? Math.min(1, (totalTasksCompleted - currentPhase.taskThreshold) / (nextPhase.taskThreshold - currentPhase.taskThreshold))
     : 1;
   const tasksToNext  = nextPhase ? nextPhase.taskThreshold - totalTasksCompleted : 0;
+  const recentAchievements = ACHIEVEMENTS
+    .filter((achievement) => unlockedAchievements[achievement.id])
+    .sort((a, b) => unlockedAchievements[b.id].localeCompare(unlockedAchievements[a.id]))
+    .slice(0, 6);
+  const nextAchievements = ACHIEVEMENTS
+    .filter((achievement) => !unlockedAchievements[achievement.id])
+    .slice(0, 4);
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
@@ -150,6 +159,16 @@ const VirtualGardenScreen = (): React.JSX.Element => {
     infoTitle: { fontSize: 13, fontWeight: '700', color: theme.primary },
     infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
     infoText: { fontSize: 12, color: theme.textSecondary, flex: 1, lineHeight: 18 },
+    achievementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    achievementChip: {
+      width: '48%', backgroundColor: theme.card, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.border,
+      padding: 10, gap: 4,
+    },
+    achievementChipLocked: { opacity: 0.45 },
+    achievementEmoji: { fontSize: 24 },
+    achievementName: { fontSize: 12, fontWeight: '700', color: theme.primaryDark },
+    achievementDesc: { fontSize: 10, color: theme.textSecondary, lineHeight: 14 },
   });
 
   return (
@@ -209,6 +228,22 @@ const VirtualGardenScreen = (): React.JSX.Element => {
             <Text style={s.statNumber}>{garden?.plants.length ?? 0}</Text>
             <Text style={s.statLabel}>Planten</Text>
           </View>
+        </View>
+
+        <Text style={s.sectionTitle}>Prestaties</Text>
+        <View style={s.achievementGrid}>
+          {(recentAchievements.length > 0 ? recentAchievements : nextAchievements).map((achievement) => {
+            const unlocked = !!unlockedAchievements[achievement.id];
+            return (
+              <View
+                key={achievement.id}
+                style={[s.achievementChip, !unlocked && s.achievementChipLocked]}>
+                <Text style={s.achievementEmoji}>{achievement.emoji}</Text>
+                <Text style={s.achievementName}>{achievement.title}</Text>
+                <Text style={s.achievementDesc}>{achievement.description}</Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Growth milestones */}
