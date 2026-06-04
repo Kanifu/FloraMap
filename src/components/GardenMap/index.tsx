@@ -110,6 +110,13 @@ interface GardenMapProps {
 const LONG_PRESS_MS = 300;
 const EMOJI_STEP    = 38;   // px between emoji centres in zone grid
 
+const STATUS_DOT_COLOR: Record<string, string> = {
+  overdue:    '#e63946',
+  water:      '#3a86ff',
+  soon:       '#fb8500',
+  done_today: '#2d6a4f',
+};
+
 const GardenMapBase = ({
   garden,
   onPlantPress,
@@ -121,6 +128,7 @@ const GardenMapBase = ({
   companionPairs = [],
   showCompanionOverlay = false,
   thirstyPlantIds = [],
+  plantStatuses = {},
   showNames = true,
   renderScale = 1,
 }: GardenMapProps): React.JSX.Element => {
@@ -249,8 +257,10 @@ const GardenMapBase = ({
 
         {/* ── Plants & zones ────────────────────────────────────────────────── */}
         {garden.plants.map((plant) => {
-          const isMoving  = plant.id === movingPlantId;
-          const isThirsty = thirstySet.has(plant.id);
+          const isMoving   = plant.id === movingPlantId;
+          const isThirsty  = thirstySet.has(plant.id);
+          const statusKey  = plantStatuses[plant.id];
+          const statusDot  = statusKey && statusKey !== 'ok' ? STATUS_DOT_COLOR[statusKey] : null;
           const w = plant.width  ?? 1;
           const h = plant.height ?? 1;
           const isZone = w > 1 || h > 1;
@@ -417,6 +427,13 @@ const GardenMapBase = ({
                   opacity={isMoving ? 0.4 : 1}>
                   {name}
                 </SvgText>
+              )}
+              {/* Status indicator dot (overdue / water / soon / done_today) */}
+              {statusDot && !isMoving && (
+                <>
+                  <Circle cx={cx + 14} cy={cy - 14} r={5.5} fill="#fff" />
+                  <Circle cx={cx + 14} cy={cy - 14} r={4.5} fill={statusDot} />
+                </>
               )}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={22} fill="transparent"
