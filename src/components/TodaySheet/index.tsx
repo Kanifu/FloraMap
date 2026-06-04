@@ -34,7 +34,6 @@ export const TodaySheet = ({
   visible, onClose, garden, weatherRainExpected, onOpenPlant, onOpenMaintenance,
 }: Props): React.JSX.Element | null => {
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
-  const recordTaskCompletion    = useGardenStore((s) => s.recordTaskCompletion);
 
   const tasks = useMemo((): TaskItem[] => {
     if (!garden) return [];
@@ -57,7 +56,6 @@ export const TodaySheet = ({
 
   const handleComplete = (plant: Plant, taskId: string) => {
     completeMaintenanceTask(plant.id, taskId);
-    recordTaskCompletion();
   };
 
   return (

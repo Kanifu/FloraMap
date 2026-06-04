@@ -53,11 +53,12 @@ export const scheduleDailyTipNotification = async (tip: string): Promise<void> =
         body: tip,
         sound: true,
       },
-      trigger: {
-        hour: 10,
-        minute: 0,
-        repeats: false,
-      } as Notifications.NotificationTriggerInput,
+      trigger: (() => {
+        const fireAt = new Date();
+        fireAt.setHours(10, 0, 0, 0);
+        if (fireAt <= new Date()) fireAt.setDate(fireAt.getDate() + 1);
+        return { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt };
+      })(),
     });
   } catch { /* ignore */ }
 };
