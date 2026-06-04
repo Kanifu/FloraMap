@@ -78,6 +78,7 @@ const AboutScreen = (): React.JSX.Element => {
   const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
   const userTier = useGardenStore((s) => s.userTier);
   const setUserTier = useGardenStore((s) => s.setUserTier);
+  const getFullState = useGardenStore;
   const [importing, setImporting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -230,7 +231,24 @@ const AboutScreen = (): React.JSX.Element => {
       return;
     }
     try {
-      const json = JSON.stringify({ version: VERSION, exportedAt: new Date().toISOString(), garden }, null, 2);
+      const s = getFullState.getState();
+      const json = JSON.stringify({
+        version: VERSION,
+        exportedAt: new Date().toISOString(),
+        // Full state snapshot
+        gardens: s.gardens,
+        activeGardenId: s.activeGardenId,
+        garden: s.garden,
+        unlockedAchievements: s.unlockedAchievements,
+        totalTasksCompleted: s.totalTasksCompleted,
+        currentStreak: s.currentStreak,
+        longestStreak: s.longestStreak,
+        lastTaskDate: s.lastTaskDate,
+        totalScans: s.totalScans,
+        userTier: s.userTier,
+        rotationHistory: s.rotationHistory,
+        seedPackets: s.seedPackets,
+      }, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}floramap-backup.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(fileUri, {
@@ -262,16 +280,36 @@ const AboutScreen = (): React.JSX.Element => {
         return;
       }
 
+      const gardenName = importedGarden.name ?? 'onbekend';
       Alert.alert(
         'Backup importeren',
-        `Wil je de tuindata van "${importedGarden.name}" importeren? Je huidige tuin wordt overschreven.`,
+        `Wil je de tuindata van "${gardenName}" importeren? Je huidige tuin wordt overschreven.`,
         [
           { text: 'Annuleren', style: 'cancel' },
           {
             text: 'Importeren',
             style: 'destructive',
             onPress: () => {
-              setGarden(importedGarden);
+              if (parsed.gardens && Array.isArray(parsed.gardens)) {
+                // Full-state backup
+                useGardenStore.setState({
+                  gardens: parsed.gardens,
+                  activeGardenId: parsed.activeGardenId ?? importedGarden.id,
+                  garden: importedGarden,
+                  unlockedAchievements: parsed.unlockedAchievements ?? {},
+                  totalTasksCompleted: parsed.totalTasksCompleted ?? 0,
+                  currentStreak: parsed.currentStreak ?? 0,
+                  longestStreak: parsed.longestStreak ?? 0,
+                  lastTaskDate: parsed.lastTaskDate ?? null,
+                  totalScans: parsed.totalScans ?? 0,
+                  userTier: parsed.userTier ?? 'free',
+                  rotationHistory: parsed.rotationHistory ?? [],
+                  seedPackets: parsed.seedPackets ?? [],
+                });
+              } else {
+                // Legacy single-garden backup
+                setGarden(importedGarden);
+              }
               Alert.alert('Gelukt! 🌿', 'Je tuin is hersteld vanuit de backup.');
             },
           },
@@ -350,20 +388,23 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {__DEV__ && (
+              <>
+                <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+                <View style={styles.tierDebugRow}>
+                  {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                      onPress={() => setUserTier(t)}>
+                      <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         </View>
 
