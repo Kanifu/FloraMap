@@ -74,6 +74,16 @@ const AboutScreen = (): React.JSX.Element => {
   const setGarden = useGardenStore((s) => s.setGarden);
   const userTier = useGardenStore((s) => s.userTier);
   const setUserTier = useGardenStore((s) => s.setUserTier);
+  const gardens = useGardenStore((s) => s.gardens);
+  const activeGardenId = useGardenStore((s) => s.activeGardenId);
+  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
+  const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
+  const currentStreak = useGardenStore((s) => s.currentStreak);
+  const longestStreak = useGardenStore((s) => s.longestStreak);
+  const lastTaskDate = useGardenStore((s) => s.lastTaskDate);
+  const totalScans = useGardenStore((s) => s.totalScans);
+  const rotationHistory = useGardenStore((s) => s.rotationHistory);
+  const seedPackets = useGardenStore((s) => s.seedPackets);
   const [importing, setImporting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -216,7 +226,7 @@ const AboutScreen = (): React.JSX.Element => {
 
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
-    if (!garden) {
+    if (!garden && gardens.length === 0) {
       Alert.alert('Geen tuin', 'Er is nog geen tuindata om te exporteren.');
       return;
     }
@@ -226,7 +236,24 @@ const AboutScreen = (): React.JSX.Element => {
       return;
     }
     try {
-      const json = JSON.stringify({ version: VERSION, exportedAt: new Date().toISOString(), garden }, null, 2);
+      const backupData = {
+        version: VERSION,
+        exportedAt: new Date().toISOString(),
+        // Full state backup
+        garden,
+        gardens,
+        activeGardenId,
+        unlockedAchievements,
+        totalTasksCompleted,
+        currentStreak,
+        longestStreak,
+        lastTaskDate,
+        totalScans,
+        userTier,
+        rotationHistory,
+        seedPackets,
+      };
+      const json = JSON.stringify(backupData, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}floramap-backup.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(fileUri, {
@@ -258,16 +285,40 @@ const AboutScreen = (): React.JSX.Element => {
         return;
       }
 
+      const isFullBackup = Array.isArray(parsed.gardens) && parsed.gardens.length > 0;
+      const gardenName = isFullBackup
+        ? `${parsed.gardens.length} tuin(en)`
+        : `"${importedGarden.name}"`;
+
       Alert.alert(
         'Backup importeren',
-        `Wil je de tuindata van "${importedGarden.name}" importeren? Je huidige tuin wordt overschreven.`,
+        `Wil je ${gardenName} importeren? Je huidige data wordt overschreven.`,
         [
           { text: 'Annuleren', style: 'cancel' },
           {
             text: 'Importeren',
             style: 'destructive',
             onPress: () => {
-              setGarden(importedGarden);
+              if (isFullBackup) {
+                // Full-state restore
+                const store = useGardenStore.getState();
+                store.setGarden(parsed.gardens[parsed.gardens.length - 1]);
+                useGardenStore.setState({
+                  gardens: parsed.gardens,
+                  activeGardenId: parsed.activeGardenId ?? parsed.gardens[0]?.id ?? null,
+                  unlockedAchievements: parsed.unlockedAchievements ?? {},
+                  totalTasksCompleted: parsed.totalTasksCompleted ?? 0,
+                  currentStreak: parsed.currentStreak ?? 0,
+                  longestStreak: parsed.longestStreak ?? 0,
+                  lastTaskDate: parsed.lastTaskDate ?? null,
+                  totalScans: parsed.totalScans ?? 0,
+                  userTier: parsed.userTier ?? 'free',
+                  rotationHistory: parsed.rotationHistory ?? [],
+                  seedPackets: parsed.seedPackets ?? [],
+                });
+              } else {
+                setGarden(importedGarden);
+              }
               Alert.alert('Gelukt! 🌿', 'Je tuin is hersteld vanuit de backup.');
             },
           },
@@ -346,20 +397,23 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {__DEV__ && (
+              <>
+                <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+                <View style={styles.tierDebugRow}>
+                  {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                      onPress={() => setUserTier(t)}>
+                      <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         </View>
 
