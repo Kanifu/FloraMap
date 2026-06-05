@@ -4,8 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Garden, Plant, DiffProposal, GardenTask, MaintenanceTask,
   GardenBoundary, SoilProfile, SoilAmendment, HarvestEntry,
-  RotationRecord, SeedPacket, BADGE_DEFINITIONS,
+  RotationRecord, SeedPacket,
 } from '@/models';
+import { ACHIEVEMENTS } from '@/data/achievements';
 import { Tier, TIER_RANK, FREE_PLANT_LIMIT } from '@/constants/tiers';
 
 interface GardenState {
@@ -94,9 +95,9 @@ const buildGardenStats = (
   longestStreak,
   totalTasksCompleted,
   lastCompletionDate: lastTaskDate ?? undefined,
-  badges: BADGE_DEFINITIONS
+  badges: ACHIEVEMENTS
     .filter((def) => unlockedAchievements[def.id])
-    .map((def) => ({ id: def.id, name: (def as any).name ?? def.id, emoji: def.emoji ?? '🏅', unlockedAt: unlockedAchievements[def.id] })),
+    .map((def) => ({ id: def.id, name: def.title, emoji: def.emoji, unlockedAt: unlockedAchievements[def.id] })),
 });
 
 /** Sync updated active garden into the gardens array */
@@ -305,25 +306,6 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           if (pruneCount >= 1) toUnlock.push('first_prune');
         }
 
-        // Also check badge definitions from main's system
-        const badgeCriteria: Record<string, boolean> = {
-          first_task: newTotal >= 1,
-          streak_3:   newStreak >= 3,
-          streak_7:   newStreak >= 7,
-          streak_30:  newStreak >= 30,
-          ten_tasks: newTotal >= 10,
-          fifty_tasks: newTotal >= 50,
-          hundred_tasks: newTotal >= 100,
-          first_water: countCompletedTasksByType(updated, 'water') >= 1,
-          twenty_water: countCompletedTasksByType(updated, 'water') >= 20,
-          first_fertilize: countCompletedTasksByType(updated, 'fertilize') >= 1,
-          ten_fertilize: countCompletedTasksByType(updated, 'fertilize') >= 10,
-          first_prune: countCompletedTasksByType(updated, 'prune') >= 1,
-        };
-        for (const def of BADGE_DEFINITIONS) {
-          if (badgeCriteria[def.id]) toUnlock.push(def.id);
-        }
-
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
 
         set({
@@ -346,15 +328,48 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       completeGardenTask: (taskId) => {
-        const { garden } = get();
+        const state = get();
+        const { garden } = state;
         if (!garden) return;
+        const now = new Date();
         const updated = {
           ...garden,
           tasks: (garden.tasks ?? []).map((t) =>
-            t.id === taskId ? { ...t, completedDate: new Date().toISOString() } : t,
+            t.id === taskId ? { ...t, completedDate: now.toISOString() } : t,
           ),
         };
-        set(syncActive(get(), updated));
+
+        // Update streak & stats (same logic as completeMaintenanceTask)
+        const todayStr = now.toISOString().slice(0, 10);
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yesterdayStr = yest.toISOString().slice(0, 10);
+        let newStreak = state.currentStreak;
+        if (state.lastTaskDate === yesterdayStr) newStreak = state.currentStreak + 1;
+        else if (state.lastTaskDate !== todayStr) newStreak = 1;
+        const newLongest = Math.max(state.longestStreak, newStreak);
+        const newTotal = state.totalTasksCompleted + 1;
+
+        const toUnlock: string[] = [];
+        if (newTotal === 1) toUnlock.push('first_task');
+        if (newTotal >= 10) toUnlock.push('ten_tasks');
+        if (newTotal >= 50) toUnlock.push('fifty_tasks');
+        if (newTotal >= 100) toUnlock.push('hundred_tasks');
+        if (newStreak >= 3) toUnlock.push('streak_3');
+        if (newStreak >= 7) toUnlock.push('streak_7');
+        if (newStreak >= 30) toUnlock.push('streak_30');
+
+        const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+        set({
+          ...syncActive(state, updated),
+          totalTasksCompleted: newTotal,
+          currentStreak: newStreak,
+          longestStreak: newLongest,
+          lastTaskDate: todayStr,
+          unlockedAchievements: unlocked,
+          gardenStats: buildGardenStats(newStreak, newLongest, newTotal, todayStr, unlocked),
+          ...(recentUnlockId ? { recentUnlockId } : {}),
+        });
       },
 
       acceptDiffProposal: (proposalId) => {
@@ -583,11 +598,20 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
+        if (!state) return;
         // Migrate old format: single garden → gardens array
-        if (state && state.garden && state.gardens.length === 0) {
+        if (state.garden && state.gardens.length === 0) {
           state.gardens = [state.garden];
           state.activeGardenId = state.garden.id;
         }
+        // Rebuild computed gardenStats from persisted raw fields (was always zeros on cold start)
+        state.gardenStats = buildGardenStats(
+          state.currentStreak,
+          state.longestStreak,
+          state.totalTasksCompleted,
+          state.lastTaskDate,
+          state.unlockedAchievements,
+        );
       },
     },
   ),
