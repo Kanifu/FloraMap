@@ -18,12 +18,13 @@ export interface WeatherData {
   droughtDays: number;   // consecutive days ahead with <2mm rain
   weatherEmoji: string;
   dailyForecast: DailyForecast[];
+  isFallbackLocation: boolean; // true when Amsterdam fallback is used (no location permission)
 }
 
 export const EMPTY_WEATHER: WeatherData = {
   loaded: false, rainExpected: false, rainMm: 0,
   tempMax: 0, tempMin: 0, isDry: false, droughtDays: 0,
-  weatherEmoji: '🌡️', dailyForecast: [],
+  weatherEmoji: '🌡️', dailyForecast: [], isFallbackLocation: false,
 };
 
 const CACHE_MS = 15 * 60 * 1000; // 15 minutes (refresh more often for accuracy)
@@ -110,6 +111,7 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
       droughtDays,
       weatherEmoji: weatherCodeToEmoji(wCodes[0] ?? 0),
       dailyForecast,
+      isFallbackLocation: loc.isFallback ?? false,
     };
 
     cachedData = result;

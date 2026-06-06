@@ -910,6 +910,7 @@ const MapScreen = (): React.JSX.Element => {
                 {weather.weatherEmoji} {weather.tempMax}°C
                 {weather.rainExpected ? '  🌧️' : ''}
                 {weather.droughtDays >= 3 ? `  🔥 ${weather.droughtDays}d droog` : ''}
+                {weather.isFallbackLocation ? '  📍 Amsterdam' : ''}
               </Text>
             </View>
           )}

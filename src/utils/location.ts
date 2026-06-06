@@ -4,10 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const CACHE_KEY = 'floramap_gps_cache';
 const TTL_MS = 6 * 60 * 60 * 1000; // 6 uur
 
-export interface Coords { latitude: number; longitude: number; }
+export interface Coords { latitude: number; longitude: number; isFallback?: boolean; }
 
-// Fallback: Amsterdam
-const FALLBACK: Coords = { latitude: 52.37, longitude: 4.89 };
+// Fallback: Amsterdam (used when location permission is denied or unavailable)
+const FALLBACK: Coords = { latitude: 52.37, longitude: 4.89, isFallback: true };
 
 export async function getCachedLocation(): Promise<Coords> {
   try {
