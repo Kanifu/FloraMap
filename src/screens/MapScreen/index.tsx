@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, Alert,
+  View, Text, StyleSheet, SafeAreaView, Alert, Linking,
   TouchableOpacity, Modal, TextInput, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator, FlatList, Pressable, Animated,
 } from 'react-native';
@@ -905,14 +905,18 @@ const MapScreen = (): React.JSX.Element => {
         <View style={styles.dashBar}>
           {/* Weather pill */}
           {weather.loaded && (
-            <View style={styles.dashWeather}>
+            <TouchableOpacity
+              style={styles.dashWeather}
+              onPress={weather.isFallbackLocation ? () => Linking.openSettings() : undefined}
+              activeOpacity={weather.isFallbackLocation ? 0.7 : 1}
+            >
               <Text style={styles.dashWeatherText}>
                 {weather.weatherEmoji} {weather.tempMax}°C
                 {weather.rainExpected ? '  🌧️' : ''}
                 {weather.droughtDays >= 3 ? `  🔥 ${weather.droughtDays}d droog` : ''}
-                {weather.isFallbackLocation ? '  📍 Amsterdam' : ''}
+                {weather.isFallbackLocation ? '  📍 Amsterdam ↗' : ''}
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
           {/* Task status pills */}
           {(() => {
