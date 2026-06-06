@@ -13,6 +13,8 @@ import { MaintenanceTaskType, PhotoLogEntry, HarvestEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
 import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { useTheme } from '@/hooks/useTheme';
+import { TIER_RANK } from '@/constants/tiers';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
@@ -192,6 +194,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
   const recordHarvest           = useGardenStore((s) => s.recordHarvest);
   const deleteHarvestEntry      = useGardenStore((s) => s.deleteHarvestEntry);
+  const userTier                = useGardenStore((s) => s.userTier);
 
   const plant = garden?.plants.find((p) => p.id === plantId);
   const now   = new Date().toISOString();
@@ -202,6 +205,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [editSpecies,  setEditSpecies]  = useState('');
   const [editNotes,    setEditNotes]    = useState('');
   const [editWater,    setEditWater]    = useState('');
+  const [showUpgradePhoto,  setShowUpgradePhoto]  = useState(false);
   const [showHistory,       setShowHistory]       = useState(false);
   const [enriching,         setEnriching]         = useState(false);
   const [showHarvestForm,   setShowHarvestForm]   = useState(false);
@@ -291,9 +295,15 @@ const PlantCardScreen = (): React.JSX.Element => {
     [plant, completeMaintenanceTask],
   );
 
+  const FREE_PHOTO_LIMIT = 3;
+
   // ── photo log ──────────────────────────────────────────────────────────────
   const handleAddPhoto = async () => {
     if (!plant) return;
+    if (TIER_RANK[userTier] < TIER_RANK['plus'] && (plant.photoLog?.length ?? 0) >= FREE_PHOTO_LIMIT) {
+      setShowUpgradePhoto(true);
+      return;
+    }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een foto toe te voegen.');
@@ -687,6 +697,14 @@ const PlantCardScreen = (): React.JSX.Element => {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <UpgradeModal
+        visible={showUpgradePhoto}
+        onClose={() => setShowUpgradePhoto(false)}
+        featureLabel="Onbeperkt foto's"
+        featureDescription={`De gratis versie ondersteunt maximaal ${FREE_PHOTO_LIMIT} foto's per plant. Upgrade naar Plus voor onbeperkte groeifoto's.`}
+        requiredTier="plus"
+      />
     </SafeAreaView>
   );
 };
