@@ -205,8 +205,9 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [editSpecies,  setEditSpecies]  = useState('');
   const [editNotes,    setEditNotes]    = useState('');
   const [editWater,    setEditWater]    = useState('');
-  const [showUpgradePhoto,  setShowUpgradePhoto]  = useState(false);
-  const [showHistory,       setShowHistory]       = useState(false);
+  const [showUpgradePhoto,   setShowUpgradePhoto]   = useState(false);
+  const [showUpgradeHarvest, setShowUpgradeHarvest] = useState(false);
+  const [showHistory,        setShowHistory]        = useState(false);
   const [enriching,         setEnriching]         = useState(false);
   const [showHarvestForm,   setShowHarvestForm]   = useState(false);
   const [harvestWeight,     setHarvestWeight]     = useState('');
@@ -615,12 +616,15 @@ const PlantCardScreen = (): React.JSX.Element => {
             const log = [...(plant.harvestLog ?? [])].sort((a, b) => b.date.localeCompare(a.date));
             const totalG = log.reduce((s, e) => s + (e.weightG ?? 0), 0);
             const totalCount = log.reduce((s, e) => s + (e.count ?? 0), 0);
+            const harvestUnlocked = TIER_RANK[userTier] >= TIER_RANK['plus'];
             return (
               <View style={s.section}>
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionTitle}>🍓 Oogst bijhouden</Text>
-                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn}>
-                    <Text style={s.addPhotoBtnText}>{showHarvestForm ? '✕ Sluiten' : '+ Oogst'}</Text>
+                  <TouchableOpacity
+                    onPress={harvestUnlocked ? () => setShowHarvestForm((v) => !v) : () => setShowUpgradeHarvest(true)}
+                    style={s.addPhotoBtn}>
+                    <Text style={s.addPhotoBtnText}>{harvestUnlocked ? (showHarvestForm ? '✕ Sluiten' : '+ Oogst') : '🔒 Plus'}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -703,6 +707,13 @@ const PlantCardScreen = (): React.JSX.Element => {
         onClose={() => setShowUpgradePhoto(false)}
         featureLabel="Onbeperkt foto's"
         featureDescription={`De gratis versie ondersteunt maximaal ${FREE_PHOTO_LIMIT} foto's per plant. Upgrade naar Plus voor onbeperkte groeifoto's.`}
+        requiredTier="plus"
+      />
+      <UpgradeModal
+        visible={showUpgradeHarvest}
+        onClose={() => setShowUpgradeHarvest(false)}
+        featureLabel="Oogstdagboek"
+        featureDescription="Houd je oogstopbrengst bij per plant en volg je totale oogst over het seizoen. Beschikbaar met Plus."
         requiredTier="plus"
       />
     </SafeAreaView>
