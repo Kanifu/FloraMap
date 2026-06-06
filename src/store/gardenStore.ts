@@ -372,6 +372,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const { garden } = state;
         if (!garden) return;
+        if (TIER_RANK[state.userTier] < TIER_RANK['plus']) return;
         const updated = {
           ...garden,
           plants: garden.plants.map((p) =>

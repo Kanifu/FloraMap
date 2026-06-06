@@ -337,7 +337,8 @@ const PlantCardScreen = (): React.JSX.Element => {
 
   // ── harvest ────────────────────────────────────────────────────────────────
   const handleSaveHarvest = () => {
-    if (!plant) return;
+    if (!plant || !plant.harvestMonths?.length) return;
+    if (TIER_RANK[userTier] < TIER_RANK['plus']) { setShowUpgradeHarvest(true); return; }
     const wg = harvestWeight ? parseFloat(harvestWeight) : undefined;
     const cnt = harvestCount ? parseInt(harvestCount, 10) : undefined;
     if (!wg && !cnt) return;
