@@ -219,15 +219,25 @@ const AssistantScreen = (): React.JSX.Element => {
   const handleAddAll = useCallback(
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
+      if (TIER_RANK[userTier] < TIER_RANK['plus'] && activeGarden.plants.length >= FREE_PLANT_LIMIT) {
+        setShowUpgradePlant(true);
+        return;
+      }
       if (!garden) setGarden(activeGarden);
+      let added = 0;
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
         if (addedPlantKeys.has(key)) return;
+        if (TIER_RANK[userTier] < TIER_RANK['plus'] && activeGarden.plants.length + added >= FREE_PLANT_LIMIT) {
+          setShowUpgradePlant(true);
+          return;
+        }
         addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
         setAddedPlantKeys((prev) => new Set([...prev, key]));
+        added += 1;
       });
     },
-    [garden, setGarden, addPlant, addedPlantKeys],
+    [garden, setGarden, addPlant, addedPlantKeys, userTier],
   );
 
   const handleAddTask = useCallback(
