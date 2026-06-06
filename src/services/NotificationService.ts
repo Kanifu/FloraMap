@@ -62,7 +62,7 @@ export const scheduleDailyMaintenanceNotification = async (
   // Drought alert takes priority
   if (isActiveDrought && droughtWaterPlants.length > 0) {
     const plantNames = [...new Set(droughtWaterPlants)];
-    body = `🔥 ${weatherData!.droughtDays} droge dagen — begiet vandaag: ${plantNames.join(', ')}`;
+    body = `🔥 ${weatherData?.droughtDays ?? 0} droge dagen — begiet vandaag: ${plantNames.join(', ')}`;
   } else if (totalDue > 0) {
     body = totalDue === 1
       ? 'Je hebt 1 onderhoudstaak die aandacht nodig heeft.'

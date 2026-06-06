@@ -21,6 +21,8 @@ import { StatsModal } from '@/components/StatsModal';
 import { PlantDateSheet } from '@/components/PlantDateSheet';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { SideMenu } from '@/components/SideMenu';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { FREE_PLANT_LIMIT, TIER_RANK } from '@/constants/tiers';
 import { findCompanionPairs, CompanionPair } from '@/data/companionPlanting';
 import { ACHIEVEMENTS } from '@/data/achievements';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
@@ -253,6 +255,7 @@ const MapScreen = (): React.JSX.Element => {
   const switchGarden           = useGardenStore((s) => s.switchGarden);
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
   const renameGarden           = useGardenStore((s) => s.renameGarden);
+  const userTier               = useGardenStore((s) => s.userTier);
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -298,8 +301,9 @@ const MapScreen = (): React.JSX.Element => {
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
 
-  const [showFeedback,      setShowFeedback]      = useState(false);
-  const [showTierModal,     setShowTierModal]     = useState(false);
+  const [showFeedback,       setShowFeedback]      = useState(false);
+  const [showTierModal,      setShowTierModal]     = useState(false);
+  const [showUpgradePlant,   setShowUpgradePlant] = useState(false);
   const [showStatsModal,    setShowStatsModal]    = useState(false);
   const [datePlant,         setDatePlant]         = useState<Plant | null>(null);
   const [showMenu,          setShowMenu]          = useState(false);
@@ -574,6 +578,10 @@ const MapScreen = (): React.JSX.Element => {
         species: correctionSpecies.trim() || (next.species ?? ''),
       };
       const g = ensureGarden();
+      if (TIER_RANK[userTier] < TIER_RANK['plus'] && g.plants.length >= FREE_PLANT_LIMIT) {
+        setShowUpgradePlant(true);
+        return;
+      }
       const newPlant = makePlantFromScan(corrected, g.id, x, y);
       addPlant(newPlant);
       // Crop rotation check
@@ -664,8 +672,12 @@ const MapScreen = (): React.JSX.Element => {
   const handleConfirmModal = () => {
     if (!pendingBounds || !modalName.trim()) return;
     const g = ensureGarden();
-    const id = newId();
     const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
+    if (!isZone && TIER_RANK[userTier] < TIER_RANK['plus'] && g.plants.length >= FREE_PLANT_LIMIT) {
+      setShowUpgradePlant(true);
+      return;
+    }
+    const id = newId();
     addPlant({
       id, gardenId: g.id,
       species: '',
@@ -1545,6 +1557,15 @@ const MapScreen = (): React.JSX.Element => {
         visible={!!datePlant}
         onClose={() => setDatePlant(null)}
         onSave={(updated) => { updatePlant(updated); setDatePlant(null); }}
+      />
+
+      {/* Upgrade modal — shown when free tier plant limit is reached */}
+      <UpgradeModal
+        visible={showUpgradePlant}
+        onClose={() => setShowUpgradePlant(false)}
+        featureLabel="Meer planten toevoegen"
+        featureDescription={`De gratis versie ondersteunt maximaal ${FREE_PLANT_LIMIT} planten. Upgrade naar Plus voor onbeperkt tuinieren.`}
+        requiredTier="plus"
       />
     </SafeAreaView>
   );
