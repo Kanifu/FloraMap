@@ -172,7 +172,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       clearGarden: () => {
         const state = get();
         if (!state.garden) return;
-        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [] };
+        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [], boundaries: [], soilProfiles: [] };
         set({ garden: cleared, gardens: state.gardens.map((g) => g.id === cleared.id ? cleared : g) });
       },
 
