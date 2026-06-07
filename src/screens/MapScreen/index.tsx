@@ -31,6 +31,8 @@ import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'r
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 import { useWeather } from '@/hooks/useWeather';
 import { openLocationSettings } from '@/utils/location';
+import { TIER_RANK, FREE_PLANT_LIMIT } from '@/hooks/useFeatureFlag';
+import UpgradeModal from '@/components/UpgradeModal';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -256,6 +258,7 @@ const MapScreen = (): React.JSX.Element => {
   const renameGarden              = useGardenStore((s) => s.renameGarden);
   const pendingPlantsToPlace      = useGardenStore((s) => s.pendingPlantsToPlace);
   const setPendingPlantsToPlace   = useGardenStore((s) => s.setPendingPlantsToPlace);
+  const userTier                  = useGardenStore((s) => s.userTier);
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -302,7 +305,8 @@ const MapScreen = (): React.JSX.Element => {
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
 
   const [showFeedback,      setShowFeedback]      = useState(false);
-  const [showTierModal,     setShowTierModal]     = useState(false);
+  const [showTierModal,       setShowTierModal]       = useState(false);
+  const [showPlantLimitModal, setShowPlantLimitModal] = useState(false);
   const [showStatsModal,    setShowStatsModal]    = useState(false);
   const [datePlant,         setDatePlant]         = useState<Plant | null>(null);
   const [showMenu,          setShowMenu]          = useState(false);
@@ -583,13 +587,19 @@ const MapScreen = (): React.JSX.Element => {
 
     if (plantsToPlace.length > 0) {
       const [next, ...rest] = plantsToPlace;
+      const g = ensureGarden();
+      // Enforce plant limit for free tier before placing scanned plant
+      if (TIER_RANK[userTier] < TIER_RANK['plus'] && (g.plants.length ?? 0) >= FREE_PLANT_LIMIT) {
+        setShowPlantLimitModal(true);
+        setPlantsToPlace([]);
+        return;
+      }
       // Apply any name/species correction the user made
       const corrected: IdentifiedPlant = {
         ...next,
         commonName: correctionName.trim() || next.commonName,
         species: correctionSpecies.trim() || (next.species ?? ''),
       };
-      const g = ensureGarden();
       const newPlant = makePlantFromScan(corrected, g.id, x, y);
       addPlant(newPlant);
       // Crop rotation check
@@ -695,20 +705,24 @@ const MapScreen = (): React.JSX.Element => {
   const handleConfirmModal = () => {
     if (!pendingBounds || !modalName.trim()) return;
     const g = ensureGarden();
+    const isZoneAdd = pendingBounds.width > 1 || pendingBounds.height > 1;
+    if (!isZoneAdd && TIER_RANK[userTier] < TIER_RANK['plus'] && (g.plants.length ?? 0) >= FREE_PLANT_LIMIT) {
+      setShowPlantLimitModal(true);
+      return;
+    }
     const id = newId();
-    const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
     addPlant({
       id, gardenId: g.id,
       species: '',
       commonName: modalName.trim(),
       x: pendingBounds.x, y: pendingBounds.y, z: 0,
       width: pendingBounds.width, height: pendingBounds.height,
-      color: isZone ? modalColor : undefined,
+      color: isZoneAdd ? modalColor : undefined,
       plantedDate: modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
       sowDate: modalPlantType === 'seed' ? (modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
       notes: modalNotes.trim() || undefined,
-      addedVia: isZone ? 'manual' : modalPlantType as PlantAddedVia,
-      maintenanceTasks: isZone
+      addedVia: isZoneAdd ? 'manual' : modalPlantType as PlantAddedVia,
+      maintenanceTasks: isZoneAdd
         ? [{ id: `task-${Date.now()}`, plantId: id, type: 'water', dueDate: addDays(7) }]
         : makeTasksForType(id, modalPlantType),
       identificationConfidence: 1,
@@ -1586,6 +1600,15 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Bug report modal */}
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
+
+      {/* Plant limit upgrade modal */}
+      <UpgradeModal
+        visible={showPlantLimitModal}
+        onClose={() => setShowPlantLimitModal(false)}
+        featureLabel="Onbeperkt planten"
+        featureDescription="Voeg meer dan 20 planten toe aan je tuin"
+        requiredTier="plus"
+      />
 
       {/* Tier comparison modal */}
       <TierComparisonModal visible={showTierModal} onClose={() => setShowTierModal(false)} />
