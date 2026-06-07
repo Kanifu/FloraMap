@@ -200,8 +200,12 @@ const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.El
         <Text style={[styles.taskDue, isOverdue && styles.textOverdue]}>{URGENCY_LABELS[task.urgency] ?? ''}</Text>
       </View>
       {!task.completedDate && (
-        <TouchableOpacity style={styles.klaarButton} onPress={() => onComplete(task.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          style={styles.klaarButton}
+          onPress={() => onComplete(task.id)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={`Taak markeren als klaar: ${task.description}`}
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       )}
