@@ -6,6 +6,8 @@ import {
   GardenBoundary, SoilProfile, SoilAmendment, HarvestEntry,
   RotationRecord, SeedPacket, BADGE_DEFINITIONS,
 } from '@/models';
+import { ACHIEVEMENTS } from '@/data/achievements';
+import { IdentifiedPlant } from '@/services/GardenAssistantService';
 import { Tier, TIER_RANK, FREE_PLANT_LIMIT } from '@/constants/tiers';
 
 interface GardenState {
@@ -29,6 +31,8 @@ interface GardenState {
   seedPackets: SeedPacket[];
   // Computed compat field for MaintenanceScreen
   gardenStats: GardenStats;
+  // Pending scan results — persisted so navigation away doesn't lose them
+  pendingPlantsToPlace: IdentifiedPlant[];
 }
 
 /** Computed shape expected by MaintenanceScreen (from main branch) */
@@ -77,6 +81,8 @@ interface GardenActions {
   clearRecentUnlock: () => void;
   // Tier / freemium
   setUserTier: (tier: Tier) => void;
+  // Pending scan queue persistence
+  setPendingPlantsToPlace: (plants: IdentifiedPlant[]) => void;
   // Compatibility shim for MaintenanceScreen (main branch pattern)
   recordTaskCompletion: () => void;
   gardenStats: GardenStats;
@@ -94,9 +100,9 @@ const buildGardenStats = (
   longestStreak,
   totalTasksCompleted,
   lastCompletionDate: lastTaskDate ?? undefined,
-  badges: BADGE_DEFINITIONS
+  badges: ACHIEVEMENTS
     .filter((def) => unlockedAchievements[def.id])
-    .map((def) => ({ id: def.id, name: (def as any).name ?? def.id, emoji: def.emoji ?? '🏅', unlockedAt: unlockedAchievements[def.id] })),
+    .map((def) => ({ id: def.id, name: def.title, emoji: def.emoji, unlockedAt: unlockedAchievements[def.id] })),
 });
 
 /** Sync updated active garden into the gardens array */
@@ -158,6 +164,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       rotationHistory: [],
       seedPackets: [],
       gardenStats: buildGardenStats(0, 0, 0, null, {}),
+      pendingPlantsToPlace: [],
 
       setGarden: (garden) => {
         const state = get();
@@ -172,7 +179,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       clearGarden: () => {
         const state = get();
         if (!state.garden) return;
-        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [] };
+        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [], boundaries: [], soilProfiles: [] };
         set({ garden: cleared, gardens: state.gardens.map((g) => g.id === cleared.id ? cleared : g) });
       },
 
@@ -320,7 +327,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           ten_fertilize: countCompletedTasksByType(updated, 'fertilize') >= 10,
           first_prune: countCompletedTasksByType(updated, 'prune') >= 1,
         };
-        for (const def of BADGE_DEFINITIONS) {
+        for (const def of ACHIEVEMENTS) {
           if (badgeCriteria[def.id]) toUnlock.push(def.id);
         }
 
@@ -534,6 +541,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
       setUserTier: (tier) => set({ userTier: tier }),
 
+      setPendingPlantsToPlace: (plants) => set({ pendingPlantsToPlace: plants }),
+
       recordTaskCompletion: () => {
         const state = get();
         const now = new Date();
@@ -581,6 +590,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         userTier: state.userTier,
         rotationHistory: state.rotationHistory,
         seedPackets: state.seedPackets,
+        pendingPlantsToPlace: state.pendingPlantsToPlace,
       }),
       onRehydrateStorage: () => (state) => {
         // Migrate old format: single garden → gardens array

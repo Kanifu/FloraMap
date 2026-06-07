@@ -30,6 +30,7 @@ import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 import { useWeather } from '@/hooks/useWeather';
+import { openLocationSettings } from '@/utils/location';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -252,7 +253,9 @@ const MapScreen = (): React.JSX.Element => {
   const createGarden           = useGardenStore((s) => s.createGarden);
   const switchGarden           = useGardenStore((s) => s.switchGarden);
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
-  const renameGarden           = useGardenStore((s) => s.renameGarden);
+  const renameGarden              = useGardenStore((s) => s.renameGarden);
+  const pendingPlantsToPlace      = useGardenStore((s) => s.pendingPlantsToPlace);
+  const setPendingPlantsToPlace   = useGardenStore((s) => s.setPendingPlantsToPlace);
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -372,9 +375,22 @@ const MapScreen = (): React.JSX.Element => {
   const [modalPlantedDate,setModalPlantedDate]= useState('');   // YYYY-MM-DD, empty = today
   const [pendingBounds,   setPendingBounds]   = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
+  // ── delete undo state ─────────────────────────────────────────────────────
+  const [deletedPlant,    setDeletedPlant]    = useState<Plant | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── scan state ────────────────────────────────────────────────────────────
-  const [scanning,       setScanning]       = useState(false);
-  const [plantsToPlace,  setPlantsToPlace]  = useState<IdentifiedPlant[]>([]);
+  const [scanning, setScanning] = useState(false);
+  // plantsToPlace mirrors the persisted store so navigation away doesn't lose results
+  const [plantsToPlace, _setPlantsToPlaceLocal] = useState<IdentifiedPlant[]>(pendingPlantsToPlace);
+
+  const setPlantsToPlace = useCallback((plants: IdentifiedPlant[] | ((prev: IdentifiedPlant[]) => IdentifiedPlant[])) => {
+    _setPlantsToPlaceLocal((prev) => {
+      const next = typeof plants === 'function' ? plants(prev) : plants;
+      setPendingPlantsToPlace(next);
+      return next;
+    });
+  }, [setPendingPlantsToPlace]);
 
   // Show correction sheet when scan identifies a plant
   useEffect(() => {
@@ -644,19 +660,34 @@ const MapScreen = (): React.JSX.Element => {
 
   const handleClearGarden = useCallback(() => {
     Alert.alert(
-      'Tuin verwijderen',
-      'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+      'Tuin leegmaken',
+      'Wil je alle planten en grenzen wissen? Dit kan niet ongedaan worden gemaakt.',
       [
         { text: 'Annuleren', style: 'cancel' },
-        { text: 'Verwijderen', style: 'destructive', onPress: () => clearGarden() },
+        { text: 'Leegmaken', style: 'destructive', onPress: () => clearGarden() },
       ],
     );
   }, [clearGarden]);
 
+  const handleUndoDelete = useCallback(() => {
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+    if (deletedPlant) {
+      addPlant(deletedPlant);
+      setDeletedPlant(null);
+    }
+  }, [deletedPlant, addPlant]);
+
   const handleDelete = useCallback((plant: Plant) => {
     Alert.alert('Verwijderen', `${plant.commonName} uit je tuin verwijderen?`, [
       { text: 'Annuleren', style: 'cancel' },
-      { text: 'Verwijderen', style: 'destructive', onPress: () => removePlant(plant.id) },
+      {
+        text: 'Verwijderen', style: 'destructive', onPress: () => {
+          removePlant(plant.id);
+          setDeletedPlant(plant);
+          if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+          undoTimeoutRef.current = setTimeout(() => setDeletedPlant(null), 5000);
+        },
+      },
     ]);
   }, [removePlant]);
 
@@ -900,6 +931,15 @@ const MapScreen = (): React.JSX.Element => {
                 {weather.droughtDays >= 3 ? `  🔥 ${weather.droughtDays}d droog` : ''}
               </Text>
             </View>
+          )}
+          {/* Fallback location chip */}
+          {weather.loaded && weather.isFallbackLocation && (
+            <TouchableOpacity
+              onPress={openLocationSettings}
+              activeOpacity={0.75}
+              style={styles.fallbackChip}>
+              <Text style={styles.fallbackChipText}>📍 Amsterdam ↗</Text>
+            </TouchableOpacity>
           )}
           {/* Task status pills */}
           {(() => {
@@ -1546,6 +1586,16 @@ const MapScreen = (): React.JSX.Element => {
         onClose={() => setDatePlant(null)}
         onSave={(updated) => { updatePlant(updated); setDatePlant(null); }}
       />
+
+      {/* Delete undo toast */}
+      {deletedPlant && (
+        <View style={styles.undoToast} pointerEvents="box-none">
+          <Text style={styles.undoToastText}>{deletedPlant.commonName} verwijderd</Text>
+          <TouchableOpacity onPress={handleUndoDelete} style={styles.undoToastBtn}>
+            <Text style={styles.undoToastBtnText}>Ongedaan maken</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -1647,6 +1697,24 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#3d5c38',
   },
   dashWeatherText: { fontSize: 12, color: '#b7e4c7', fontWeight: '600' },
+  fallbackChip: {
+    backgroundColor: '#2d2a10', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderWidth: 1, borderColor: '#7a6a10',
+  },
+  fallbackChipText: { fontSize: 11, color: '#c8b84a', fontWeight: '600' },
+  undoToast: {
+    position: 'absolute', bottom: 100, left: 16, right: 16,
+    backgroundColor: '#1b4332', borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 4, elevation: 8,
+  },
+  undoToastText: { color: '#d8f3dc', fontSize: 14, flex: 1 },
+  undoToastBtn: { marginLeft: 12, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#40916c', borderRadius: 8 },
+  undoToastBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   dashPillRed: {
     backgroundColor: '#3d1515', borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 3,

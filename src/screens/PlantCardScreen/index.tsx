@@ -13,6 +13,8 @@ import { MaintenanceTaskType, PhotoLogEntry, HarvestEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
 import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { useTheme } from '@/hooks/useTheme';
+import { useFeatureFlag, TIER_RANK } from '@/hooks/useFeatureFlag';
+import UpgradeModal from '@/components/UpgradeModal';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
@@ -208,6 +210,14 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [harvestWeight,     setHarvestWeight]     = useState('');
   const [harvestCount,      setHarvestCount]      = useState('');
   const [harvestNotes,      setHarvestNotes]      = useState('');
+  const [showUpgradeModal,  setShowUpgradeModal]  = useState(false);
+  const [upgradeFeatureKey, setUpgradeFeatureKey] = useState<'photo_log_unlimited' | 'harvest_tracking'>('photo_log_unlimited');
+
+  const userTier = useGardenStore((s) => s.userTier);
+  const photoFlag   = useFeatureFlag('photo_log_unlimited');
+  const harvestFlag = useFeatureFlag('harvest_tracking');
+
+  const FREE_PHOTO_LIMIT = 3;
 
   const startEdit = () => {
     if (!plant) return;
@@ -294,6 +304,11 @@ const PlantCardScreen = (): React.JSX.Element => {
   // ── photo log ──────────────────────────────────────────────────────────────
   const handleAddPhoto = async () => {
     if (!plant) return;
+    if (!photoFlag.enabled && (plant.photoLog?.length ?? 0) >= FREE_PHOTO_LIMIT) {
+      setUpgradeFeatureKey('photo_log_unlimited');
+      setShowUpgradeModal(true);
+      return;
+    }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een foto toe te voegen.');
@@ -609,8 +624,19 @@ const PlantCardScreen = (): React.JSX.Element => {
               <View style={s.section}>
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionTitle}>🍓 Oogst bijhouden</Text>
-                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn}>
-                    <Text style={s.addPhotoBtnText}>{showHarvestForm ? '✕ Sluiten' : '+ Oogst'}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!harvestFlag.enabled) {
+                        setUpgradeFeatureKey('harvest_tracking');
+                        setShowUpgradeModal(true);
+                      } else {
+                        setShowHarvestForm((v) => !v);
+                      }
+                    }}
+                    style={s.addPhotoBtn}>
+                    <Text style={s.addPhotoBtnText}>
+                      {!harvestFlag.enabled ? '🔒 Plus' : showHarvestForm ? '✕ Sluiten' : '+ Oogst'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
 
@@ -687,6 +713,14 @@ const PlantCardScreen = (): React.JSX.Element => {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <UpgradeModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureLabel={upgradeFeatureKey === 'photo_log_unlimited' ? photoFlag.config.label : harvestFlag.config.label}
+        featureDescription={upgradeFeatureKey === 'photo_log_unlimited' ? photoFlag.config.description : harvestFlag.config.description}
+        requiredTier={upgradeFeatureKey === 'photo_log_unlimited' ? photoFlag.requiredTier : harvestFlag.requiredTier}
+      />
     </SafeAreaView>
   );
 };
