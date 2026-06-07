@@ -30,6 +30,9 @@ import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 import { useWeather } from '@/hooks/useWeather';
+import { openLocationSettings } from '@/utils/location';
+import { TIER_RANK, FREE_PLANT_LIMIT } from '@/hooks/useFeatureFlag';
+import UpgradeModal from '@/components/UpgradeModal';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -252,7 +255,10 @@ const MapScreen = (): React.JSX.Element => {
   const createGarden           = useGardenStore((s) => s.createGarden);
   const switchGarden           = useGardenStore((s) => s.switchGarden);
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
-  const renameGarden           = useGardenStore((s) => s.renameGarden);
+  const renameGarden              = useGardenStore((s) => s.renameGarden);
+  const pendingPlantsToPlace      = useGardenStore((s) => s.pendingPlantsToPlace);
+  const setPendingPlantsToPlace   = useGardenStore((s) => s.setPendingPlantsToPlace);
+  const userTier                  = useGardenStore((s) => s.userTier);
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -299,7 +305,8 @@ const MapScreen = (): React.JSX.Element => {
   const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
 
   const [showFeedback,      setShowFeedback]      = useState(false);
-  const [showTierModal,     setShowTierModal]     = useState(false);
+  const [showTierModal,       setShowTierModal]       = useState(false);
+  const [showPlantLimitModal, setShowPlantLimitModal] = useState(false);
   const [showStatsModal,    setShowStatsModal]    = useState(false);
   const [datePlant,         setDatePlant]         = useState<Plant | null>(null);
   const [showMenu,          setShowMenu]          = useState(false);
@@ -372,9 +379,22 @@ const MapScreen = (): React.JSX.Element => {
   const [modalPlantedDate,setModalPlantedDate]= useState('');   // YYYY-MM-DD, empty = today
   const [pendingBounds,   setPendingBounds]   = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
+  // ── delete undo state ─────────────────────────────────────────────────────
+  const [deletedPlant,    setDeletedPlant]    = useState<Plant | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── scan state ────────────────────────────────────────────────────────────
-  const [scanning,       setScanning]       = useState(false);
-  const [plantsToPlace,  setPlantsToPlace]  = useState<IdentifiedPlant[]>([]);
+  const [scanning, setScanning] = useState(false);
+  // plantsToPlace mirrors the persisted store so navigation away doesn't lose results
+  const [plantsToPlace, _setPlantsToPlaceLocal] = useState<IdentifiedPlant[]>(pendingPlantsToPlace);
+
+  const setPlantsToPlace = useCallback((plants: IdentifiedPlant[] | ((prev: IdentifiedPlant[]) => IdentifiedPlant[])) => {
+    _setPlantsToPlaceLocal((prev) => {
+      const next = typeof plants === 'function' ? plants(prev) : plants;
+      setPendingPlantsToPlace(next);
+      return next;
+    });
+  }, [setPendingPlantsToPlace]);
 
   // Show correction sheet when scan identifies a plant
   useEffect(() => {
@@ -567,13 +587,19 @@ const MapScreen = (): React.JSX.Element => {
 
     if (plantsToPlace.length > 0) {
       const [next, ...rest] = plantsToPlace;
+      const g = ensureGarden();
+      // Enforce plant limit for free tier before placing scanned plant
+      if (TIER_RANK[userTier] < TIER_RANK['plus'] && (g.plants.length ?? 0) >= FREE_PLANT_LIMIT) {
+        setShowPlantLimitModal(true);
+        setPlantsToPlace([]);
+        return;
+      }
       // Apply any name/species correction the user made
       const corrected: IdentifiedPlant = {
         ...next,
         commonName: correctionName.trim() || next.commonName,
         species: correctionSpecies.trim() || (next.species ?? ''),
       };
-      const g = ensureGarden();
       const newPlant = makePlantFromScan(corrected, g.id, x, y);
       addPlant(newPlant);
       // Crop rotation check
@@ -644,19 +670,34 @@ const MapScreen = (): React.JSX.Element => {
 
   const handleClearGarden = useCallback(() => {
     Alert.alert(
-      'Tuin verwijderen',
-      'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+      'Tuin leegmaken',
+      'Wil je alle planten en grenzen wissen? Dit kan niet ongedaan worden gemaakt.',
       [
         { text: 'Annuleren', style: 'cancel' },
-        { text: 'Verwijderen', style: 'destructive', onPress: () => clearGarden() },
+        { text: 'Leegmaken', style: 'destructive', onPress: () => clearGarden() },
       ],
     );
   }, [clearGarden]);
 
+  const handleUndoDelete = useCallback(() => {
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+    if (deletedPlant) {
+      addPlant(deletedPlant);
+      setDeletedPlant(null);
+    }
+  }, [deletedPlant, addPlant]);
+
   const handleDelete = useCallback((plant: Plant) => {
     Alert.alert('Verwijderen', `${plant.commonName} uit je tuin verwijderen?`, [
       { text: 'Annuleren', style: 'cancel' },
-      { text: 'Verwijderen', style: 'destructive', onPress: () => removePlant(plant.id) },
+      {
+        text: 'Verwijderen', style: 'destructive', onPress: () => {
+          removePlant(plant.id);
+          setDeletedPlant(plant);
+          if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+          undoTimeoutRef.current = setTimeout(() => setDeletedPlant(null), 5000);
+        },
+      },
     ]);
   }, [removePlant]);
 
@@ -664,20 +705,24 @@ const MapScreen = (): React.JSX.Element => {
   const handleConfirmModal = () => {
     if (!pendingBounds || !modalName.trim()) return;
     const g = ensureGarden();
+    const isZoneAdd = pendingBounds.width > 1 || pendingBounds.height > 1;
+    if (!isZoneAdd && TIER_RANK[userTier] < TIER_RANK['plus'] && (g.plants.length ?? 0) >= FREE_PLANT_LIMIT) {
+      setShowPlantLimitModal(true);
+      return;
+    }
     const id = newId();
-    const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
     addPlant({
       id, gardenId: g.id,
       species: '',
       commonName: modalName.trim(),
       x: pendingBounds.x, y: pendingBounds.y, z: 0,
       width: pendingBounds.width, height: pendingBounds.height,
-      color: isZone ? modalColor : undefined,
+      color: isZoneAdd ? modalColor : undefined,
       plantedDate: modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
       sowDate: modalPlantType === 'seed' ? (modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
       notes: modalNotes.trim() || undefined,
-      addedVia: isZone ? 'manual' : modalPlantType as PlantAddedVia,
-      maintenanceTasks: isZone
+      addedVia: isZoneAdd ? 'manual' : modalPlantType as PlantAddedVia,
+      maintenanceTasks: isZoneAdd
         ? [{ id: `task-${Date.now()}`, plantId: id, type: 'water', dueDate: addDays(7) }]
         : makeTasksForType(id, modalPlantType),
       identificationConfidence: 1,
@@ -901,6 +946,17 @@ const MapScreen = (): React.JSX.Element => {
               </Text>
             </View>
           )}
+          {/* Fallback location chip */}
+          {weather.loaded && weather.isFallbackLocation && (
+            <TouchableOpacity
+              onPress={openLocationSettings}
+              activeOpacity={0.75}
+              style={styles.fallbackChip}
+              accessibilityLabel="Locatie onbekend, toont Amsterdam. Tik om locatietoegang te verlenen."
+              accessibilityRole="button">
+              <Text style={styles.fallbackChipText}>📍 Amsterdam ↗</Text>
+            </TouchableOpacity>
+          )}
           {/* Task status pills */}
           {(() => {
             const overdueCount = Object.values(plantStatuses).filter(s => s === 'overdue' || s === 'water').length;
@@ -967,27 +1023,39 @@ const MapScreen = (): React.JSX.Element => {
 
         {/* Zoom controls — always visible */}
         <View style={styles.zoomControls}>
-          <TouchableOpacity style={styles.zoomBtn} onPress={() => {
-            const next = Math.max(0.5, mapScale - 0.25);
-            lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={styles.zoomBtn}
+            onPress={() => { const next = Math.max(0.5, mapScale - 0.25); lastMapScale.current = next; setMapScale(next); }}
+            activeOpacity={0.75}
+            accessibilityLabel="Uitzoomen"
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
-            lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={[styles.zoomBtn, styles.zoomBtnMid]}
+            onPress={() => { lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1); }}
+            activeOpacity={0.75}
+            accessibilityLabel={`Zoom ${Math.round(mapScale * 100)}%, tik om terug te zetten naar 100%`}
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.zoomBtn} onPress={() => {
-            const next = Math.min(3.0, mapScale + 0.25);
-            lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={styles.zoomBtn}
+            onPress={() => { const next = Math.min(3.0, mapScale + 0.25); lastMapScale.current = next; setMapScale(next); }}
+            activeOpacity={0.75}
+            accessibilityLabel="Inzoomen"
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')}
+            activeOpacity={0.85}
+            accessibilityLabel={fabMode === 'menu' ? 'Menu sluiten' : 'Menu openen — plant of zone toevoegen'}
+            accessibilityRole="button">
             <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
           </TouchableOpacity>
         )}
@@ -995,15 +1063,15 @@ const MapScreen = (): React.JSX.Element => {
         {/* FAB menu */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={handleOpenAiSheet} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={handleOpenAiSheet} activeOpacity={0.85} accessibilityLabel="AI toevoegen of planten scannen" accessibilityRole="button">
               <Text style={styles.fabMenuIcon}>✨</Text>
               <Text style={styles.fabMenuLabel}>AI toevoegen / scannen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85} accessibilityLabel="Plant of zone handmatig toevoegen" accessibilityRole="button">
               <Text style={styles.fabMenuIcon}>✏️</Text>
               <Text style={styles.fabMenuLabel}>Plant / zone handmatig toevoegen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85} accessibilityLabel="Grens toevoegen aan tuin" accessibilityRole="button">
               <Text style={styles.fabMenuIcon}>🏡</Text>
               <Text style={styles.fabMenuLabel}>Grens toevoegen</Text>
             </TouchableOpacity>
@@ -1533,6 +1601,15 @@ const MapScreen = (): React.JSX.Element => {
       {/* Bug report modal */}
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
 
+      {/* Plant limit upgrade modal */}
+      <UpgradeModal
+        visible={showPlantLimitModal}
+        onClose={() => setShowPlantLimitModal(false)}
+        featureLabel="Onbeperkt planten"
+        featureDescription="Voeg meer dan 20 planten toe aan je tuin"
+        requiredTier="plus"
+      />
+
       {/* Tier comparison modal */}
       <TierComparisonModal visible={showTierModal} onClose={() => setShowTierModal(false)} />
 
@@ -1546,6 +1623,16 @@ const MapScreen = (): React.JSX.Element => {
         onClose={() => setDatePlant(null)}
         onSave={(updated) => { updatePlant(updated); setDatePlant(null); }}
       />
+
+      {/* Delete undo toast */}
+      {deletedPlant && (
+        <View style={styles.undoToast} pointerEvents="box-none">
+          <Text style={styles.undoToastText}>{deletedPlant.commonName} verwijderd</Text>
+          <TouchableOpacity onPress={handleUndoDelete} style={styles.undoToastBtn}>
+            <Text style={styles.undoToastBtnText}>Ongedaan maken</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -1647,6 +1734,24 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#3d5c38',
   },
   dashWeatherText: { fontSize: 12, color: '#b7e4c7', fontWeight: '600' },
+  fallbackChip: {
+    backgroundColor: '#2d2a10', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderWidth: 1, borderColor: '#7a6a10',
+  },
+  fallbackChipText: { fontSize: 11, color: '#c8b84a', fontWeight: '600' },
+  undoToast: {
+    position: 'absolute', bottom: 100, left: 16, right: 16,
+    backgroundColor: '#1b4332', borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 4, elevation: 8,
+  },
+  undoToastText: { color: '#d8f3dc', fontSize: 14, flex: 1 },
+  undoToastBtn: { marginLeft: 12, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#40916c', borderRadius: 8 },
+  undoToastBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   dashPillRed: {
     backgroundColor: '#3d1515', borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 3,

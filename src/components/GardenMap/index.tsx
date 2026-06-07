@@ -453,6 +453,9 @@ const GardenMapBase = ({
                   onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
                   onPressOut={!isInteractive ? cancelLP : undefined}
                   onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
+                  accessible={!isInteractive}
+                  accessibilityLabel={`${plant.commonName}${status === 'overdue' ? ', taak te laat' : status === 'water' ? ', water geven' : status === 'soon' ? ', taak binnenkort' : ''}. Lang indrukken voor opties.`}
+                  accessibilityRole="button"
                 />
               </G>
             );
@@ -527,6 +530,9 @@ const GardenMapBase = ({
                 onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
                 onPressOut={!isInteractive ? cancelLP : undefined}
                 onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
+                accessible={!isInteractive}
+                accessibilityLabel={`${plant.commonName}${status === 'overdue' ? ', taak te laat' : status === 'water' ? ', water geven' : status === 'soon' ? ', taak binnenkort' : ''}. Lang indrukken voor opties.`}
+                accessibilityRole="button"
               />
             </G>
           );
