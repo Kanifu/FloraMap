@@ -28,6 +28,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   const updateSeedPacket = useGardenStore((s) => s.updateSeedPacket);
 
   const [showModal, setShowModal] = useState(false);
+  const [editingPacket, setEditingPacket] = useState<SeedPacket | null>(null);
   const [modalCommonName, setModalCommonName] = useState('');
   const [modalSpecies, setModalSpecies] = useState('');
   const [modalEmoji, setModalEmoji] = useState('');
@@ -48,6 +49,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   }, [seedPackets]);
 
   const resetModal = () => {
+    setEditingPacket(null);
     setModalCommonName('');
     setModalSpecies('');
     setModalEmoji('');
@@ -56,7 +58,18 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     setModalNotes('');
   };
 
-  const handleAdd = () => {
+  const openEdit = (packet: SeedPacket) => {
+    setEditingPacket(packet);
+    setModalCommonName(packet.commonName);
+    setModalSpecies(packet.species ?? '');
+    setModalEmoji(packet.emoji ?? '');
+    setModalExpiryYear(packet.expiryYear?.toString() ?? '');
+    setModalAmountGrams(packet.amountGrams?.toString() ?? '');
+    setModalNotes(packet.notes ?? '');
+    setShowModal(true);
+  };
+
+  const handleSave = () => {
     if (!modalCommonName.trim()) return;
     const parsedYear = modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined;
     const parsedGrams = modalAmountGrams ? parseFloat(modalAmountGrams) : undefined;
@@ -68,16 +81,21 @@ const SeedInventoryScreen = (): React.JSX.Element => {
       Alert.alert('Ongeldig gewicht', 'Voer een positief aantal gram in.');
       return;
     }
-    const packet: SeedPacket = {
-      id: newId(),
+    const base: SeedPacket = {
+      id: editingPacket?.id ?? newId(),
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
       expiryYear: parsedYear,
       amountGrams: parsedGrams,
       notes: modalNotes.trim() || undefined,
+      isUsedUp: editingPacket?.isUsedUp ?? false,
     };
-    addSeedPacket(packet);
+    if (editingPacket) {
+      updateSeedPacket(base);
+    } else {
+      addSeedPacket(base);
+    }
     setShowModal(false);
     resetModal();
   };
@@ -104,8 +122,11 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     return (
       <TouchableOpacity
         style={[styles.card, item.isUsedUp && styles.cardUsedUp]}
+        onPress={() => openEdit(item)}
         onLongPress={() => handleDelete(item)}
-        activeOpacity={0.8}>
+        activeOpacity={0.8}
+        accessibilityLabel={`${item.commonName} bewerken`} accessibilityRole="button"
+        accessibilityHint="Lang indrukken om te verwijderen">
         <View style={styles.cardMain}>
           <Text style={styles.cardEmoji}>{item.emoji || '🌱'}</Text>
           <View style={styles.cardInfo}>
@@ -178,13 +199,16 @@ const SeedInventoryScreen = (): React.JSX.Element => {
             </Text>
           </View>
         }
+        ListFooterComponent={sortedPackets.length > 0 ? (
+          <Text style={styles.listHint}>Tik om te bewerken · Lang indrukken om te verwijderen</Text>
+        ) : null}
       />
 
-      {/* Add modal */}
+      {/* Add / edit modal */}
       <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); resetModal(); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={[styles.modalSheet, { maxHeight: '90%' }]}>
-            <Text style={styles.modalTitle}>🌱 Zaadpakket toevoegen</Text>
+            <Text style={styles.modalTitle}>{editingPacket ? '✏️ Zaadpakket bewerken' : '🌱 Zaadpakket toevoegen'}</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <TextInput
                 style={styles.input}
@@ -247,9 +271,10 @@ const SeedInventoryScreen = (): React.JSX.Element => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveBtn, !modalCommonName.trim() && styles.saveBtnDisabled]}
-                onPress={handleAdd}
-                disabled={!modalCommonName.trim()}>
-                <Text style={styles.saveBtnText}>Opslaan</Text>
+                onPress={handleSave}
+                disabled={!modalCommonName.trim()}
+                accessibilityLabel={editingPacket ? 'Wijzigingen opslaan' : 'Zaadpakket toevoegen'} accessibilityRole="button">
+                <Text style={styles.saveBtnText}>{editingPacket ? 'Bijwerken' : 'Toevoegen'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -275,6 +300,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   listContent: { padding: 12, gap: 8, paddingBottom: 32 },
+  listHint: { fontSize: 12, color: '#aaa', textAlign: 'center', paddingVertical: 8 },
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
   emptyText: { fontSize: 16, color: '#aaa', textAlign: 'center', lineHeight: 24 },
   card: {
