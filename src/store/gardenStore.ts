@@ -173,7 +173,14 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       clearGarden: () => {
         const state = get();
         if (!state.garden) return;
-        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [] };
+        const cleared = {
+          ...state.garden,
+          plants: [],
+          polygons: [],
+          tasks: [],
+          boundaries: [],
+          soilProfiles: [],
+        };
         set({ garden: cleared, gardens: state.gardens.map((g) => g.id === cleared.id ? cleared : g) });
       },
 
@@ -347,15 +354,47 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       },
 
       completeGardenTask: (taskId) => {
-        const { garden } = get();
+        const state = get();
+        const { garden } = state;
         if (!garden) return;
+        const now = new Date();
         const updated = {
           ...garden,
           tasks: (garden.tasks ?? []).map((t) =>
-            t.id === taskId ? { ...t, completedDate: new Date().toISOString() } : t,
+            t.id === taskId ? { ...t, completedDate: now.toISOString() } : t,
           ),
         };
-        set(syncActive(get(), updated));
+
+        const todayStr = now.toISOString().slice(0, 10);
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yesterdayStr = yest.toISOString().slice(0, 10);
+        let newStreak = state.currentStreak;
+        if (state.lastTaskDate === yesterdayStr) newStreak = state.currentStreak + 1;
+        else if (state.lastTaskDate !== todayStr) newStreak = 1;
+        const newLongest = Math.max(state.longestStreak, newStreak);
+        const newTotal = state.totalTasksCompleted + 1;
+
+        const toUnlock: string[] = [];
+        if (newTotal === 1) toUnlock.push('first_task');
+        if (newTotal >= 10) toUnlock.push('ten_tasks');
+        if (newTotal >= 50) toUnlock.push('fifty_tasks');
+        if (newTotal >= 100) toUnlock.push('hundred_tasks');
+        if (newStreak >= 3) toUnlock.push('streak_3');
+        if (newStreak >= 7) toUnlock.push('streak_7');
+        if (newStreak >= 30) toUnlock.push('streak_30');
+
+        const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
+        set({
+          ...syncActive(state, updated),
+          totalTasksCompleted: newTotal,
+          currentStreak: newStreak,
+          longestStreak: newLongest,
+          lastTaskDate: todayStr,
+          unlockedAchievements: unlocked,
+          gardenStats: buildGardenStats(newStreak, newLongest, newTotal, todayStr, unlocked),
+          ...(recentUnlockId ? { recentUnlockId } : {}),
+        });
       },
 
       acceptDiffProposal: (proposalId) => {
