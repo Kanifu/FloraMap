@@ -299,11 +299,17 @@ const PlantCardScreen = (): React.JSX.Element => {
       Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een foto toe te voegen.');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.7,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
+    let result;
+    try {
+      result = await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+    } catch {
+      Alert.alert('Camera niet beschikbaar', 'Kon de camera niet openen.');
+      return;
+    }
     if (result.canceled || !result.assets[0]) return;
     const entry: PhotoLogEntry = {
       id: newId(),

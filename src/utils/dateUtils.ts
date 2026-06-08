@@ -10,6 +10,7 @@ export const relativeDueLabel = (dueDateStr: string): string => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const due = new Date(dueDateStr);
+  if (isNaN(due.getTime())) return 'Onbekende datum';
   due.setHours(0, 0, 0, 0);
   const diff = Math.round((due.getTime() - today.getTime()) / 86_400_000);
   if (diff === 0) return 'Vandaag';
@@ -21,12 +22,16 @@ export const relativeDueLabel = (dueDateStr: string): string => {
 };
 
 /** Short date format used as secondary label, e.g. "26 mei" */
-export const shortDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+export const shortDate = (iso: string): string => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+};
 
 /** Full date+time, e.g. "26 mei om 09:14" */
 export const fullDateTime = (iso: string): string => {
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Onbekende datum';
   const date = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
   const time = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
   return `${date} om ${time}`;

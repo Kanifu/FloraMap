@@ -58,13 +58,23 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const handleAdd = () => {
     if (!modalCommonName.trim()) return;
+    const parsedYear = modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined;
+    const parsedGrams = modalAmountGrams ? parseFloat(modalAmountGrams) : undefined;
+    if (parsedYear !== undefined && (isNaN(parsedYear) || parsedYear < 2000 || parsedYear > 2100)) {
+      Alert.alert('Ongeldig jaar', 'Voer een geldig verloopdatum in (bijv. 2027).');
+      return;
+    }
+    if (parsedGrams !== undefined && (isNaN(parsedGrams) || parsedGrams <= 0)) {
+      Alert.alert('Ongeldig gewicht', 'Voer een positief aantal gram in.');
+      return;
+    }
     const packet: SeedPacket = {
       id: newId(),
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
-      expiryYear: modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined,
-      amountGrams: modalAmountGrams ? parseFloat(modalAmountGrams) : undefined,
+      expiryYear: parsedYear,
+      amountGrams: parsedGrams,
       notes: modalNotes.trim() || undefined,
     };
     addSeedPacket(packet);
