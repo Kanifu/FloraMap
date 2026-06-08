@@ -144,16 +144,24 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
 
     for (const turn of history) {
       if (turn.imageUri) {
-        const base64 = await FileSystem.readAsStringAsync(turn.imageUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        contents.push({
-          role: 'user',
-          parts: [
-            { text: turn.text || 'Wat zijn de planten in deze foto?' },
-            { inlineData: { mimeType: 'image/jpeg', data: base64 } },
-          ],
-        });
+        try {
+          const base64 = await FileSystem.readAsStringAsync(turn.imageUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          contents.push({
+            role: 'user',
+            parts: [
+              { text: turn.text || 'Wat zijn de planten in deze foto?' },
+              { inlineData: { mimeType: 'image/jpeg', data: base64 } },
+            ],
+          });
+        } catch {
+          // Image no longer available — fall back to text-only for this turn
+          contents.push({
+            role: 'user',
+            parts: [{ text: turn.text || 'Wat zijn de planten in deze foto?' }],
+          });
+        }
       } else {
         contents.push({
           role: turn.role,
@@ -165,11 +173,15 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
     const currentParts: object[] = [];
     if (userText) currentParts.push({ text: userText });
     if (imageUri) {
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } });
-      if (!userText) currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });
+      try {
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } });
+        if (!userText) currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });
+      } catch {
+        throw new Error('Kon de afbeelding niet lezen. Probeer een andere foto.');
+      }
     }
     contents.push({ role: 'user', parts: currentParts });
 

@@ -46,6 +46,11 @@ export const scheduleDailyTipNotification = async (tip: string): Promise<void> =
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 
+    // Schedule for 10:00 today; if already past 10:00, skip (tip will be shown inline)
+    const fireAt = new Date();
+    fireAt.setHours(10, 0, 0, 0);
+    if (fireAt <= new Date()) return;
+
     await Notifications.scheduleNotificationAsync({
       identifier: 'daily-tip',
       content: {
@@ -54,10 +59,9 @@ export const scheduleDailyTipNotification = async (tip: string): Promise<void> =
         sound: true,
       },
       trigger: {
-        hour: 10,
-        minute: 0,
-        repeats: false,
-      } as Notifications.NotificationTriggerInput,
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fireAt,
+      },
     });
   } catch { /* ignore */ }
 };

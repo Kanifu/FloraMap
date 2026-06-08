@@ -21,7 +21,10 @@ export const scheduleDailyMaintenanceNotification = async (
   garden: Garden | null,
   weatherData?: { rainExpected: boolean; droughtDays: number; tempMax: number },
 ): Promise<void> => {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // Cancel only the daily maintenance notification — do NOT cancel weather alerts (frost/heat/storm)
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const dailyId = scheduled.find((n) => n.identifier === 'daily-maintenance')?.identifier;
+  if (dailyId) await Notifications.cancelScheduledNotificationAsync(dailyId);
   if (!garden) return;
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -62,7 +65,7 @@ export const scheduleDailyMaintenanceNotification = async (
   // Drought alert takes priority
   if (isActiveDrought && droughtWaterPlants.length > 0) {
     const plantNames = [...new Set(droughtWaterPlants)];
-    body = `🔥 ${weatherData!.droughtDays} droge dagen — begiet vandaag: ${plantNames.join(', ')}`;
+    body = `🔥 ${weatherData?.droughtDays ?? 0} droge dagen — begiet vandaag: ${plantNames.join(', ')}`;
   } else if (totalDue > 0) {
     body = totalDue === 1
       ? 'Je hebt 1 onderhoudstaak die aandacht nodig heeft.'
@@ -85,6 +88,7 @@ export const scheduleDailyMaintenanceNotification = async (
   if (!body) return;
 
   await Notifications.scheduleNotificationAsync({
+    identifier: 'daily-maintenance',
     content: {
       title: '🌿 FloraMap — Tuin update',
       body,

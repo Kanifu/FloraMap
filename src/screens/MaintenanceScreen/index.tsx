@@ -126,7 +126,8 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
   };
 
   const renderRightActions = () => (
-    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}
+      accessibilityLabel={`Taak ${TASK_LABELS[task.type]} voor ${plant.commonName} voltooien`} accessibilityRole="button">
       <Text style={styles.swipeCompleteText}>✓{'\n'}Klaar</Text>
     </TouchableOpacity>
   );
@@ -146,7 +147,9 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
           isWateringInDrought && styles.taskRowDrought,
         ]}
         onPress={() => onNavigate(plant.id)}
-        activeOpacity={0.7}>
+        activeOpacity={0.7}
+        accessibilityLabel={`${plant.commonName}: ${TASK_LABELS[task.type]}${isOverdue ? ' — verlopen' : ''}${isWateringInRain ? ' — regen verwacht' : ''}${isWateringInDrought ? ' — droogte, aanbevolen' : ''}`}
+        accessibilityRole="button">
         <Text style={styles.taskIcon}>{TASK_ICONS[task.type]}</Text>
         <View style={styles.taskBody}>
           <View style={styles.taskNameRow}>
@@ -176,7 +179,8 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
             isWateringInDrought && styles.klaarButtonDrought,
           ]}
           onPress={handleComplete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Taak voltooien" accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -471,7 +475,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn} accessibilityLabel="Terug naar tuin" accessibilityRole="button">
             <Text style={styles.backBtnText}>← Tuin</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Onderhoud</Text>
@@ -480,13 +484,16 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityLabel={exporting ? 'Exporteren...' : 'Exporteer naar kalender'} accessibilityRole="button">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}
+            accessibilityLabel="Bug melden" accessibilityRole="button">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}
+            accessibilityLabel="Over FloraMap" accessibilityRole="button">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>
@@ -530,12 +537,15 @@ const MaintenanceScreen = (): React.JSX.Element => {
       )}
 
       {/* Tab bar */}
-      <View style={styles.tabBar}>
+      <View style={styles.tabBar} accessibilityRole="tablist">
         {(['taken', 'planning', 'zaai', 'geschiedenis'] as Tab[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
-            onPress={() => setActiveTab(tab)}>
+            onPress={() => setActiveTab(tab)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === tab }}
+            accessibilityLabel={tab === 'taken' ? 'Taken' : tab === 'planning' ? 'Planning' : tab === 'zaai' ? 'Zaaikalendar' : 'Log'}>
             <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
               {tab === 'taken' ? 'Taken'
                 : tab === 'planning' ? 'Planning'

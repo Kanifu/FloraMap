@@ -185,13 +185,21 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    try {
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+      if (!result.canceled) setPendingImage(result.assets[0].uri);
+    } catch {
+      // permission denied or camera unavailable — silently ignore
+    }
   };
 
   const handlePickFromGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+      if (!result.canceled) setPendingImage(result.assets[0].uri);
+    } catch {
+      // permission denied or gallery unavailable — silently ignore
+    }
   };
 
   const handleSend = () => sendMessage(inputText, pendingImage);
@@ -388,10 +396,12 @@ const AssistantScreen = (): React.JSX.Element => {
               Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
             </Text>
             <View style={styles.emptyButtons}>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
+              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}
+                accessibilityLabel="Foto maken met camera" accessibilityRole="button">
                 <Text style={styles.emptyButtonText}>📷 Camera</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
+              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}
+                accessibilityLabel="Foto kiezen uit galerij" accessibilityRole="button">
                 <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
               </TouchableOpacity>
             </View>
@@ -403,7 +413,7 @@ const AssistantScreen = (): React.JSX.Element => {
         <View style={styles.pendingImageRow}>
           <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
           <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
+          <TouchableOpacity onPress={() => setPendingImage(null)} accessibilityLabel="Foto verwijderen" accessibilityRole="button">
             <Text style={styles.removePending}>✕</Text>
           </TouchableOpacity>
         </View>
@@ -411,10 +421,12 @@ const AssistantScreen = (): React.JSX.Element => {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}
+            accessibilityLabel="Foto maken" accessibilityRole="button">
             <Text style={styles.iconButtonText}>📷</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery}
+            accessibilityLabel="Foto uit galerij" accessibilityRole="button">
             <Text style={styles.iconButtonText}>🖼️</Text>
           </TouchableOpacity>
           <TextInput
@@ -426,11 +438,13 @@ const AssistantScreen = (): React.JSX.Element => {
             multiline
             returnKeyType="send"
             onSubmitEditing={handleSend}
+            accessibilityLabel="Vraag invoeren"
           />
           <TouchableOpacity
             style={[styles.sendButton, (!inputText.trim() && !pendingImage) && styles.sendButtonDisabled]}
             onPress={handleSend}
-            disabled={isLoading || (!inputText.trim() && !pendingImage)}>
+            disabled={isLoading || (!inputText.trim() && !pendingImage)}
+            accessibilityLabel="Versturen" accessibilityRole="button">
             <Text style={styles.sendButtonText}>↑</Text>
           </TouchableOpacity>
         </View>
