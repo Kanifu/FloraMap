@@ -53,7 +53,9 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps): React.J
       body:   issueBody,
     });
     const url = `https://github.com/kanifu/floramap/issues/new?${params.toString()}`;
-    Linking.openURL(url).then(() => setSubmitted(true));
+    Linking.openURL(url)
+      .then(() => setSubmitted(true))
+      .catch(() => Alert.alert('Kon browser niet openen', 'Bezoek github.com/kanifu/floramap/issues om handmatig een melding te maken.'));
   };
 
   const styles = StyleSheet.create({
@@ -106,7 +108,7 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps): React.J
               <Text style={styles.successIcon}>🌱</Text>
               <Text style={styles.successTitle}>Bedankt!</Text>
               <Text style={styles.successSub}>
-                Je feedback is doorgezet naar GitHub. Dank je voor het verbeteren van FloraMap!
+                GitHub is geopend in je browser — klik op "Submit new issue" om je melding in te sturen. Dank je voor het verbeteren van FloraMap!
               </Text>
               <TouchableOpacity style={[styles.submitBtn, { alignSelf: 'stretch', marginTop: 8 }]} onPress={handleClose}>
                 <Text style={styles.submitBtnText}>Sluiten</Text>
