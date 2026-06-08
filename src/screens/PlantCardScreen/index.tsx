@@ -367,7 +367,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   if (!plant) {
     return (
       <SafeAreaView style={s.container}>
-        <TouchableOpacity style={s.backRow} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={s.backRow} onPress={() => navigation.goBack()} accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <View style={s.centered}>
@@ -381,21 +381,21 @@ const PlantCardScreen = (): React.JSX.Element => {
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow} accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle} numberOfLines={1}>{plant.commonName}</Text>
         {isEditing ? (
           <View style={s.editActions}>
-            <TouchableOpacity onPress={handleCancelEdit} style={s.editActionBtn}>
+            <TouchableOpacity onPress={handleCancelEdit} style={s.editActionBtn} accessibilityLabel="Annuleer bewerken" accessibilityRole="button">
               <Text style={s.editCancelText}>Annuleer</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} style={[s.editActionBtn, s.editSaveBtn]}>
+            <TouchableOpacity onPress={handleSave} style={[s.editActionBtn, s.editSaveBtn]} accessibilityLabel="Wijzigingen opslaan" accessibilityRole="button">
               <Text style={s.editSaveText}>Opslaan</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity onPress={startEdit} style={s.editActionBtn}>
+          <TouchableOpacity onPress={startEdit} style={s.editActionBtn} accessibilityLabel="Plant bewerken" accessibilityRole="button">
             <Text style={s.editStartText}>✏️ Bewerken</Text>
           </TouchableOpacity>
         )}
@@ -522,7 +522,8 @@ const PlantCardScreen = (): React.JSX.Element => {
                     <TouchableOpacity
                       style={[s.doneBtn, isEditing && s.doneBtnEditing]}
                       onPress={() => !isEditing && handleCompleteTask(task.id)}
-                      disabled={isEditing}>
+                      disabled={isEditing}
+                      accessibilityLabel={`${TASK_LABELS[task.type]} voltooien`} accessibilityRole="button">
                       <Text style={s.doneBtnText}>✓ Klaar</Text>
                     </TouchableOpacity>
                   </View>
@@ -549,7 +550,8 @@ const PlantCardScreen = (): React.JSX.Element => {
           {/* ── Task history ── */}
           {completedTasks.length > 0 && (
             <View style={s.section}>
-              <TouchableOpacity style={s.historyToggle} onPress={() => setShowHistory((v) => !v)}>
+              <TouchableOpacity style={s.historyToggle} onPress={() => setShowHistory((v) => !v)}
+                accessibilityLabel={`Taakgeschiedenis ${showHistory ? 'verbergen' : 'tonen'}`} accessibilityRole="button">
                 <Text style={s.sectionTitle}>📋 Geschiedenis ({completedTasks.length})</Text>
                 <Text style={s.chevron}>{showHistory ? '▲' : '▼'}</Text>
               </TouchableOpacity>
@@ -573,7 +575,7 @@ const PlantCardScreen = (): React.JSX.Element => {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <Text style={s.sectionTitle}>📷 Groeifasen</Text>
-              <TouchableOpacity onPress={handleAddPhoto} style={s.addPhotoBtn}>
+              <TouchableOpacity onPress={handleAddPhoto} style={s.addPhotoBtn} accessibilityLabel="Foto toevoegen" accessibilityRole="button">
                 <Text style={s.addPhotoBtnText}>+ Foto</Text>
               </TouchableOpacity>
             </View>
@@ -609,7 +611,8 @@ const PlantCardScreen = (): React.JSX.Element => {
               <View style={s.section}>
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionTitle}>🍓 Oogst bijhouden</Text>
-                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn}>
+                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn}
+                    accessibilityLabel={showHarvestForm ? 'Oogstformulier sluiten' : 'Oogst toevoegen'} accessibilityRole="button">
                     <Text style={s.addPhotoBtnText}>{showHarvestForm ? '✕ Sluiten' : '+ Oogst'}</Text>
                   </TouchableOpacity>
                 </View>

@@ -16,7 +16,7 @@ const PLANT_EMOJI_HINTS: Record<string, string> = {
   aardappel: '🥔', ui: '🧅', courgette: '🥒', basilicum: '🌿', aardbei: '🍓',
 };
 const getPlantEmoji = (name: string): string => {
-  const lower = name.toLowerCase();
+  const lower = (name ?? '').toLowerCase();
   for (const [key, emoji] of Object.entries(PLANT_EMOJI_HINTS)) {
     if (lower.includes(key)) return emoji;
   }
