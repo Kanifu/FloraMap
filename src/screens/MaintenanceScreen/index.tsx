@@ -126,7 +126,8 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
   };
 
   const renderRightActions = () => (
-    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}
+      accessibilityLabel={`Taak ${TASK_LABELS[task.type]} voor ${plant.commonName} voltooien`} accessibilityRole="button">
       <Text style={styles.swipeCompleteText}>✓{'\n'}Klaar</Text>
     </TouchableOpacity>
   );
@@ -176,7 +177,8 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
             isWateringInDrought && styles.klaarButtonDrought,
           ]}
           onPress={handleComplete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Taak voltooien" accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -471,7 +473,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn} accessibilityLabel="Terug naar tuin" accessibilityRole="button">
             <Text style={styles.backBtnText}>← Tuin</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Onderhoud</Text>
@@ -480,13 +482,16 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityLabel={exporting ? 'Exporteren...' : 'Exporteer naar kalender'} accessibilityRole="button">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}
+            accessibilityLabel="Bug melden" accessibilityRole="button">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}
+            accessibilityLabel="Over FloraMap" accessibilityRole="button">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>
