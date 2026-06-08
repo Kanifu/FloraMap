@@ -748,12 +748,6 @@ const MapScreen = (): React.JSX.Element => {
     addGardenTask(makeGardenTaskFromAssistant(task));
   };
 
-  const startManualAdd = () => {
-    ensureGarden();
-    
-    setDrawStep('first');
-  };
-
   // ── plant search ───────────────────────────────────────────────────────────
   const currentMonth = new Date().getMonth();
   const seasonalPlants = useMemo<PlantProfile[]>(() =>

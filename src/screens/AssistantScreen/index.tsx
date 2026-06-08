@@ -185,13 +185,21 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    try {
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+      if (!result.canceled) setPendingImage(result.assets[0].uri);
+    } catch {
+      // permission denied or camera unavailable — silently ignore
+    }
   };
 
   const handlePickFromGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+      if (!result.canceled) setPendingImage(result.assets[0].uri);
+    } catch {
+      // permission denied or gallery unavailable — silently ignore
+    }
   };
 
   const handleSend = () => sendMessage(inputText, pendingImage);

@@ -42,7 +42,7 @@ const EMOJI_MAP: [string[], string][] = [
 ];
 
 const getPlantEmoji = (name: string, species: string): string => {
-  const hay = `${name} ${species}`.toLowerCase();
+  const hay = `${name ?? ''} ${species ?? ''}`.toLowerCase();
   for (const [keys, emoji] of EMOJI_MAP) {
     if (keys.some((k) => hay.includes(k))) return emoji;
   }
