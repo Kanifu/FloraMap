@@ -10,6 +10,7 @@ export interface DailyForecast {
 
 export interface WeatherData {
   loaded: boolean;
+  error?: boolean;       // true when loaded but API call failed — don't show weather UI
   rainExpected: boolean;
   rainMm: number;
   tempMax: number;
@@ -53,7 +54,7 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
       `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode` +
       `&hourly=precipitation&forecast_days=7&timezone=auto`;
     const res = await fetch(url);
-    if (!res.ok) return { ...EMPTY_WEATHER, loaded: true };
+    if (!res.ok) return { ...EMPTY_WEATHER, loaded: true, error: true };
     const data = await res.json();
 
     const hourlyPrecip: number[] = data.hourly?.precipitation ?? [];
@@ -116,7 +117,7 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
     cachedAt = Date.now();
     return result;
   } catch {
-    return { ...EMPTY_WEATHER, loaded: true };
+    return { ...EMPTY_WEATHER, loaded: true, error: true };
   }
 };
 

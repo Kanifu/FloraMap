@@ -875,7 +875,7 @@ const MapScreen = (): React.JSX.Element => {
       {!isInteractive && (
         <View style={styles.dashBar}>
           {/* Weather pill */}
-          {weather.loaded && (
+          {weather.loaded && !weather.error && (
             <View style={styles.dashWeather}>
               <Text style={styles.dashWeatherText}>
                 {weather.weatherEmoji} {weather.tempMax}°C
@@ -1121,6 +1121,8 @@ const MapScreen = (): React.JSX.Element => {
                 onChangeText={setCorrectionName}
                 placeholder="Naam van de plant"
                 placeholderTextColor="#aaa"
+                maxLength={50}
+                accessibilityLabel="Naam van de plant"
               />
               <Text style={corrStyles.label}>Soort (optioneel)</Text>
               <TextInput
@@ -1129,6 +1131,8 @@ const MapScreen = (): React.JSX.Element => {
                 onChangeText={setCorrectionSpecies}
                 placeholder="Latijnse naam"
                 placeholderTextColor="#aaa"
+                maxLength={80}
+                accessibilityLabel="Latijnse naam van de plant"
               />
               <TouchableOpacity
                 style={corrStyles.confirmBtn}
@@ -1357,6 +1361,8 @@ const MapScreen = (): React.JSX.Element => {
               onChangeText={setModalName}
               autoFocus
               returnKeyType="done"
+              maxLength={50}
+              accessibilityLabel="Naam van de plant"
             />
 
             {/* Type selector — only for single plants */}

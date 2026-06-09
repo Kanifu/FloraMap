@@ -401,7 +401,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const infoHeader = (
     <>
       {/* Weather card */}
-      {weather.loaded && (
+      {weather.loaded && !weather.error && (
         <View style={[styles.weatherCard, weather.isDry && styles.weatherCardDry]}>
           <View style={styles.weatherMain}>
             <Text style={styles.weatherEmoji}>{weather.weatherEmoji}</Text>
