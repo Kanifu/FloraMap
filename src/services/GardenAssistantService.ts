@@ -222,7 +222,16 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
       if (trimmed.startsWith('PLANTS:')) {
         try {
           const parsed = JSON.parse(trimmed.slice(7));
-          identifiedPlants = Array.isArray(parsed) ? parsed : [parsed];
+          const raw: IdentifiedPlant[] = Array.isArray(parsed) ? parsed : [parsed];
+          identifiedPlants = raw
+            .filter((p) => p && typeof p.species === 'string' && typeof p.commonName === 'string')
+            .map((p) => ({
+              ...p,
+              confidence: Math.min(1, Math.max(0, Number(p.confidence) || 0)),
+              harvestMonths: p.harvestMonths?.filter((m) => Number.isInteger(m) && m >= 0 && m <= 11),
+              waterIntervalDays: p.waterIntervalDays && p.waterIntervalDays > 0 ? p.waterIntervalDays : undefined,
+              fertilizeIntervalDays: p.fertilizeIntervalDays && p.fertilizeIntervalDays > 0 ? p.fertilizeIntervalDays : undefined,
+            }));
         } catch (err) {
           console.warn('[GardenAssistant] PLANTS parse error:', err, '| raw:', trimmed.slice(7, 80));
         }

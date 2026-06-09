@@ -222,12 +222,16 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const removedPlant = garden.plants.find((p) => p.id === plantId);
         const updated = { ...garden, plants: garden.plants.filter((p) => p.id !== plantId) };
         if (removedPlant?.plantFamily) {
+          const cutoff = new Date();
+          cutoff.setMonth(cutoff.getMonth() - 24);
+          const cutoffStr = cutoff.toISOString().slice(0, 10);
+          const newRecord = { plantFamily: removedPlant.plantFamily, x: removedPlant.x, y: removedPlant.y, removedDate: new Date().toISOString() };
+          const trimmed = [...get().rotationHistory, newRecord]
+            .filter((r) => r.removedDate.slice(0, 10) >= cutoffStr)
+            .slice(-500);
           set({
             ...syncActive(get(), updated),
-            rotationHistory: [
-              ...get().rotationHistory,
-              { plantFamily: removedPlant.plantFamily, x: removedPlant.x, y: removedPlant.y, removedDate: new Date().toISOString() },
-            ],
+            rotationHistory: trimmed,
           });
         } else {
           set(syncActive(get(), updated));

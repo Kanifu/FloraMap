@@ -126,7 +126,8 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
   };
 
   const renderRightActions = () => (
-    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}
+      accessibilityLabel={`${plant.commonName} taak voltooien`} accessibilityRole="button">
       <Text style={styles.swipeCompleteText}>✓{'\n'}Klaar</Text>
     </TouchableOpacity>
   );
@@ -146,7 +147,10 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
           isWateringInDrought && styles.taskRowDrought,
         ]}
         onPress={() => onNavigate(plant.id)}
-        activeOpacity={0.7}>
+        activeOpacity={0.7}
+        accessibilityLabel={`${plant.commonName} — ${TASK_LABELS[task.type]}${isOverdue ? ', verlopen' : ''}${isWateringInRain ? ', regen verwacht' : ''}${isWateringInDrought ? ', droogte' : ''}`}
+        accessibilityRole="button"
+        accessibilityHint="Tik om plantdetails te bekijken, veeg rechts om te voltooien">
         <Text style={styles.taskIcon}>{TASK_ICONS[task.type]}</Text>
         <View style={styles.taskBody}>
           <View style={styles.taskNameRow}>
@@ -176,7 +180,9 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
             isWateringInDrought && styles.klaarButtonDrought,
           ]}
           onPress={handleComplete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={`${plant.commonName} taak voltooien`}
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -395,7 +401,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const infoHeader = (
     <>
       {/* Weather card */}
-      {weather.loaded && (
+      {weather.loaded && !weather.error && (
         <View style={[styles.weatherCard, weather.isDry && styles.weatherCardDry]}>
           <View style={styles.weatherMain}>
             <Text style={styles.weatherEmoji}>{weather.weatherEmoji}</Text>
@@ -742,7 +748,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
           0,
         );
         const totalHarvestGrams = plants.reduce((sum, p) => {
-          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0);
+          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0);
         }, 0);
 
         // Top 5 harvest plants
@@ -751,7 +757,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
             id: p.id,
             name: p.commonName,
             emoji: getPlantEmoji(p.commonName),
-            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0),
+            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0),
           }))
           .filter((p) => p.totalGrams > 0)
           .sort((a, b) => b.totalGrams - a.totalGrams)
