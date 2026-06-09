@@ -116,7 +116,9 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
                 <Text style={s.headerSub}>{plantCount} {plantCount === 1 ? 'plant' : 'planten'}</Text>
               </View>
               {unlockedBadgeCount > 0 && (
-                <TouchableOpacity style={s.badgeChip} onPress={run(onOpenStats)} activeOpacity={0.8}>
+                <TouchableOpacity style={s.badgeChip} onPress={run(onOpenStats)} activeOpacity={0.8}
+                  accessibilityLabel={`${unlockedBadgeCount} badges behaald, tik om statistieken te zien`}
+                  accessibilityRole="button">
                   <Text style={s.badgeChipEmojis}>{recentBadgeEmojis.slice(0, 3).join('')}</Text>
                   <Text style={s.badgeChipCount}>{unlockedBadgeCount} 🏆</Text>
                 </TouchableOpacity>
@@ -137,7 +139,10 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
                       key={row.label}
                       style={[s.row, row.active && s.rowActive]}
                       onPress={row.onPress}
-                      activeOpacity={0.7}>
+                      activeOpacity={0.7}
+                      accessibilityRole={row.active !== undefined ? 'switch' : 'button'}
+                      accessibilityLabel={row.label}
+                      accessibilityState={row.active !== undefined ? { checked: row.active } : undefined}>
                       <Text style={s.rowIcon}>{row.icon}</Text>
                       <View style={s.rowText}>
                         <Text style={[s.rowLabel, row.danger && s.rowLabelDanger, row.active && s.rowLabelActive]}>

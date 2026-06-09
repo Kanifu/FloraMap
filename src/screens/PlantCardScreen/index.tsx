@@ -367,7 +367,8 @@ const PlantCardScreen = (): React.JSX.Element => {
   if (!plant) {
     return (
       <SafeAreaView style={s.container}>
-        <TouchableOpacity style={s.backRow} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={s.backRow} onPress={() => navigation.goBack()}
+          accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <View style={s.centered}>
@@ -381,21 +382,25 @@ const PlantCardScreen = (): React.JSX.Element => {
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow}
+          accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle} numberOfLines={1}>{plant.commonName}</Text>
         {isEditing ? (
           <View style={s.editActions}>
-            <TouchableOpacity onPress={handleCancelEdit} style={s.editActionBtn}>
+            <TouchableOpacity onPress={handleCancelEdit} style={s.editActionBtn}
+              accessibilityLabel="Bewerken annuleren" accessibilityRole="button">
               <Text style={s.editCancelText}>Annuleer</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} style={[s.editActionBtn, s.editSaveBtn]}>
+            <TouchableOpacity onPress={handleSave} style={[s.editActionBtn, s.editSaveBtn]}
+              accessibilityLabel="Wijzigingen opslaan" accessibilityRole="button">
               <Text style={s.editSaveText}>Opslaan</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity onPress={startEdit} style={s.editActionBtn}>
+          <TouchableOpacity onPress={startEdit} style={s.editActionBtn}
+            accessibilityLabel="Plant bewerken" accessibilityRole="button">
             <Text style={s.editStartText}>✏️ Bewerken</Text>
           </TouchableOpacity>
         )}
@@ -411,10 +416,12 @@ const PlantCardScreen = (): React.JSX.Element => {
             {isEditing ? (
               <>
                 <Text style={s.fieldLabel}>Naam</Text>
-                <TextInput style={s.input} value={editName} onChangeText={setEditName} />
+                <TextInput style={s.input} value={editName} onChangeText={setEditName}
+                  maxLength={50} accessibilityLabel="Naam van de plant" />
                 <Text style={s.fieldLabel}>Soort (wetenschappelijk)</Text>
                 <TextInput style={s.input} value={editSpecies} onChangeText={setEditSpecies}
-                  placeholder="bijv. Solanum lycopersicum" placeholderTextColor={theme.textMuted} />
+                  placeholder="bijv. Solanum lycopersicum" placeholderTextColor={theme.textMuted}
+                  maxLength={80} accessibilityLabel="Wetenschappelijke naam" />
               </>
             ) : (
               <>
