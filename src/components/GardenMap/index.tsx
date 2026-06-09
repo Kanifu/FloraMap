@@ -450,6 +450,10 @@ const GardenMapBase = ({
 
                 {/* Transparent touch target */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH} fill="transparent" rx={10}
+                  accessible={!isInteractive}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${plant.commonName}${status === 'overdue' ? ' — verlopen taken' : status === 'soon' ? ' — taken bijna verlopen' : status === 'done_today' ? ' — vandaag afgerond' : isThirsty ? ' — heeft water nodig' : ''}`}
+                  accessibilityHint="Tik voor details, lang indrukken voor acties"
                   onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
                   onPressOut={!isInteractive ? cancelLP : undefined}
                   onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
@@ -524,6 +528,10 @@ const GardenMapBase = ({
               )}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={22} fill="transparent"
+                accessible={!isInteractive}
+                accessibilityRole="button"
+                accessibilityLabel={`${plant.commonName}${status === 'overdue' ? ' — verlopen taken' : status === 'soon' ? ' — taken bijna verlopen' : status === 'done_today' ? ' — vandaag afgerond' : isThirsty ? ' — heeft water nodig' : ''}`}
+                accessibilityHint="Tik voor details, lang indrukken voor acties"
                 onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
                 onPressOut={!isInteractive ? cancelLP : undefined}
                 onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}

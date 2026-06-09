@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import { useGardenStore } from '@/store/gardenStore';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   requestNotificationPermissions,
   scheduleDailyMaintenanceNotification,
@@ -28,8 +29,10 @@ const App = (): React.JSX.Element => {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <NotificationBootstrap />
-        <AppNavigator />
+        <ErrorBoundary>
+          <NotificationBootstrap />
+          <AppNavigator />
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

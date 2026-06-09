@@ -829,7 +829,9 @@ const MapScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setShowGardenPicker(true)} activeOpacity={0.75}>
+        <TouchableOpacity onPress={() => setShowGardenPicker(true)} activeOpacity={0.75}
+          accessibilityLabel={gardens.length > 1 ? `Actieve tuin: ${currentGarden.name}, tik om te wisselen` : `Tuin: ${currentGarden.name}`}
+          accessibilityRole="button">
           <View style={styles.gardenNameRow}>
             <Text style={styles.gardenName}>{currentGarden.name}</Text>
             {gardens.length > 1 && <Text style={styles.gardenChevron}>⌄</Text>}
@@ -838,12 +840,15 @@ const MapScreen = (): React.JSX.Element => {
         </TouchableOpacity>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
-            <TouchableOpacity style={styles.badge} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.badge} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8}
+              accessibilityLabel={`${pendingTaskCount} verlopen taken, tik om te bekijken`}
+              accessibilityRole="button">
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
             </TouchableOpacity>
           )}
           {scanning && <ActivityIndicator size="small" color="#2d6a4f" style={{ marginRight: 4 }} />}
-          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}
+            accessibilityLabel="Zijmenu openen" accessibilityRole="button">
             <Text style={styles.menuBtnText}>☰</Text>
           </TouchableOpacity>
         </View>
@@ -970,24 +975,32 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.max(0.5, mapScale - 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75}
+            accessibilityLabel="Uitzoomen"
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
             lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75}
+            accessibilityLabel={`Zoom ${Math.round(mapScale * 100)}%, tik om te resetten`}
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.min(3.0, mapScale + 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75}
+            accessibilityLabel="Inzoomen"
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}
+            accessibilityLabel={fabMode === 'menu' ? 'Menu sluiten' : 'Acties menu openen'}
+            accessibilityRole="button">
             <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
           </TouchableOpacity>
         )}
@@ -995,15 +1008,18 @@ const MapScreen = (): React.JSX.Element => {
         {/* FAB menu */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={handleOpenAiSheet} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={handleOpenAiSheet} activeOpacity={0.85}
+              accessibilityLabel="AI toevoegen of scannen" accessibilityRole="button">
               <Text style={styles.fabMenuIcon}>✨</Text>
               <Text style={styles.fabMenuLabel}>AI toevoegen / scannen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}
+              accessibilityLabel="Plant of zone handmatig toevoegen" accessibilityRole="button">
               <Text style={styles.fabMenuIcon}>✏️</Text>
               <Text style={styles.fabMenuLabel}>Plant / zone handmatig toevoegen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}
+              accessibilityLabel="Grens toevoegen aan tuin" accessibilityRole="button">
               <Text style={styles.fabMenuIcon}>🏡</Text>
               <Text style={styles.fabMenuLabel}>Grens toevoegen</Text>
             </TouchableOpacity>
@@ -1023,12 +1039,14 @@ const MapScreen = (): React.JSX.Element => {
             <Text style={styles.emptyCardSubtitle}>
               Scan een foto om planten te herkennen, of voeg ze handmatig toe.
             </Text>
-            <TouchableOpacity style={styles.emptyCardScanBtn} onPress={handleOpenAiSheet} disabled={scanning} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.emptyCardScanBtn} onPress={handleOpenAiSheet} disabled={scanning} activeOpacity={0.85}
+              accessibilityLabel="Planten scannen via AI of camera" accessibilityRole="button">
               {scanning
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={styles.emptyCardScanBtnText}>📷 Scan planten</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.emptyCardManualBtn} onPress={() => { ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.emptyCardManualBtn} onPress={() => { ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}
+              accessibilityLabel="Plant handmatig toevoegen aan kaart" accessibilityRole="button">
               <Text style={styles.emptyCardManualBtnText}>✏️ Handmatig toevoegen</Text>
             </TouchableOpacity>
           </View>
