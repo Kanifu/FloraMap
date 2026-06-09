@@ -100,7 +100,6 @@ interface GardenMapProps {
   showCompanionOverlay?: boolean;
   thirstyPlantIds?: string[];
   plantStatuses?: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'>;
-  plantStatusMap?: unknown;
   boundaries?: GardenBoundary[];
   showNames?: boolean;
   renderScale?: number;

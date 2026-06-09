@@ -126,7 +126,8 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
   };
 
   const renderRightActions = () => (
-    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}
+      accessibilityLabel={`${plant.commonName} taak voltooien`} accessibilityRole="button">
       <Text style={styles.swipeCompleteText}>✓{'\n'}Klaar</Text>
     </TouchableOpacity>
   );
@@ -146,7 +147,10 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
           isWateringInDrought && styles.taskRowDrought,
         ]}
         onPress={() => onNavigate(plant.id)}
-        activeOpacity={0.7}>
+        activeOpacity={0.7}
+        accessibilityLabel={`${plant.commonName} — ${TASK_LABELS[task.type]}${isOverdue ? ', verlopen' : ''}${isWateringInRain ? ', regen verwacht' : ''}${isWateringInDrought ? ', droogte' : ''}`}
+        accessibilityRole="button"
+        accessibilityHint="Tik om plantdetails te bekijken, veeg rechts om te voltooien">
         <Text style={styles.taskIcon}>{TASK_ICONS[task.type]}</Text>
         <View style={styles.taskBody}>
           <View style={styles.taskNameRow}>
@@ -176,7 +180,9 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
             isWateringInDrought && styles.klaarButtonDrought,
           ]}
           onPress={handleComplete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={`${plant.commonName} taak voltooien`}
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       </TouchableOpacity>
