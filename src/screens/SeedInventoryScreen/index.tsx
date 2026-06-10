@@ -58,13 +58,15 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const handleAdd = () => {
     if (!modalCommonName.trim()) return;
+    const expiryYear = modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined;
+    const amountGrams = modalAmountGrams ? parseFloat(modalAmountGrams.replace(',', '.')) : undefined;
     const packet: SeedPacket = {
       id: newId(),
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
-      expiryYear: modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined,
-      amountGrams: modalAmountGrams ? parseFloat(modalAmountGrams) : undefined,
+      expiryYear: expiryYear !== undefined && Number.isFinite(expiryYear) ? expiryYear : undefined,
+      amountGrams: amountGrams !== undefined && Number.isFinite(amountGrams) ? amountGrams : undefined,
       notes: modalNotes.trim() || undefined,
     };
     addSeedPacket(packet);
@@ -168,6 +170,11 @@ const SeedInventoryScreen = (): React.JSX.Element => {
             </Text>
           </View>
         }
+        ListFooterComponent={
+          sortedPackets.length > 0 ? (
+            <Text style={styles.deleteHint}>Lang indrukken om een zaadpakket te verwijderen</Text>
+          ) : null
+        }
       />
 
       {/* Add modal */}
@@ -267,6 +274,7 @@ const styles = StyleSheet.create({
   listContent: { padding: 12, gap: 8, paddingBottom: 32 },
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
   emptyText: { fontSize: 16, color: '#aaa', textAlign: 'center', lineHeight: 24 },
+  deleteHint: { fontSize: 11, color: '#aaa', fontStyle: 'italic', textAlign: 'center', marginTop: 8 },
   card: {
     backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef',
     padding: 14, gap: 10,

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Garden, Plant, DiffProposal, GardenTask, MaintenanceTask,
+  Garden, Plant, GardenTask, MaintenanceTask,
   GardenBoundary, SoilProfile, SoilAmendment, HarvestEntry,
   RotationRecord, SeedPacket, BADGE_DEFINITIONS,
 } from '@/models';
@@ -13,7 +13,6 @@ interface GardenState {
   gardens: Garden[];
   activeGardenId: string | null;
   isScanning: boolean;
-  pendingDiffProposals: DiffProposal[];
   // Gamification
   unlockedAchievements: Record<string, string>;  // id → ISO unlock date
   recentUnlockId: string | null;                 // cleared after display (not persisted)
@@ -44,13 +43,12 @@ interface GardenActions {
   setGarden: (garden: Garden) => void;
   clearGarden: () => void;
   updatePlant: (plant: Plant) => void;
-  addPlant: (plant: Plant) => void;
+  /** Returns false (and doesn't add) when the free-tier plant limit is reached. */
+  addPlant: (plant: Plant) => boolean;
   removePlant: (plantId: string) => void;
   completeMaintenanceTask: (plantId: string, taskId: string) => void;
   addGardenTask: (task: GardenTask) => void;
   completeGardenTask: (taskId: string) => void;
-  acceptDiffProposal: (proposalId: string) => void;
-  rejectDiffProposal: (proposalId: string) => void;
   setScanning: (isScanning: boolean) => void;
   // Harvest tracking
   recordHarvest: (plantId: string, entry: HarvestEntry) => void;
@@ -64,7 +62,6 @@ interface GardenActions {
   removeBoundary: (boundaryId: string) => void;
   updateBoundary: (boundary: GardenBoundary) => void;
   // Rotation & seeds
-  addRotationRecord: (record: RotationRecord) => void;
   addSeedPacket: (packet: SeedPacket) => void;
   updateSeedPacket: (packet: SeedPacket) => void;
   removeSeedPacket: (id: string) => void;
@@ -79,7 +76,6 @@ interface GardenActions {
   setUserTier: (tier: Tier) => void;
   // Compatibility shim for MaintenanceScreen (main branch pattern)
   recordTaskCompletion: () => void;
-  gardenStats: GardenStats;
 }
 
 /** Build the compat gardenStats object from flat fields + unlocked achievements */
@@ -146,7 +142,6 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       gardens: [],
       activeGardenId: null,
       isScanning: false,
-      pendingDiffProposals: [],
       unlockedAchievements: {},
       recentUnlockId: null,
       totalTasksCompleted: 0,
@@ -202,8 +197,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       addPlant: (plant) => {
         const state = get();
         const { garden } = state;
-        if (!garden) return;
-        if (TIER_RANK[state.userTier] < TIER_RANK['plus'] && garden.plants.length >= FREE_PLANT_LIMIT) return;
+        if (!garden) return false;
+        if (TIER_RANK[state.userTier] < TIER_RANK['plus'] && garden.plants.length >= FREE_PLANT_LIMIT) return false;
         const updated = { ...garden, plants: [...garden.plants, plant] };
         const count = updated.plants.length;
         const toUnlock: string[] = [];
@@ -214,6 +209,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         if (count >= 50) toUnlock.push('fifty_plants');
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
         set({ ...syncActive(state, updated), unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
+        return true;
       },
 
       removePlant: (plantId) => {
@@ -357,26 +353,6 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         set(syncActive(get(), updated));
       },
 
-      acceptDiffProposal: (proposalId) => {
-        const { pendingDiffProposals, garden } = get();
-        const proposal = pendingDiffProposals.find((p) => p.id === proposalId);
-        if (!proposal || !garden) return;
-
-        let updatedPlants = [...garden.plants];
-        if (proposal.type === 'add') updatedPlants = [...updatedPlants, proposal.plant];
-        else if (proposal.type === 'remove') updatedPlants = updatedPlants.filter((p) => p.id !== proposal.plant.id);
-        else if (proposal.type === 'update') updatedPlants = updatedPlants.map((p) => p.id === proposal.plant.id ? proposal.plant : p);
-
-        const updated = { ...garden, plants: updatedPlants };
-        set({ ...syncActive(get(), updated), pendingDiffProposals: pendingDiffProposals.filter((p) => p.id !== proposalId) });
-      },
-
-      rejectDiffProposal: (proposalId) => {
-        set((state) => ({
-          pendingDiffProposals: state.pendingDiffProposals.filter((p) => p.id !== proposalId),
-        }));
-      },
-
       setScanning: (isScanning) => {
         const state = get();
         if (!isScanning && state.isScanning) {
@@ -483,8 +459,6 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         set(syncActive(get(), updated));
       },
 
-      addRotationRecord: (record) => set((s) => ({ rotationHistory: [...s.rotationHistory, record] })),
-
       addSeedPacket: (packet) => set((s) => ({ seedPackets: [...s.seedPackets, packet] })),
 
       updateSeedPacket: (packet) => set((s) => ({
@@ -583,11 +557,21 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
+        if (!state) return;
         // Migrate old format: single garden → gardens array
-        if (state && state.garden && state.gardens.length === 0) {
+        if (state.garden && state.gardens.length === 0) {
           state.gardens = [state.garden];
           state.activeGardenId = state.garden.id;
         }
+        // gardenStats is computed/derived and not persisted — rebuild it from the
+        // persisted streak/achievement fields so stats don't show as reset after restart.
+        state.gardenStats = buildGardenStats(
+          state.currentStreak,
+          state.longestStreak,
+          state.totalTasksCompleted,
+          state.lastTaskDate,
+          state.unlockedAchievements,
+        );
       },
     },
   ),

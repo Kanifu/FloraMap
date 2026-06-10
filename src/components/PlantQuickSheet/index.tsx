@@ -61,6 +61,9 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
     if (match) {
       // Database match found — always apply name + species + care data.
       // The user renamed to a known plant, so their specs should reflect that plant.
+      // Only add tasks for types the plant doesn't already have, so existing
+      // completion history, custom due dates and other task types (prune,
+      // repot, treat, ...) aren't wiped out by a simple name correction.
       const newTasks = createInitialTasksForPlant(plant.id, {
         species: match.species,
         commonName: match.commonName,
@@ -71,6 +74,8 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
         harvestMonths: match.harvestMonths,
         plantFamily: match.plantFamily,
       });
+      const existingTypes = new Set(plant.maintenanceTasks.map((t) => t.type));
+      const tasksToAdd = newTasks.filter((t) => !existingTypes.has(t.type));
       updatePlant({
         ...plant,
         commonName: newName,
@@ -78,7 +83,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
         careTips: match.careTips,
         harvestMonths: match.harvestMonths,
         plantFamily: match.plantFamily,
-        maintenanceTasks: newTasks.length > 0 ? newTasks : plant.maintenanceTasks,
+        maintenanceTasks: [...plant.maintenanceTasks, ...tasksToAdd],
       });
     } else {
       // No database match — just update name and species
@@ -165,32 +170,39 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
                 <Text style={s.emptyTasksText}>🎉 Geen openstaande taken!</Text>
               </View>
             ) : (
-              activeTasks.slice(0, 4).map((task) => {
-                const isOverdue = task.dueDate < now;
-                const isWaterInRain = task.type === 'water' && weatherRainExpected;
-                return (
-                  <TouchableOpacity
-                    key={task.id}
-                    style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
-                    onPress={() => handleComplete(task.id)}
-                    activeOpacity={0.75}>
-                    <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
-                    <View style={s.taskBtnBody}>
-                      <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
-                        {TASK_LABELS[task.type]}
-                        {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
-                      </Text>
-                      <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
-                      {isWaterInRain && (
-                        <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
-                      )}
-                    </View>
-                    <View style={s.taskBtnCheck}>
-                      <Text style={s.taskBtnCheckText}>✓</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+              <>
+                {activeTasks.slice(0, 4).map((task) => {
+                  const isOverdue = task.dueDate < now;
+                  const isWaterInRain = task.type === 'water' && weatherRainExpected;
+                  return (
+                    <TouchableOpacity
+                      key={task.id}
+                      style={[s.taskBtn, isOverdue && s.taskBtnOverdue]}
+                      onPress={() => handleComplete(task.id)}
+                      activeOpacity={0.75}>
+                      <Text style={s.taskBtnIcon}>{TASK_ICONS[task.type]}</Text>
+                      <View style={s.taskBtnBody}>
+                        <Text style={[s.taskBtnLabel, isOverdue && s.taskBtnLabelOverdue]}>
+                          {TASK_LABELS[task.type]}
+                          {task.intervalDays ? ` (elke ${task.intervalDays}d)` : ''}
+                        </Text>
+                        <Text style={s.taskBtnDue}>{relativeDueLabel(task.dueDate)}</Text>
+                        {isWaterInRain && (
+                          <Text style={s.rainHint}>🌧️ Regen verwacht — echt nodig?</Text>
+                        )}
+                      </View>
+                      <View style={s.taskBtnCheck}>
+                        <Text style={s.taskBtnCheckText}>✓</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                {activeTasks.length > 4 && (
+                  <Text style={s.moreTips}>
+                    + {activeTasks.length - 4} meer taken — open plantenpaspoort →
+                  </Text>
+                )}
+              </>
             )}
 
             {/* Care tips section */}

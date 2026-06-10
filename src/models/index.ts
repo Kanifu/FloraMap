@@ -53,13 +53,6 @@ export interface PhotoLogEntry {
   note?: string;
 }
 
-export interface HarvestEntry {
-  id: string;
-  date: string;           // ISO 8601
-  amountGrams?: number;
-  notes?: string;
-}
-
 export interface RotationRecord {
   plantFamily: string;
   x: number;
@@ -109,9 +102,11 @@ export interface GardenTask {
 
 export interface HarvestEntry {
   id: string;
-  date: string;
+  date: string;           // ISO 8601
   weightG?: number;
   count?: number;
+  /** @deprecated use weightG instead */
+  amountGrams?: number;
   notes?: string;
 }
 
@@ -207,13 +202,6 @@ export interface ScanResult {
   newPlants: Plant[];
   removedPlantIds: string[];
   updatedPlants: Plant[];
-}
-
-export interface DiffProposal {
-  id: string;
-  type: 'add' | 'remove' | 'update';
-  plant: Plant;
-  confidence: number;
 }
 
 export interface Badge {
