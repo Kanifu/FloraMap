@@ -145,20 +145,28 @@ const GardenMapBase = ({
   const mapHeight = effRows * SCALE;
 
   // ── Fast long-press via manual timer ────────────────────────────────────────
-  const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lpFired = useRef(false);
+  // Tracked per plant id so a press on one plant can't cancel/fire for another.
+  const lpTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const lpFired = useRef<Set<string>>(new Set());
 
-  const startLP = (cb: () => void) => {
-    lpFired.current = false;
-    lpTimer.current = setTimeout(() => { lpFired.current = true; cb(); }, LONG_PRESS_MS);
+  const startLP = (plantId: string, cb: () => void) => {
+    lpFired.current.delete(plantId);
+    const existing = lpTimers.current.get(plantId);
+    if (existing) clearTimeout(existing);
+    lpTimers.current.set(plantId, setTimeout(() => {
+      lpFired.current.add(plantId);
+      lpTimers.current.delete(plantId);
+      cb();
+    }, LONG_PRESS_MS));
   };
-  const cancelLP = () => {
-    if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; }
+  const cancelLP = (plantId: string) => {
+    const existing = lpTimers.current.get(plantId);
+    if (existing) { clearTimeout(existing); lpTimers.current.delete(plantId); }
   };
   const handlePlantTap = (plant: Plant) => {
-    cancelLP();
-    if (!lpFired.current && !isInteractive) onPlantPress(plant);
-    lpFired.current = false;
+    cancelLP(plant.id);
+    if (!lpFired.current.has(plant.id) && !isInteractive) onPlantPress(plant);
+    lpFired.current.delete(plant.id);
   };
 
   // ── Background tap (place/move mode) ────────────────────────────────────────
@@ -450,8 +458,8 @@ const GardenMapBase = ({
 
                 {/* Transparent touch target */}
                 <Rect x={zLeft} y={zTop} width={zW} height={zH} fill="transparent" rx={10}
-                  onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
-                  onPressOut={!isInteractive ? cancelLP : undefined}
+                  onPressIn={!isInteractive ? () => startLP(plant.id, () => onPlantLongPress?.(plant)) : undefined}
+                  onPressOut={!isInteractive ? () => cancelLP(plant.id) : undefined}
                   onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
                 />
               </G>
@@ -524,8 +532,8 @@ const GardenMapBase = ({
               )}
               {/* Transparent touch target */}
               <Circle cx={cx} cy={cy} r={22} fill="transparent"
-                onPressIn={!isInteractive ? () => startLP(() => onPlantLongPress?.(plant)) : undefined}
-                onPressOut={!isInteractive ? cancelLP : undefined}
+                onPressIn={!isInteractive ? () => startLP(plant.id, () => onPlantLongPress?.(plant)) : undefined}
+                onPressOut={!isInteractive ? () => cancelLP(plant.id) : undefined}
                 onPress={!isInteractive ? () => handlePlantTap(plant) : undefined}
               />
             </G>

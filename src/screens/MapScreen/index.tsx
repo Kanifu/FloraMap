@@ -9,14 +9,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
-import { GardenMap, CELL_CM } from '@/components/GardenMap';
+import { GardenMap, CELL_CM, SCALE, GRID_COLS, GRID_ROWS } from '@/components/GardenMap';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { Plant, PlantAddedVia, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus, GardenTask } from '@/models';
+import { Plant, ZONE_COLORS, MaintenanceTask, GardenBoundary, BoundaryType, Garden, PlantStatus, GardenTask } from '@/models';
 import { gardenAssistantService, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { OnboardingModal, OnboardingResult } from '@/components/OnboardingModal';
 import { PlantQuickSheet } from '@/components/PlantQuickSheet';
 import { TodaySheet } from '@/components/TodaySheet';
 import { TierComparisonModal } from '@/components/TierComparisonModal';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { FREE_PLANT_LIMIT } from '@/constants/tiers';
 import { StatsModal } from '@/components/StatsModal';
 import { PlantDateSheet } from '@/components/PlantDateSheet';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -28,10 +30,13 @@ import { checkCropRotation } from '@/utils/cropRotation';
 import { findOvercrowdedPlants } from '@/utils/plantSpacing';
 import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
-import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 import { useWeather } from '@/hooks/useWeather';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
+
+// Stable empty-array reference so GardenMap's React.memo doesn't re-render
+// every time `garden` is missing or has no boundaries.
+const EMPTY_BOUNDARIES: GardenBoundary[] = [];
 
 type MapNavProp = StackNavigationProp<MapStackParamList, 'Map'>;
 type DrawStep = 'first' | 'second';
@@ -279,14 +284,16 @@ const MapScreen = (): React.JSX.Element => {
 
   useEffect(() => {
     if (didCenter.current || viewport.w === 0 || viewport.h === 0) return;
-    const cx = Math.max(0, (MAP_WIDTH  - viewport.w) / 2);
-    const cy = Math.max(0, (MAP_HEIGHT - viewport.h) / 2);
+    const effWidth  = (garden?.gridCols ?? GRID_COLS) * SCALE;
+    const effHeight = (garden?.gridRows ?? GRID_ROWS) * SCALE;
+    const cx = Math.max(0, (effWidth  - viewport.w) / 2);
+    const cy = Math.max(0, (effHeight - viewport.h) / 2);
     requestAnimationFrame(() => {
       hScrollRef.current?.scrollTo({ x: cx, animated: false });
       vScrollRef.current?.scrollTo({ y: cy, animated: false });
     });
     didCenter.current = true;
-  }, [viewport]);
+  }, [viewport, garden?.gridCols, garden?.gridRows]);
 
   const [movingPlant,         setMovingPlant]         = useState<Plant | null>(null);
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
@@ -300,6 +307,7 @@ const MapScreen = (): React.JSX.Element => {
 
   const [showFeedback,      setShowFeedback]      = useState(false);
   const [showTierModal,     setShowTierModal]     = useState(false);
+  const [showUpgradeModal,  setShowUpgradeModal]  = useState(false);
   const [showStatsModal,    setShowStatsModal]    = useState(false);
   const [datePlant,         setDatePlant]         = useState<Plant | null>(null);
   const [showMenu,          setShowMenu]          = useState(false);
@@ -339,10 +347,16 @@ const MapScreen = (): React.JSX.Element => {
     setSelectedBoundaryId(id);
   }, []);
 
+  // Tracks which boundary id the Alert is currently shown for, so unrelated
+  // garden updates while the dialog is open don't re-trigger/stack a duplicate Alert.
+  const boundaryAlertShownFor = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!selectedBoundaryId) return;
+    if (!selectedBoundaryId) { boundaryAlertShownFor.current = null; return; }
+    if (boundaryAlertShownFor.current === selectedBoundaryId) return;
     const boundary = garden?.boundaries?.find((b) => b.id === selectedBoundaryId);
     if (!boundary) { setSelectedBoundaryId(null); return; }
+    boundaryAlertShownFor.current = selectedBoundaryId;
     const cfg = BOUNDARY_TYPES.find((t) => t.type === boundary.type);
     const typeLabel = cfg?.label ?? boundary.type;
     Alert.alert(
@@ -575,7 +589,11 @@ const MapScreen = (): React.JSX.Element => {
       };
       const g = ensureGarden();
       const newPlant = makePlantFromScan(corrected, g.id, x, y);
-      addPlant(newPlant);
+      if (!addPlant(newPlant)) {
+        setPlantsToPlace([]);
+        setShowUpgradeModal(true);
+        return;
+      }
       // Crop rotation check
       const rotationWarning = checkCropRotation(newPlant, g.plants, rotationHistory);
       if (rotationWarning) {
@@ -666,7 +684,7 @@ const MapScreen = (): React.JSX.Element => {
     const g = ensureGarden();
     const id = newId();
     const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
-    addPlant({
+    const added = addPlant({
       id, gardenId: g.id,
       species: '',
       commonName: modalName.trim(),
@@ -676,22 +694,29 @@ const MapScreen = (): React.JSX.Element => {
       plantedDate: modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
       sowDate: modalPlantType === 'seed' ? (modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
       notes: modalNotes.trim() || undefined,
-      addedVia: isZone ? 'manual' : modalPlantType as PlantAddedVia,
+      addedVia: isZone || modalPlantType === 'plant' ? 'manual' : modalPlantType,
       maintenanceTasks: isZone
         ? [{ id: `task-${Date.now()}`, plantId: id, type: 'water', dueDate: addDays(7) }]
         : makeTasksForType(id, modalPlantType),
       identificationConfidence: 1,
     });
     setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null);
-    
+    if (!added) setShowUpgradeModal(true);
   };
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (!fromGallery) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om planten te scannen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
-    if (result.canceled) return;
+    if (result.canceled || !result.assets?.[0]) return;
     setScanning(true);
     setStoreScanning(true);
     try {
@@ -823,7 +848,10 @@ const MapScreen = (): React.JSX.Element => {
     setBoundaryDrawStep('first');
   }, [ensureGarden]);
 
-  const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
+  const currentGarden = useMemo(
+    () => garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] },
+    [garden],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -955,7 +983,7 @@ const MapScreen = (): React.JSX.Element => {
                 showCompanionOverlay={showCompanionOverlay}
                 plantStatuses={plantStatuses}
                 plantStatusMap={plantStatusMap}
-                boundaries={currentGarden.boundaries ?? []}
+                boundaries={currentGarden.boundaries ?? EMPTY_BOUNDARIES}
                 showNames={showNames}
                 renderScale={mapScale}
                 onBoundaryPress={handleBoundaryPress}
@@ -967,21 +995,36 @@ const MapScreen = (): React.JSX.Element => {
 
         {/* Zoom controls — always visible */}
         <View style={styles.zoomControls}>
-          <TouchableOpacity style={styles.zoomBtn} onPress={() => {
-            const next = Math.max(0.5, mapScale - 0.25);
-            lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={styles.zoomBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel="Uitzoomen"
+            onPress={() => {
+              const next = Math.max(0.5, mapScale - 0.25);
+              lastMapScale.current = next; setMapScale(next);
+            }} activeOpacity={0.75}>
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
-            lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={[styles.zoomBtn, styles.zoomBtnMid]}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel="Zoom resetten naar 100%"
+            onPress={() => {
+              lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
+            }} activeOpacity={0.75}>
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.zoomBtn} onPress={() => {
-            const next = Math.min(3.0, mapScale + 0.25);
-            lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={styles.zoomBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel="Inzoomen"
+            onPress={() => {
+              const next = Math.min(3.0, mapScale + 0.25);
+              lastMapScale.current = next; setMapScale(next);
+            }} activeOpacity={0.75}>
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>
@@ -1341,7 +1384,11 @@ const MapScreen = (): React.JSX.Element => {
       </Modal>
 
       {/* New plant/zone modal */}
-      <Modal visible={showModal} transparent animationType="slide">
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>
@@ -1535,6 +1582,15 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Tier comparison modal */}
       <TierComparisonModal visible={showTierModal} onClose={() => setShowTierModal(false)} />
+
+      {/* Free plant limit reached */}
+      <UpgradeModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureLabel="Onbeperkt planten toevoegen"
+        featureDescription={`Je gratis tuin zit vol (max ${FREE_PLANT_LIMIT} planten). Upgrade naar Plus voor onbeperkt planten toevoegen.`}
+        requiredTier="plus"
+      />
 
       {/* Stats modal */}
       <StatsModal visible={showStatsModal} onClose={() => setShowStatsModal(false)} />
@@ -1856,9 +1912,9 @@ const styles = StyleSheet.create({
   },
   zoomBtn: {
     backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
-    width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
+    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
   },
-  zoomBtnMid: { width: 52 },
+  zoomBtnMid: { width: 56 },
   zoomBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
 

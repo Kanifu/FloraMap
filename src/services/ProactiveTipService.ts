@@ -3,7 +3,7 @@ import { Garden } from '@/models';
 import { gardenAssistantService } from './GardenAssistantService';
 import * as Notifications from 'expo-notifications';
 
-const TIP_CACHE_KEY = 'floramap_tip_cache';
+const TIP_CACHE_KEY_PREFIX = 'floramap_tip_cache_';
 const TIP_INTERVAL_HOURS = 24;
 
 interface TipCache {
@@ -14,9 +14,11 @@ interface TipCache {
 export const getDailyTip = async (garden: Garden | null): Promise<string | null> => {
   if (!garden || garden.plants.length === 0) return null;
 
+  const cacheKey = `${TIP_CACHE_KEY_PREFIX}${garden.id}`;
+
   // Check cache: if tip was generated < TIP_INTERVAL_HOURS ago, return cached
   try {
-    const cached = await AsyncStorage.getItem(TIP_CACHE_KEY);
+    const cached = await AsyncStorage.getItem(cacheKey);
     if (cached) {
       const tipCache: TipCache = JSON.parse(cached);
       const ageHours = (Date.now() - new Date(tipCache.generatedAt).getTime()) / 3_600_000;
@@ -34,7 +36,7 @@ export const getDailyTip = async (garden: Garden | null): Promise<string | null>
     const tip = response.text.trim();
     if (!tip) return null;
 
-    await AsyncStorage.setItem(TIP_CACHE_KEY, JSON.stringify({ text: tip, generatedAt: new Date().toISOString() }));
+    await AsyncStorage.setItem(cacheKey, JSON.stringify({ text: tip, generatedAt: new Date().toISOString() }));
     return tip;
   } catch {
     return null;

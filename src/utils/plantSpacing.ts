@@ -13,7 +13,7 @@ export const findOvercrowdedPlants = (
       minDistanceCells,
       Math.round(((p.estimatedSizeM ?? 0.4) + (newPlant.estimatedSizeM ?? 0.4)) * 2),
     );
-    if (dist < requiredDist && dist > 0) {
+    if (dist < requiredDist) {
       tooClose.push(p.id);
     }
   }

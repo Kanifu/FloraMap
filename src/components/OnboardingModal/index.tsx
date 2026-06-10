@@ -224,8 +224,8 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
             </Text>
             <View style={s.infoBox}>
               <Text style={s.infoText}>🗺️ Je tuinkaart is{' '}
-                <Text style={s.bold}>48 × 48 vakjes</Text>
-                {' '}= 14,4 × 14,4 m
+                <Text style={s.bold}>{selectedSize.cols} × {selectedSize.rows} vakjes</Text>
+                {' '}= {selectedSize.sub}
               </Text>
               <Text style={s.infoText}>📐 1 vakje = 30 × 30 cm</Text>
             </View>

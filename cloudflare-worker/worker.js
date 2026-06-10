@@ -14,6 +14,11 @@
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com';
 const DAILY_LIMIT = 60; // max Gemini calls per IP per calendar day
 
+// Only allow forwarding to Gemini's content-generation endpoints — prevents a
+// leaked FLORAMAP_TOKEN from being used to hit other (possibly costly) Gemini
+// API endpoints with our API key.
+const ALLOWED_PATH_PATTERN = /^\/v1beta\/models\/[a-zA-Z0-9.-]+:(generateContent|streamGenerateContent)$/;
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -52,8 +57,12 @@ export default {
       ctx.waitUntil(env.RATE_LIMIT.put(key, String(count + 1), { expirationTtl: 86400 }));
     }
 
-    // Forward the path as-is to Gemini, appending our API key
+    // Forward the path to Gemini, appending our API key — only after
+    // validating it against the allowlist below
     const incomingUrl = new URL(request.url);
+    if (!ALLOWED_PATH_PATTERN.test(incomingUrl.pathname)) {
+      return new Response('Forbidden', { status: 403, headers: corsHeaders });
+    }
     const geminiUrl = `${GEMINI_BASE}${incomingUrl.pathname}?key=${env.GEMINI_API_KEY}`;
 
     const body = await request.text();

@@ -327,14 +327,19 @@ const PlantCardScreen = (): React.JSX.Element => {
   // ── harvest ────────────────────────────────────────────────────────────────
   const handleSaveHarvest = () => {
     if (!plant) return;
-    const wg = harvestWeight ? parseFloat(harvestWeight) : undefined;
+    const wg = harvestWeight ? parseFloat(harvestWeight.replace(',', '.')) : undefined;
     const cnt = harvestCount ? parseInt(harvestCount, 10) : undefined;
-    if (!wg && !cnt) return;
+    const validWg = wg !== undefined && Number.isFinite(wg) && wg > 0 ? wg : undefined;
+    const validCnt = cnt !== undefined && Number.isFinite(cnt) && cnt > 0 ? cnt : undefined;
+    if (!validWg && !validCnt) {
+      Alert.alert('Vul een waarde in', 'Vul een gewicht (gram) of aantal in om de oogst op te slaan.');
+      return;
+    }
     const entry: HarvestEntry = {
       id: newId(),
       date: new Date().toISOString(),
-      weightG: wg && !isNaN(wg) ? Math.round(wg) : undefined,
-      count: cnt && !isNaN(cnt) ? cnt : undefined,
+      weightG: validWg ? Math.round(validWg) : undefined,
+      count: validCnt,
       notes: harvestNotes.trim() || undefined,
     };
     recordHarvest(plant.id, entry);

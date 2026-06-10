@@ -19,7 +19,9 @@ import { useGardenStore } from '@/store/gardenStore';
 import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
+import { FREE_PLANT_LIMIT } from '@/constants/tiers';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 interface Message {
@@ -96,17 +98,21 @@ const AssistantScreen = (): React.JSX.Element => {
   const [addedTaskKeys, setAddedTaskKeys] = useState<Set<string>>(new Set());
   const [dailyTip, setDailyTip] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
 
   useEffect(() => {
+    if (!garden) return;
     getDailyTip(garden).then((tip) => {
       if (tip) setDailyTip(tip);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Only re-fetch when the active garden changes (e.g. after rehydration or
+    // switching gardens), not on every plant/task mutation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [garden?.id]);
   const addPlant = useGardenStore((s) => s.addPlant);
   const addGardenTask = useGardenStore((s) => s.addGardenTask);
 
@@ -202,7 +208,11 @@ const AssistantScreen = (): React.JSX.Element => {
       if (addedPlantKeys.has(key)) return;
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
-      addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length));
+      const added = addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length));
+      if (!added) {
+        setShowUpgradeModal(true);
+        return;
+      }
       setAddedPlantKeys((prev) => new Set([...prev, key]));
     },
     [garden, setGarden, addPlant, addedPlantKeys],
@@ -212,12 +222,15 @@ const AssistantScreen = (): React.JSX.Element => {
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      let limitReached = false;
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
         if (addedPlantKeys.has(key)) return;
-        addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
+        const added = addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
+        if (!added) { limitReached = true; return; }
         setAddedPlantKeys((prev) => new Set([...prev, key]));
       });
+      if (limitReached) setShowUpgradeModal(true);
     },
     [garden, setGarden, addPlant, addedPlantKeys],
   );
@@ -365,6 +378,13 @@ const AssistantScreen = (): React.JSX.Element => {
         </TouchableOpacity>
       </View>
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
+      <UpgradeModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureLabel="Onbeperkt planten toevoegen"
+        featureDescription={`Je gratis tuin zit vol (max ${FREE_PLANT_LIMIT} planten). Upgrade naar Plus voor onbeperkt planten toevoegen.`}
+        requiredTier="plus"
+      />
 
       <FlatList
         ref={listRef}
