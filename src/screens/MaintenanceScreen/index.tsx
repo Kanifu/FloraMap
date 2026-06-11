@@ -395,7 +395,20 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const infoHeader = (
     <>
       {/* Weather card */}
-      {weather.loaded && (
+      {weather.loaded && weather.error && (
+        <View style={styles.weatherCard}>
+          <View style={styles.weatherMain}>
+            <Text style={styles.weatherEmoji}>⚠️</Text>
+            <View style={styles.weatherInfo}>
+              <Text style={styles.weatherTemp}>Weer niet beschikbaar</Text>
+              <Text style={styles.weatherDesc}>
+                Controleer je internetverbinding of locatietoestemming.
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+      {weather.loaded && !weather.error && (
         <View style={[styles.weatherCard, weather.isDry && styles.weatherCardDry]}>
           <View style={styles.weatherMain}>
             <Text style={styles.weatherEmoji}>{weather.weatherEmoji}</Text>

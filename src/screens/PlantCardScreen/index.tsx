@@ -221,18 +221,32 @@ const PlantCardScreen = (): React.JSX.Element => {
 
   const handleSave = () => {
     if (!plant) return;
+    const days = parseInt(editWater, 10);
+    const hasActiveWaterTask = plant.maintenanceTasks.some((t) => t.type === 'water' && !t.completedDate);
+    let maintenanceTasks = plant.maintenanceTasks.map((t) => {
+      if (t.type === 'water' && !t.completedDate) {
+        return days > 0 ? { ...t, intervalDays: days } : t;
+      }
+      return t;
+    });
+    if (!hasActiveWaterTask && days > 0) {
+      maintenanceTasks = [
+        ...maintenanceTasks,
+        {
+          id: newId(),
+          plantId: plant.id,
+          type: 'water',
+          dueDate: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+          intervalDays: days,
+        },
+      ];
+    }
     updatePlant({
       ...plant,
       commonName: editName.trim() || plant.commonName,
       species:    editSpecies.trim(),
       notes:      editNotes.trim() || undefined,
-      maintenanceTasks: plant.maintenanceTasks.map((t) => {
-        if (t.type === 'water' && !t.completedDate) {
-          const days = parseInt(editWater, 10);
-          return days > 0 ? { ...t, intervalDays: days } : t;
-        }
-        return t;
-      }),
+      maintenanceTasks,
     });
     setIsEditing(false);
   };
@@ -601,7 +615,7 @@ const PlantCardScreen = (): React.JSX.Element => {
           </View>
 
           {/* ── Harvest log ── */}
-          {plant.harvestMonths && plant.harvestMonths.length > 0 && (() => {
+          {((plant.harvestMonths?.length ?? 0) > 0 || (plant.harvestLog?.length ?? 0) > 0) && (() => {
             const log = [...(plant.harvestLog ?? [])].sort((a, b) => b.date.localeCompare(a.date));
             const totalG = log.reduce((s, e) => s + (e.weightG ?? 0), 0);
             const totalCount = log.reduce((s, e) => s + (e.count ?? 0), 0);

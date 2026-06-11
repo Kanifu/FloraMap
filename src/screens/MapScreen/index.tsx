@@ -644,8 +644,8 @@ const MapScreen = (): React.JSX.Element => {
 
   const handleClearGarden = useCallback(() => {
     Alert.alert(
-      'Tuin verwijderen',
-      'Wil je de hele tuin wissen? Dit kan niet ongedaan worden gemaakt.',
+      'Inhoud wissen',
+      'Wil je alle planten, zones en taken verwijderen? Tuingrenzen en bodemprofielen blijven behouden. Dit kan niet ongedaan worden gemaakt.',
       [
         { text: 'Annuleren', style: 'cancel' },
         { text: 'Verwijderen', style: 'destructive', onPress: () => clearGarden() },
@@ -892,7 +892,7 @@ const MapScreen = (): React.JSX.Element => {
       {!isInteractive && (
         <View style={styles.dashBar}>
           {/* Weather pill */}
-          {weather.loaded && (
+          {weather.loaded && !weather.error && (
             <View style={styles.dashWeather}>
               <Text style={styles.dashWeatherText}>
                 {weather.weatherEmoji} {weather.tempMax}°C

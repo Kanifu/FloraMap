@@ -7,10 +7,27 @@ const GEMINI_PATH = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const fetchWithRetry = async (url: string, init: RequestInit, retries = 3, timeoutMs = 30000): Promise<Response> => {
+/** Error with a Dutch, user-facing message — safe to show directly in the chat UI. */
+export class AssistantError extends Error {}
+
+/** Thrown when the caller cancels a request via `signal`. */
+export class AssistantCancelledError extends AssistantError {}
+
+const fetchWithRetry = async (
+  url: string,
+  init: RequestInit,
+  retries = 3,
+  timeoutMs = 30000,
+  externalSignal?: AbortSignal,
+): Promise<Response> => {
   for (let attempt = 0; attempt <= retries; attempt++) {
+    if (externalSignal?.aborted) {
+      throw new AssistantCancelledError('Verzoek geannuleerd.');
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const onExternalAbort = () => controller.abort();
+    externalSignal?.addEventListener('abort', onExternalAbort);
     try {
       const res = await fetch(url, { ...init, signal: controller.signal });
       clearTimeout(timer);
@@ -18,13 +35,18 @@ const fetchWithRetry = async (url: string, init: RequestInit, retries = 3, timeo
       await sleep(1000 * Math.pow(2, attempt));
     } catch (err: unknown) {
       clearTimeout(timer);
+      if (externalSignal?.aborted) {
+        throw new AssistantCancelledError('Verzoek geannuleerd.');
+      }
       if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error('Scan duurde te lang (>30 s). Probeer een foto met minder planten of een betere verbinding.');
+        throw new AssistantError('Scan duurde te lang (>30 s). Probeer een foto met minder planten of een betere verbinding.');
       }
       throw err;
+    } finally {
+      externalSignal?.removeEventListener('abort', onExternalAbort);
     }
   }
-  throw new Error('Gemini niet beschikbaar na meerdere pogingen.');
+  throw new AssistantError('Gemini niet beschikbaar na meerdere pogingen.');
 };
 
 export interface IdentifiedPlant {
@@ -135,24 +157,23 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
     imageUri: string | null,
     history: ChatTurn[],
     gardenPlants: string[],
+    signal?: AbortSignal,
   ): Promise<AssistantResponse> {
     if (!hasApiAccess()) {
-      throw new Error('Geen API-toegang. Stel EXPO_PUBLIC_GEMINI_API_KEY of EXPO_PUBLIC_API_PROXY_URL in.');
+      throw new AssistantError('Geen API-toegang. Stel EXPO_PUBLIC_GEMINI_API_KEY of EXPO_PUBLIC_API_PROXY_URL in.');
     }
 
     const contents = [];
 
     for (const turn of history) {
       if (turn.imageUri) {
-        const base64 = await FileSystem.readAsStringAsync(turn.imageUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
+        // Don't re-send the raw image bytes for past turns — Gemini doesn't need
+        // them again, and re-encoding every photo on every message is slow and
+        // bloats the request. Just note that a photo was shared.
+        const text = turn.text ? `${turn.text}\n[gebruiker stuurde een foto]` : '[gebruiker stuurde een foto]';
         contents.push({
           role: 'user',
-          parts: [
-            { text: turn.text || 'Wat zijn de planten in deze foto?' },
-            { inlineData: { mimeType: 'image/jpeg', data: base64 } },
-          ],
+          parts: [{ text }],
         });
       } else {
         contents.push({
@@ -191,13 +212,13 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
           maxOutputTokens,
         },
       }),
-    });
+    }, 3, 30000, signal);
 
     if (!response.ok) {
       const status = response.status;
-      if (status === 503) throw new Error('Gemini is momenteel overbelast. Probeer het opnieuw.');
-      if (status === 429) throw new Error('Te veel verzoeken. Even wachten en opnieuw proberen.');
-      throw new Error(`Gemini API fout: ${status}`);
+      if (status === 503) throw new AssistantError('Gemini is momenteel overbelast. Probeer het opnieuw.');
+      if (status === 429) throw new AssistantError('Te veel verzoeken. Even wachten en opnieuw proberen.');
+      throw new AssistantError(`Er ging iets mis bij het ophalen van een antwoord (foutcode ${status}). Probeer het later opnieuw.`);
     }
 
     const data = await response.json();
