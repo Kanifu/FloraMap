@@ -10,6 +10,7 @@ export interface DailyForecast {
 
 export interface WeatherData {
   loaded: boolean;
+  error: boolean;
   rainExpected: boolean;
   rainMm: number;
   tempMax: number;
@@ -21,7 +22,7 @@ export interface WeatherData {
 }
 
 export const EMPTY_WEATHER: WeatherData = {
-  loaded: false, rainExpected: false, rainMm: 0,
+  loaded: false, error: false, rainExpected: false, rainMm: 0,
   tempMax: 0, tempMin: 0, isDry: false, droughtDays: 0,
   weatherEmoji: '🌡️', dailyForecast: [],
 };
@@ -53,7 +54,7 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
       `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode` +
       `&hourly=precipitation&forecast_days=7&timezone=auto`;
     const res = await fetch(url);
-    if (!res.ok) return { ...EMPTY_WEATHER, loaded: true };
+    if (!res.ok) return { ...EMPTY_WEATHER, loaded: true, error: true };
     const data = await res.json();
 
     const hourlyPrecip: number[] = data.hourly?.precipitation ?? [];
@@ -102,6 +103,7 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
 
     const result: WeatherData = {
       loaded: true,
+      error: false,
       rainExpected: rainExpectedVal,
       rainMm: next24Mm,
       tempMax: todayMax,
@@ -116,7 +118,7 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
     cachedAt = Date.now();
     return result;
   } catch {
-    return { ...EMPTY_WEATHER, loaded: true };
+    return { ...EMPTY_WEATHER, loaded: true, error: true };
   }
 };
 

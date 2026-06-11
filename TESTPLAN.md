@@ -88,6 +88,20 @@ Installeer de app via EAS build of Expo Go. Test op een fysiek Android-apparaat.
 | App sluiten en heropen | Tuin, planten en taken nog aanwezig | ⬜ |
 | Taak afronden, app herstarten | Afgeronde taak blijft afgerond | ⬜ |
 
+## 9. Build 13.4 — Regressietests (11 juni 2026)
+
+| Test | Verwacht resultaat | Status |
+|------|--------------------|--------|
+| Assistent: foto-scan annuleren | "Annuleren"-knop bij laad-spinner; tik stopt verzoek zonder foutmelding | ⬜ |
+| Assistent: netwerkfout tijdens chat | Nederlandse foutmelding in chatbubbel (geen Engelse/technische tekst) | ⬜ |
+| Assistent: meerdere foto's in één gesprek | Vervolgvragen blijven snel, geen vertraging door oude foto's | ⬜ |
+| Assistent: toetsenbord open op iOS | Berichtenlijst en afbeeldingvoorbeeld schuiven mee, niets achter toetsenbord | ⬜ |
+| PlantCard: begietinterval instellen zonder actieve waterbeurt | Nieuwe wateronderhoudstaak aangemaakt met gekozen interval | ⬜ |
+| PlantCard: oogst loggen voor plant zonder harvestMonths | "🍓 Oogst bijhouden"-sectie zichtbaar zodra er een oogstregistratie is | ⬜ |
+| Kaart: "Inhoud wissen" | Dialoog toont nieuwe tekst; planten/zones/taken weg, tuingrenzen en bodemprofielen blijven | ⬜ |
+| Onderhoud: weer-API offline/fout | "⚠️ Weer niet beschikbaar"-kaart i.p.v. "🌡️ 0°C"; weerpil op kaart verborgen | ⬜ |
+| Onderhoud: meerdere badges tegelijk ontgrendeld | Toast verschijnt na elkaar voor élke nieuwe badge (niet alleen de laatste) | ⬜ |
+
 ## Bekende beperkingen
 - EAS build vereist Expo-account en `eas login`
 - Open-Meteo API vereist internet + locatietoestemming

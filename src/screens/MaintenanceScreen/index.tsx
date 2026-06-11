@@ -223,10 +223,11 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const [exporting, setExporting]           = useState(false);
   const [showAllTasks, setShowAllTasks]     = useState(false);
   const [toast,        setToast]        = useState<string | null>(null);
+  const [toastQueue,   setToastQueue]   = useState<string[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
 
-  // Track badge count to detect new badges
-  const prevBadgeCountRef = useRef(gardenStats.badges.length);
+  // Track unlocked badge ids to detect newly earned badges
+  const prevBadgeIdsRef = useRef(new Set(gardenStats.badges.map((b) => b.id)));
 
   const currentMonth = new Date().getMonth();
 
@@ -241,18 +242,25 @@ const MaintenanceScreen = (): React.JSX.Element => {
     checkAndScheduleWeatherAlerts().catch(() => {});
   }, [garden, weather.loaded, weather.rainExpected, weather.droughtDays, weather.tempMax]);
 
-  // Show toast when a new badge is earned
+  // Queue a toast for every newly earned badge, even if several unlock at once
   useEffect(() => {
-    const currentCount = gardenStats.badges.length;
-    if (currentCount > prevBadgeCountRef.current) {
-      const newBadge = gardenStats.badges[gardenStats.badges.length - 1];
-      if (newBadge) {
-        setToast(`${newBadge.emoji} Badge verdiend: ${newBadge.name}!`);
-        setTimeout(() => setToast(null), 4000);
-      }
+    const currentIds = new Set(gardenStats.badges.map((b) => b.id));
+    const newBadges = gardenStats.badges.filter((b) => !prevBadgeIdsRef.current.has(b.id));
+    if (newBadges.length > 0) {
+      setToastQueue((prev) => [...prev, ...newBadges.map((b) => `${b.emoji} Badge verdiend: ${b.name}!`)]);
     }
-    prevBadgeCountRef.current = currentCount;
+    prevBadgeIdsRef.current = currentIds;
   }, [gardenStats.badges]);
+
+  // Show queued toasts one at a time
+  useEffect(() => {
+    if (toast || toastQueue.length === 0) return;
+    const [next, ...rest] = toastQueue;
+    setToast(next);
+    setToastQueue(rest);
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast, toastQueue]);
 
   const harvestAlerts = useMemo(() => {
     if (!garden) return [];
@@ -395,7 +403,20 @@ const MaintenanceScreen = (): React.JSX.Element => {
   const infoHeader = (
     <>
       {/* Weather card */}
-      {weather.loaded && (
+      {weather.loaded && weather.error && (
+        <View style={styles.weatherCard}>
+          <View style={styles.weatherMain}>
+            <Text style={styles.weatherEmoji}>⚠️</Text>
+            <View style={styles.weatherInfo}>
+              <Text style={styles.weatherTemp}>Weer niet beschikbaar</Text>
+              <Text style={styles.weatherDesc}>
+                Controleer je internetverbinding of locatietoestemming.
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+      {weather.loaded && !weather.error && (
         <View style={[styles.weatherCard, weather.isDry && styles.weatherCardDry]}>
           <View style={styles.weatherMain}>
             <Text style={styles.weatherEmoji}>{weather.weatherEmoji}</Text>

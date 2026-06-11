@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
-import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { gardenAssistantService, AssistantError, AssistantCancelledError, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -97,6 +97,7 @@ const AssistantScreen = (): React.JSX.Element => {
   const [dailyTip, setDailyTip] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const listRef = useRef<FlatList>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
@@ -149,6 +150,9 @@ const AssistantScreen = (): React.JSX.Element => {
       setPendingImage(null);
       setIsLoading(true);
 
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
 
       try {
@@ -158,6 +162,7 @@ const AssistantScreen = (): React.JSX.Element => {
           imageUri,
           history,
           gardenPlants,
+          controller.signal,
         );
 
         const assistantMsg: Message = {
@@ -170,19 +175,30 @@ const AssistantScreen = (): React.JSX.Element => {
 
         setMessages((prev) => [...prev.filter((m) => !m.loading), assistantMsg]);
       } catch (e) {
-        const errorMsg: Message = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          text: e instanceof Error ? e.message : 'Er ging iets mis.',
-        };
-        setMessages((prev) => [...prev.filter((m) => !m.loading), errorMsg]);
+        if (e instanceof AssistantCancelledError) {
+          setMessages((prev) => prev.filter((m) => !m.loading));
+        } else {
+          const errorMsg: Message = {
+            id: `error-${Date.now()}`,
+            role: 'assistant',
+            text: e instanceof AssistantError
+              ? e.message
+              : 'Er ging iets mis bij het verwerken van je verzoek. Controleer je internetverbinding en probeer het opnieuw.',
+          };
+          setMessages((prev) => [...prev.filter((m) => !m.loading), errorMsg]);
+        }
       } finally {
         setIsLoading(false);
+        abortControllerRef.current = null;
         setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
     [buildHistory, gardenPlants],
   );
+
+  const handleCancelRequest = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
@@ -251,8 +267,11 @@ const AssistantScreen = (): React.JSX.Element => {
   const renderMessage = ({ item }: { item: Message }) => {
     if (item.loading) {
       return (
-        <View style={[styles.bubble, styles.assistantBubble]}>
+        <View style={[styles.bubble, styles.assistantBubble, styles.loadingBubble]}>
           <ActivityIndicator size="small" color="#2d6a4f" />
+          <TouchableOpacity onPress={handleCancelRequest} style={styles.cancelButton}>
+            <Text style={styles.cancelButtonText}>Annuleren</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -366,50 +385,52 @@ const AssistantScreen = (): React.JSX.Element => {
       </View>
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
 
-      <FlatList
-        ref={listRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messageList}
-        ListHeaderComponent={
-          dailyTip ? (
-            <View style={styles.tipCard}>
-              <Text style={styles.tipTitle}>💡 Tip van de dag</Text>
-              <Text style={styles.tipBody}>{dailyTip}</Text>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoider}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <FlatList
+          ref={listRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messageList}
+          ListHeaderComponent={
+            dailyTip ? (
+              <View style={styles.tipCard}>
+                <Text style={styles.tipTitle}>💡 Tip van de dag</Text>
+                <Text style={styles.tipBody}>{dailyTip}</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🌱</Text>
+              <Text style={styles.emptyTitle}>Stel een vraag of scan een plant</Text>
+              <Text style={styles.emptySubtitle}>
+                Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
+              </Text>
+              <View style={styles.emptyButtons}>
+                <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
+                  <Text style={styles.emptyButtonText}>📷 Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
+                  <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🌱</Text>
-            <Text style={styles.emptyTitle}>Stel een vraag of scan een plant</Text>
-            <Text style={styles.emptySubtitle}>
-              Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
-            </Text>
-            <View style={styles.emptyButtons}>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
-                <Text style={styles.emptyButtonText}>📷 Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
-                <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
-              </TouchableOpacity>
-            </View>
+          }
+        />
+
+        {pendingImage && (
+          <View style={styles.pendingImageRow}>
+            <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
+            <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
+            <TouchableOpacity onPress={() => setPendingImage(null)}>
+              <Text style={styles.removePending}>✕</Text>
+            </TouchableOpacity>
           </View>
-        }
-      />
+        )}
 
-      {pendingImage && (
-        <View style={styles.pendingImageRow}>
-          <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
-          <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
-            <Text style={styles.removePending}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputRow}>
           <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
             <Text style={styles.iconButtonText}>📷</Text>
@@ -441,6 +462,7 @@ const AssistantScreen = (): React.JSX.Element => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  keyboardAvoider: { flex: 1 },
   header: {
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -468,6 +490,15 @@ const styles = StyleSheet.create({
     minHeight: 40,
     justifyContent: 'center',
   },
+  loadingBubble: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cancelButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#b7e4c7',
+  },
+  cancelButtonText: { fontSize: 12, fontWeight: '600', color: '#6b705c' },
   bubbleText: { fontSize: 15, lineHeight: 22 },
   userText: { color: '#fff' },
   assistantText: { color: '#1b4332' },
