@@ -292,16 +292,16 @@ const MapScreen = (): React.JSX.Element => {
   const [drawStep,            setDrawStep]            = useState<DrawStep | null>(null);
   const [firstPoint,          setFirstPoint]          = useState<{ x: number; y: number } | null>(null);
   const [drawTarget,          setDrawTarget]          = useState<Plant | null>(null);
-  const [menuPlant,           setMenuPlant]           = useState<Plant | null>(null);
+  const [menuPlantId,         setMenuPlantId]         = useState<string | null>(null);
   // forceShowMap removed — map is always visible (empty state is an overlay)
   const [showOnboarding,      setShowOnboarding]      = useState(false);
   const [showCompanionOverlay, setShowCompanionOverlay] = useState(false);
-  const [quickSheetPlant,      setQuickSheetPlant]      = useState<Plant | null>(null);
+  const [quickSheetPlantId,    setQuickSheetPlantId]    = useState<string | null>(null);
 
   const [showFeedback,      setShowFeedback]      = useState(false);
   const [showTierModal,     setShowTierModal]     = useState(false);
   const [showStatsModal,    setShowStatsModal]    = useState(false);
-  const [datePlant,         setDatePlant]         = useState<Plant | null>(null);
+  const [datePlantId,       setDatePlantId]       = useState<string | null>(null);
   const [showMenu,          setShowMenu]          = useState(false);
   const [showTodaySheet,    setShowTodaySheet]    = useState(false);
   const [showGardenPicker,  setShowGardenPicker]  = useState(false);
@@ -825,6 +825,12 @@ const MapScreen = (): React.JSX.Element => {
 
   const currentGarden = garden ?? { id: 'temp', userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
 
+  // Look up by id on every render so these always reflect the latest store state
+  // (e.g. completing a task in the quick sheet updates it immediately, no stale snapshot).
+  const menuPlant       = menuPlantId       ? currentGarden.plants.find((p) => p.id === menuPlantId)       ?? null : null;
+  const quickSheetPlant = quickSheetPlantId ? currentGarden.plants.find((p) => p.id === quickSheetPlantId) ?? null : null;
+  const datePlant       = datePlantId       ? currentGarden.plants.find((p) => p.id === datePlantId)       ?? null : null;
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -941,8 +947,8 @@ const MapScreen = (): React.JSX.Element => {
             <ScrollView ref={vScrollRef} bounces={false}>
               <GardenMap
                 garden={currentGarden}
-                onPlantPress={(p) => setQuickSheetPlant(p)}
-                onPlantLongPress={(p) => setMenuPlant(p)}
+                onPlantPress={(p) => setQuickSheetPlantId(p.id)}
+                onPlantLongPress={(p) => setMenuPlantId(p.id)}
                 viewMode="2d"
                 isInteractive={isInteractive}
                 highlightPoint={
@@ -1038,20 +1044,20 @@ const MapScreen = (): React.JSX.Element => {
       {/* Plant action menu */}
       <PlantMenu
         plant={menuPlant}
-        onClose={() => setMenuPlant(null)}
+        onClose={() => setMenuPlantId(null)}
         onMove={(p) => setMovingPlant(p)}
         onResize={(p) => { setDrawTarget(p); setDrawStep('first'); }}
         onDelete={handleDelete}
         onChangeColor={(p, color) => updatePlant({ ...p, color })}
         onSaveNote={(p, notes) => updatePlant({ ...p, notes: notes.trim() || undefined })}
-        onChangePlantedDate={(p) => setDatePlant(p)}
+        onChangePlantedDate={(p) => setDatePlantId(p.id)}
       />
 
       {/* Plant quick sheet */}
       <PlantQuickSheet
         plant={quickSheetPlant}
         visible={!!quickSheetPlant}
-        onClose={() => setQuickSheetPlant(null)}
+        onClose={() => setQuickSheetPlantId(null)}
         onDetails={(plantId) => navigation.navigate('PlantCard', { plantId })}
         weatherRainExpected={weather.rainExpected}
       />
@@ -1062,10 +1068,7 @@ const MapScreen = (): React.JSX.Element => {
         onClose={() => setShowTodaySheet(false)}
         garden={garden}
         weatherRainExpected={weather.rainExpected}
-        onOpenPlant={(plantId) => {
-          const plant = garden?.plants.find((p) => p.id === plantId);
-          if (plant) setQuickSheetPlant(plant);
-        }}
+        onOpenPlant={(plantId) => setQuickSheetPlantId(plantId)}
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
       />
 
@@ -1543,8 +1546,8 @@ const MapScreen = (): React.JSX.Element => {
       <PlantDateSheet
         plant={datePlant}
         visible={!!datePlant}
-        onClose={() => setDatePlant(null)}
-        onSave={(updated) => { updatePlant(updated); setDatePlant(null); }}
+        onClose={() => setDatePlantId(null)}
+        onSave={(updated) => { updatePlant(updated); setDatePlantId(null); }}
       />
     </SafeAreaView>
   );

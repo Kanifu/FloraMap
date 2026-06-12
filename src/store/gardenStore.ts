@@ -40,6 +40,16 @@ export interface GardenStats {
   badges: { id: string; name: string; emoji: string; unlockedAt: string }[];
 }
 
+/** Shape of a full app data backup, as produced by AboutScreen's export. */
+export interface GardenBackupData {
+  garden?: Garden | null;
+  gardens?: Garden[];
+  activeGardenId?: string | null;
+  seedPackets?: SeedPacket[];
+  rotationHistory?: RotationRecord[];
+  unlockedAchievements?: Record<string, string>;
+}
+
 interface GardenActions {
   setGarden: (garden: Garden) => void;
   clearGarden: () => void;
@@ -73,6 +83,8 @@ interface GardenActions {
   switchGarden: (id: string) => void;
   renameGarden: (id: string, name: string) => void;
   deleteGarden: (id: string) => void;
+  // Backup / restore (full app data, not just the active garden)
+  restoreBackup: (data: GardenBackupData) => void;
   // Achievements
   clearRecentUnlock: () => void;
   // Tier / freemium
@@ -528,6 +540,25 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         } else {
           set({ gardens: remaining });
         }
+      },
+
+      restoreBackup: (data) => {
+        // Backward compatible with older backups that only contain a single `garden`.
+        const gardens = data.gardens && data.gardens.length > 0
+          ? data.gardens
+          : data.garden ? [data.garden] : [];
+        const activeGardenId = data.activeGardenId && gardens.some((g) => g.id === data.activeGardenId)
+          ? data.activeGardenId
+          : gardens[0]?.id ?? null;
+        const garden = gardens.find((g) => g.id === activeGardenId) ?? gardens[0] ?? null;
+        set({
+          garden,
+          gardens,
+          activeGardenId,
+          seedPackets: data.seedPackets ?? [],
+          rotationHistory: data.rotationHistory ?? [],
+          unlockedAchievements: data.unlockedAchievements ?? {},
+        });
       },
 
       clearRecentUnlock: () => set({ recentUnlockId: null }),
