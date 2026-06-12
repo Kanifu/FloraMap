@@ -56,6 +56,9 @@ export interface PhotoLogEntry {
 export interface HarvestEntry {
   id: string;
   date: string;           // ISO 8601
+  weightG?: number;
+  count?: number;
+  /** @deprecated legacy field from earlier builds — read for backward compat, use weightG */
   amountGrams?: number;
   notes?: string;
 }
@@ -105,14 +108,6 @@ export interface GardenTask {
   completedDate?: string;
   urgency: GardenTaskUrgency;
   plantName?: string;
-}
-
-export interface HarvestEntry {
-  id: string;
-  date: string;
-  weightG?: number;
-  count?: number;
-  notes?: string;
 }
 
 export type SoilType = 'clay' | 'loam' | 'sand' | 'peat';

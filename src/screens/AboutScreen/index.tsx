@@ -71,7 +71,12 @@ const LINKS = [
 const AboutScreen = (): React.JSX.Element => {
   const navigation = useNavigation<StackNavigationProp<MaintenanceStackParamList>>();
   const garden = useGardenStore((s) => s.garden);
-  const setGarden = useGardenStore((s) => s.setGarden);
+  const gardens = useGardenStore((s) => s.gardens);
+  const activeGardenId = useGardenStore((s) => s.activeGardenId);
+  const seedPackets = useGardenStore((s) => s.seedPackets);
+  const rotationHistory = useGardenStore((s) => s.rotationHistory);
+  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
+  const restoreBackup = useGardenStore((s) => s.restoreBackup);
   const userTier = useGardenStore((s) => s.userTier);
   const setUserTier = useGardenStore((s) => s.setUserTier);
   const [importing, setImporting] = useState(false);
@@ -226,7 +231,16 @@ const AboutScreen = (): React.JSX.Element => {
       return;
     }
     try {
-      const json = JSON.stringify({ version: VERSION, exportedAt: new Date().toISOString(), garden }, null, 2);
+      const json = JSON.stringify({
+        version: VERSION,
+        exportedAt: new Date().toISOString(),
+        garden,
+        gardens,
+        activeGardenId,
+        seedPackets,
+        rotationHistory,
+        unlockedAchievements,
+      }, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}floramap-backup.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(fileUri, {
@@ -251,24 +265,42 @@ const AboutScreen = (): React.JSX.Element => {
       const raw = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
       const parsed = JSON.parse(raw);
 
-      // Basic validation
-      const importedGarden: Garden = parsed.garden ?? parsed;
-      if (!importedGarden.id || !Array.isArray(importedGarden.plants)) {
+      // Basic validation — accept both the multi-garden backup format and the
+      // legacy format that only contains a single `garden`.
+      const isValidGarden = (g: unknown): g is Garden =>
+        !!g && typeof (g as Garden).id === 'string' && Array.isArray((g as Garden).plants);
+
+      const importedGardens: Garden[] = Array.isArray(parsed.gardens) ? parsed.gardens : [];
+      const importedGarden: Garden | undefined = parsed.garden ?? importedGardens[0];
+
+      if (!isValidGarden(importedGarden) || !importedGardens.every(isValidGarden)) {
         Alert.alert('Ongeldig bestand', 'Dit bestand bevat geen geldige FloraMap-data.');
         return;
       }
 
+      const otherGardens = importedGardens.filter((g) => g.id !== importedGarden.id).length;
+      const extraLabel = otherGardens > 0 ? ` (en ${otherGardens} andere tuin${otherGardens > 1 ? 'en' : ''})` : '';
+
       Alert.alert(
         'Backup importeren',
-        `Wil je de tuindata van "${importedGarden.name}" importeren? Je huidige tuin wordt overschreven.`,
+        `Wil je de tuindata van "${importedGarden.name}"${extraLabel} importeren? Je huidige tuindata wordt overschreven.`,
         [
           { text: 'Annuleren', style: 'cancel' },
           {
             text: 'Importeren',
             style: 'destructive',
             onPress: () => {
-              setGarden(importedGarden);
-              Alert.alert('Gelukt! 🌿', 'Je tuin is hersteld vanuit de backup.');
+              restoreBackup({
+                garden: importedGarden,
+                gardens: importedGardens.length > 0 ? importedGardens : [importedGarden],
+                activeGardenId: typeof parsed.activeGardenId === 'string' ? parsed.activeGardenId : importedGarden.id,
+                seedPackets: Array.isArray(parsed.seedPackets) ? parsed.seedPackets : undefined,
+                rotationHistory: Array.isArray(parsed.rotationHistory) ? parsed.rotationHistory : undefined,
+                unlockedAchievements: parsed.unlockedAchievements && typeof parsed.unlockedAchievements === 'object'
+                  ? parsed.unlockedAchievements
+                  : undefined,
+              });
+              Alert.alert('Gelukt! 🌿', 'Je tuindata is hersteld vanuit de backup.');
             },
           },
         ],

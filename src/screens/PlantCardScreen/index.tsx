@@ -329,12 +329,17 @@ const PlantCardScreen = (): React.JSX.Element => {
     if (!plant) return;
     const wg = harvestWeight ? parseFloat(harvestWeight) : undefined;
     const cnt = harvestCount ? parseInt(harvestCount, 10) : undefined;
-    if (!wg && !cnt) return;
+    const validWg = wg !== undefined && !isNaN(wg) && wg > 0 ? Math.round(wg) : undefined;
+    const validCnt = cnt !== undefined && !isNaN(cnt) && cnt > 0 ? cnt : undefined;
+    if (!validWg && !validCnt) {
+      Alert.alert('Vul iets in', 'Vul een gewicht of aantal in om een oogst te registreren.');
+      return;
+    }
     const entry: HarvestEntry = {
       id: newId(),
       date: new Date().toISOString(),
-      weightG: wg && !isNaN(wg) ? Math.round(wg) : undefined,
-      count: cnt && !isNaN(cnt) ? cnt : undefined,
+      weightG: validWg,
+      count: validCnt,
       notes: harvestNotes.trim() || undefined,
     };
     recordHarvest(plant.id, entry);
@@ -437,9 +442,11 @@ const PlantCardScreen = (): React.JSX.Element => {
                   🗓️ {new Date(plant.plantedDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </Text></View>
               ) : null}
-              <View style={s.metaChip}><Text style={s.metaChipText}>
-                🎯 {Math.round(plant.identificationConfidence * 100)}% zeker
-              </Text></View>
+              {Number.isFinite(plant.identificationConfidence) ? (
+                <View style={s.metaChip}><Text style={s.metaChipText}>
+                  🎯 {Math.round(plant.identificationConfidence * 100)}% zeker
+                </Text></View>
+              ) : null}
             </View>
           </View>
 

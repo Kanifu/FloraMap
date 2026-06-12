@@ -58,13 +58,19 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const handleAdd = () => {
     if (!modalCommonName.trim()) return;
+    const year = modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined;
+    const grams = modalAmountGrams ? parseFloat(modalAmountGrams) : undefined;
+    const validYear = year !== undefined && !isNaN(year) && year >= CURRENT_YEAR - 1 && year <= CURRENT_YEAR + 15
+      ? year
+      : undefined;
+    const validGrams = grams !== undefined && !isNaN(grams) && grams > 0 ? grams : undefined;
     const packet: SeedPacket = {
       id: newId(),
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
-      expiryYear: modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined,
-      amountGrams: modalAmountGrams ? parseFloat(modalAmountGrams) : undefined,
+      expiryYear: validYear,
+      amountGrams: validGrams,
       notes: modalNotes.trim() || undefined,
     };
     addSeedPacket(packet);
