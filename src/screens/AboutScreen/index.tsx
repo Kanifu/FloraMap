@@ -17,12 +17,16 @@ import { FeedbackModal } from '@/components/FeedbackModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { FREE_PLANT_LIMIT, FEATURE_CONFIGS } from '@/hooks/useFeatureFlag';
 import type { Tier } from '@/constants/tiers';
+import appJson from '../../../app.json';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
 const VERSION    = (Constants.expoConfig?.version ?? '?') as string;
 const BUILD_LABEL = (extra.buildLabel ?? '?') as string;
 const BUILD_DATE  = (extra.buildDate  ?? '?') as string;
+// On web, Constants.expoConfig doesn't include the `android` platform block,
+// so fall back to the bundled app.json for the versionCode display.
+const VERSION_CODE = Constants.expoConfig?.android?.versionCode ?? appJson.expo.android?.versionCode ?? '?';
 
 const SECTIONS = [
   {
@@ -306,7 +310,7 @@ const AboutScreen = (): React.JSX.Element => {
           </View>
           <Text style={styles.buildDate}>{BUILD_DATE}</Text>
           <Text style={styles.buildHash}>
-            {`versionCode ${Constants.expoConfig?.android?.versionCode ?? '?'}`}
+            {`versionCode ${VERSION_CODE}`}
           </Text>
         </View>
 
