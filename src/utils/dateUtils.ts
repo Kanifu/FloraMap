@@ -9,8 +9,13 @@
 export const relativeDueLabel = (dueDateStr: string): string => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDateStr);
-  due.setHours(0, 0, 0, 0);
+  // Use the date-only (YYYY-MM-DD) portion of the ISO string and build a
+  // local-midnight Date from those components. Parsing the full ISO string
+  // and then calling setHours(0,0,0,0) would first convert to local time,
+  // which can shift the calendar date by ±1 day depending on the user's
+  // timezone (see #130).
+  const [year, month, day] = dueDateStr.slice(0, 10).split('-').map(Number);
+  const due = new Date(year, month - 1, day);
   const diff = Math.round((due.getTime() - today.getTime()) / 86_400_000);
   if (diff === 0) return 'Vandaag';
   if (diff === 1) return 'Morgen';

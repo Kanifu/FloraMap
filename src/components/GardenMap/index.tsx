@@ -162,11 +162,19 @@ const GardenMapBase = ({
   };
 
   // ── Background tap (place/move mode) ────────────────────────────────────────
-  const handleBgTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
+  const handleBgTap = (e: {
+    nativeEvent: { locationX: number; locationY: number; offsetX?: number; offsetY?: number };
+  }) => {
     if (!onMapPress) return;
+    // On native, GestureResponderEvent provides locationX/locationY relative to the
+    // target. react-native-web's Pressable doesn't populate those fields, so fall
+    // back to the DOM PointerEvent's offsetX/offsetY (relative to the same element).
+    const { locationX, locationY, offsetX, offsetY } = e.nativeEvent;
+    const px = locationX ?? offsetX ?? 0;
+    const py = locationY ?? offsetY ?? 0;
     // Divide by renderScale to convert screen pixels → logical SVG pixels
-    const gridX = Math.max(1, Math.min(Math.round(e.nativeEvent.locationX / (SCALE * renderScale)), effCols));
-    const gridY = Math.max(1, Math.min(Math.round(e.nativeEvent.locationY / (SCALE * renderScale)), effRows));
+    const gridX = Math.max(1, Math.min(Math.round(px / (SCALE * renderScale)), effCols));
+    const gridY = Math.max(1, Math.min(Math.round(py / (SCALE * renderScale)), effRows));
     onMapPress(gridX, gridY);
   };
 
