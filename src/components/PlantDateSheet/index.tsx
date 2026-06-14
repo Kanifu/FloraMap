@@ -4,6 +4,7 @@ import {
   ScrollView, Pressable, TextInput,
 } from 'react-native';
 import { Plant, MaintenanceTask } from '@/models';
+import { toLocalNoonISO } from '@/utils/dateUtils';
 
 interface Props {
   plant: Plant | null;
@@ -19,7 +20,7 @@ function recalculateTasks(plant: Plant, newPlantedDate: string): MaintenanceTask
     if (task.completedDate || !task.intervalDays) return task;
     const due = new Date(base);
     due.setDate(due.getDate() + task.intervalDays);
-    return { ...task, dueDate: due.toISOString() };
+    return { ...task, dueDate: toLocalNoonISO(due) };
   });
 }
 

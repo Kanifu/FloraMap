@@ -19,6 +19,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
+import { addDaysISO } from '@/utils/dateUtils';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
@@ -53,7 +54,7 @@ const makePlant = (plant: IdentifiedPlant, gardenId: string, position: number): 
       id: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       plantId: id,
       type: 'water',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: addDaysISO(7),
     });
   }
   return {
@@ -79,9 +80,7 @@ const makeGardenTask = (task: AssistantTask): GardenTask => ({
   description: task.description,
   urgency: task.urgency,
   plantName: task.plantName,
-  dueDate: new Date(
-    Date.now() + (urgencyDays[task.urgency] ?? 3) * 24 * 60 * 60 * 1000,
-  ).toISOString(),
+  dueDate: addDaysISO(urgencyDays[task.urgency] ?? 3),
 });
 
 type AssistantNavProp = StackNavigationProp<RootStackParamList, 'Assistant'>;

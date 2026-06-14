@@ -20,6 +20,26 @@ export const relativeDueLabel = (dueDateStr: string): string => {
   return `${Math.abs(diff)} dagen geleden`;
 };
 
+/**
+ * Returns an ISO timestamp anchored at local noon on the given date's calendar day.
+ * Anchoring at noon keeps the intended due-date stable when the value is later
+ * read back on a device in a different timezone (see issue #130) — local
+ * `setHours(0,0,0,0)` round-trips back to the same calendar day for any
+ * realistic timezone offset.
+ */
+export const toLocalNoonISO = (date: Date): string => {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString();
+};
+
+/** ISO timestamp for "today + days", anchored at local noon. */
+export const addDaysISO = (days: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return toLocalNoonISO(d);
+};
+
 /** Short date format used as secondary label, e.g. "26 mei" */
 export const shortDate = (iso: string): string =>
   new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
