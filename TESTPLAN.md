@@ -1,7 +1,32 @@
-# FloraMap — Testplan v1.7.0 (Build #6.1)
+# FloraMap — Testplan v2.0.0 (Build #13.4)
 
 ## Hoe testen
 Installeer de app via EAS build of Expo Go. Test op een fysiek Android-apparaat.
+
+## QA-sessie 14 juni 2026 — samenvatting
+
+Volledige statische usability/quality-audit uitgevoerd op de codebase. Bevindingen
+en fixes zijn vastgelegd in de PR voor deze sessie. Belangrijkste wijzigingen:
+
+- **#130 (bug)**: `dueDate`-generatie op 5 plekken aangepast om op lokale
+  middag (`toLocalNoonISO`/`addDaysISO`) te ankeren, zodat `relativeDueLabel`
+  ("Vandaag"/"Morgen"/"Over X dagen") niet meer 1 dag kan verschuiven voor
+  gebruikers in negatieve UTC-tijdzones. Unit tests toegevoegd in
+  `src/utils/dateUtils.test.ts`.
+- Gamificatie: `recordTaskCompletion` telde tuintaken niet altijd mee voor
+  `totalTasksCompleted`/achievements als er die dag al een onderhoudstaak was
+  afgerond — opgelost, nu consistent met `completeMaintenanceTask`.
+- VirtualGardenScreen: ongeldige `rgba(...)`-kleurwaarden in de plantenpot-SVG
+  gefixt (decoratieve stippen op de pot renderden niet correct).
+- Dode code opgeruimd: ongebruikt `src/theme/index.ts`, en de onbereikbare
+  'stats'-tab + bijbehorende stijlen in `MaintenanceScreen` (vervangen door
+  StatsModal).
+- `HarvestEntry`-interface (was per ongeluk twee keer gedeclareerd in
+  `src/models/index.ts`) samengevoegd tot één definitie.
+- `@types/jest` toegevoegd zodat de nieuwe testsuite typecheckt.
+
+Nieuwe checklist-items hieronder (sectie 9) zijn toegevoegd om de #130-fix te
+verifiëren op een fysiek apparaat in verschillende tijdzones.
 
 ## 1. Kaart & Tuin
 
@@ -87,6 +112,16 @@ Installeer de app via EAS build of Expo Go. Test op een fysiek Android-apparaat.
 |------|--------------------|--------|
 | App sluiten en heropen | Tuin, planten en taken nog aanwezig | ⬜ |
 | Taak afronden, app herstarten | Afgeronde taak blijft afgerond | ⬜ |
+
+## 9. Tijdzone & datums (i.v.m. #130-fix)
+
+| Test | Verwacht resultaat | Status |
+|------|--------------------|--------|
+| Nieuwe onderhoudstaak aanmaken (water geven) | Vervaldatum toont "Vandaag"/"Over X dagen" correct, ook rond middernacht | ⬜ |
+| Taak afronden met herhaling (`intervalDays`) | Volgende vervaldatum klopt en blijft stabiel na app-herstart | ⬜ |
+| Plantdatum wijzigen via PlantDateSheet | Herberekende taakdata tonen het juiste "Over X dagen"-label | ⬜ |
+| Apparaat in tijdzone UTC-7/8 (bv. America/Los_Angeles) | "Vandaag"/"Morgen"-labels kloppen, geen 1-dag verschuiving | ⬜ |
+| `npx jest` (dateUtils) | Alle 12 tests slagen | ⬜ |
 
 ## Bekende beperkingen
 - EAS build vereist Expo-account en `eas login`

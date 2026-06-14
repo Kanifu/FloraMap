@@ -7,6 +7,7 @@ import {
   RotationRecord, SeedPacket, BADGE_DEFINITIONS,
 } from '@/models';
 import { Tier, TIER_RANK, FREE_PLANT_LIMIT } from '@/constants/tiers';
+import { toLocalNoonISO } from '@/utils/dateUtils';
 
 interface GardenState {
   garden: Garden | null;
@@ -255,7 +256,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             plantId,
             type: completedTask.type,
-            dueDate: nextDue.toISOString(),
+            dueDate: toLocalNoonISO(nextDue),
             intervalDays: completedTask.intervalDays,
             notes: completedTask.notes,
           });
@@ -538,11 +539,14 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const now = new Date();
         const todayStr = now.toISOString().slice(0, 10);
-        if (state.lastTaskDate === todayStr) return; // already counted today
         const yest = new Date(now);
         yest.setDate(yest.getDate() - 1);
         const yesterdayStr = yest.toISOString().slice(0, 10);
-        const newStreak = state.lastTaskDate === yesterdayStr ? state.currentStreak + 1 : 1;
+        // Streak only increases once per day, but every completion still counts
+        // toward the total (consistent with completeMaintenanceTask).
+        let newStreak = state.currentStreak;
+        if (state.lastTaskDate === yesterdayStr) newStreak = state.currentStreak + 1;
+        else if (state.lastTaskDate !== todayStr) newStreak = 1;
         const newLongest = Math.max(state.longestStreak, newStreak);
         const newTotal = state.totalTasksCompleted + 1;
         const toUnlock: string[] = [];

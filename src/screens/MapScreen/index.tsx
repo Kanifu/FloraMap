@@ -30,6 +30,7 @@ import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 import { useWeather } from '@/hooks/useWeather';
+import { addDaysISO } from '@/utils/dateUtils';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -59,7 +60,7 @@ const BOUNDARY_TYPES: { type: BoundaryType; emoji: string; label: string; isLine
   { type: 'pond',   emoji: '🌊', label: 'Vijver',    isLine: false },
 ];
 
-const addDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+const addDays = addDaysISO;
 
 const urgencyDays: Record<string, number> = { high: 0, medium: 3, low: 7 };
 
@@ -68,7 +69,7 @@ const makeGardenTaskFromAssistant = (task: AssistantTask): GardenTask => ({
   description: task.description,
   urgency: task.urgency,
   plantName: task.plantName,
-  dueDate: new Date(Date.now() + (urgencyDays[task.urgency] ?? 3) * 86_400_000).toISOString(),
+  dueDate: addDaysISO(urgencyDays[task.urgency] ?? 3),
 });
 
 const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] => {
