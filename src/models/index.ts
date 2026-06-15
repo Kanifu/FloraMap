@@ -56,7 +56,9 @@ export interface PhotoLogEntry {
 export interface HarvestEntry {
   id: string;
   date: string;           // ISO 8601
-  amountGrams?: number;
+  amountGrams?: number;    // legacy field, prefer weightG
+  weightG?: number;
+  count?: number;
   notes?: string;
 }
 
@@ -105,14 +107,6 @@ export interface GardenTask {
   completedDate?: string;
   urgency: GardenTaskUrgency;
   plantName?: string;
-}
-
-export interface HarvestEntry {
-  id: string;
-  date: string;
-  weightG?: number;
-  count?: number;
-  notes?: string;
 }
 
 export type SoilType = 'clay' | 'loam' | 'sand' | 'peat';
@@ -216,28 +210,3 @@ export interface DiffProposal {
   confidence: number;
 }
 
-export interface Badge {
-  id: string;
-  name: string;
-  description: string;
-  emoji: string;
-  unlockedAt?: string; // ISO date
-}
-
-export interface GardenStats {
-  currentStreak: number;       // consecutive days with ≥1 task completed
-  longestStreak: number;
-  totalTasksCompleted: number;
-  lastCompletionDate?: string;  // YYYY-MM-DD
-  badges: Badge[];
-}
-
-export const BADGE_DEFINITIONS: Omit<Badge, 'unlockedAt'>[] = [
-  { id: 'first_task',  name: 'Eerste stap',     emoji: '🌱', description: 'Eerste taak voltooid' },
-  { id: 'streak_3',   name: 'Op dreef',          emoji: '🔥', description: '3 dagen op rij actief' },
-  { id: 'streak_7',   name: 'Groene week',       emoji: '🌿', description: '7 dagen streak' },
-  { id: 'streak_30',  name: 'Tuinmeester',       emoji: '🏆', description: '30 dagen streak' },
-  { id: 'ten_tasks',  name: 'Vlijtige tuinier',  emoji: '💪', description: '10 taken voltooid' },
-  { id: 'fifty_tasks', name: 'Doorgewinterd',    emoji: '⭐', description: '50 taken voltooid' },
-  { id: 'hundred_tasks', name: 'Groene duim',    emoji: '🎯', description: '100 taken voltooid' },
-];

@@ -4,8 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Garden, Plant, DiffProposal, GardenTask, MaintenanceTask,
   GardenBoundary, SoilProfile, SoilAmendment, HarvestEntry,
-  RotationRecord, SeedPacket, BADGE_DEFINITIONS,
+  RotationRecord, SeedPacket,
 } from '@/models';
+import { ACHIEVEMENTS } from '@/data/achievements';
 import { Tier, TIER_RANK, FREE_PLANT_LIMIT } from '@/constants/tiers';
 
 interface GardenState {
@@ -44,7 +45,8 @@ interface GardenActions {
   setGarden: (garden: Garden) => void;
   clearGarden: () => void;
   updatePlant: (plant: Plant) => void;
-  addPlant: (plant: Plant) => void;
+  /** Returns false if the plant could not be added (e.g. free-tier plant limit reached) */
+  addPlant: (plant: Plant) => boolean;
   removePlant: (plantId: string) => void;
   completeMaintenanceTask: (plantId: string, taskId: string) => void;
   addGardenTask: (task: GardenTask) => void;
@@ -94,9 +96,9 @@ const buildGardenStats = (
   longestStreak,
   totalTasksCompleted,
   lastCompletionDate: lastTaskDate ?? undefined,
-  badges: BADGE_DEFINITIONS
+  badges: ACHIEVEMENTS
     .filter((def) => unlockedAchievements[def.id])
-    .map((def) => ({ id: def.id, name: (def as any).name ?? def.id, emoji: def.emoji ?? '🏅', unlockedAt: unlockedAchievements[def.id] })),
+    .map((def) => ({ id: def.id, name: def.title, emoji: def.emoji, unlockedAt: unlockedAchievements[def.id] })),
 });
 
 /** Sync updated active garden into the gardens array */
@@ -202,8 +204,8 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       addPlant: (plant) => {
         const state = get();
         const { garden } = state;
-        if (!garden) return;
-        if (TIER_RANK[state.userTier] < TIER_RANK['plus'] && garden.plants.length >= FREE_PLANT_LIMIT) return;
+        if (!garden) return false;
+        if (TIER_RANK[state.userTier] < TIER_RANK['plus'] && garden.plants.length >= FREE_PLANT_LIMIT) return false;
         const updated = { ...garden, plants: [...garden.plants, plant] };
         const count = updated.plants.length;
         const toUnlock: string[] = [];
@@ -214,6 +216,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         if (count >= 50) toUnlock.push('fifty_plants');
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
         set({ ...syncActive(state, updated), unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
+        return true;
       },
 
       removePlant: (plantId) => {
@@ -320,7 +323,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           ten_fertilize: countCompletedTasksByType(updated, 'fertilize') >= 10,
           first_prune: countCompletedTasksByType(updated, 'prune') >= 1,
         };
-        for (const def of BADGE_DEFINITIONS) {
+        for (const def of ACHIEVEMENTS) {
           if (badgeCriteria[def.id]) toUnlock.push(def.id);
         }
 
@@ -583,11 +586,20 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
+        if (!state) return;
         // Migrate old format: single garden → gardens array
-        if (state && state.garden && state.gardens.length === 0) {
+        if (state.garden && state.gardens.length === 0) {
           state.gardens = [state.garden];
           state.activeGardenId = state.garden.id;
         }
+        // Rebuild derived gardenStats from persisted flat fields
+        state.gardenStats = buildGardenStats(
+          state.currentStreak,
+          state.longestStreak,
+          state.totalTasksCompleted,
+          state.lastTaskDate,
+          state.unlockedAchievements,
+        );
       },
     },
   ),

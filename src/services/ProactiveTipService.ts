@@ -54,10 +54,10 @@ export const scheduleDailyTipNotification = async (tip: string): Promise<void> =
         sound: true,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: 10,
         minute: 0,
-        repeats: false,
-      } as Notifications.NotificationTriggerInput,
+      },
     });
   } catch { /* ignore */ }
 };

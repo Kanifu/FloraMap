@@ -58,12 +58,23 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const handleAdd = () => {
     if (!modalCommonName.trim()) return;
+
+    let expiryYear: number | undefined;
+    if (modalExpiryYear.trim()) {
+      const parsed = parseInt(modalExpiryYear, 10);
+      if (!Number.isFinite(parsed) || parsed < CURRENT_YEAR || parsed > CURRENT_YEAR + 50) {
+        Alert.alert('Ongeldig jaar', `Voer een geldig jaar in tussen ${CURRENT_YEAR} en ${CURRENT_YEAR + 50}.`);
+        return;
+      }
+      expiryYear = parsed;
+    }
+
     const packet: SeedPacket = {
       id: newId(),
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
-      expiryYear: modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined,
+      expiryYear,
       amountGrams: modalAmountGrams ? parseFloat(modalAmountGrams) : undefined,
       notes: modalNotes.trim() || undefined,
     };

@@ -10,6 +10,14 @@ const TASK_LABELS: Record<MaintenanceTaskType, string> = {
 
 const toICSDate = (iso: string): string => iso.slice(0, 10).replace(/-/g, '');
 
+/** Escape special characters per RFC 5545 §3.3.11 for TEXT values */
+const escapeICSText = (text: string): string =>
+  text
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+
 export function generateICS(plants: Plant[]): string {
   const events: string[] = [];
 
@@ -23,8 +31,8 @@ export function generateICS(plants: Plant[]): string {
           `UID:floramap-${plant.id}-${task.id}@floramap`,
           `DTSTART;VALUE=DATE:${dateStr}`,
           `DTEND;VALUE=DATE:${dateStr}`,
-          `SUMMARY:${plant.commonName} — ${TASK_LABELS[task.type]}`,
-          task.notes ? `DESCRIPTION:${task.notes}` : '',
+          `SUMMARY:${escapeICSText(plant.commonName)} — ${TASK_LABELS[task.type]}`,
+          task.notes ? `DESCRIPTION:${escapeICSText(task.notes)}` : '',
           'END:VEVENT',
         ]
           .filter(Boolean)

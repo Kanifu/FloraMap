@@ -26,6 +26,7 @@ import { ACHIEVEMENTS } from '@/data/achievements';
 import { plantDatabase, PlantProfile } from '@/data/plantDatabase';
 import { checkCropRotation } from '@/utils/cropRotation';
 import { findOvercrowdedPlants } from '@/utils/plantSpacing';
+import { FREE_PLANT_LIMIT } from '@/constants/tiers';
 import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
@@ -575,7 +576,18 @@ const MapScreen = (): React.JSX.Element => {
       };
       const g = ensureGarden();
       const newPlant = makePlantFromScan(corrected, g.id, x, y);
-      addPlant(newPlant);
+      if (!addPlant(newPlant)) {
+        Alert.alert(
+          'Plantlimiet bereikt',
+          `Je hebt het maximale aantal planten (${FREE_PLANT_LIMIT}) voor het gratis abonnement bereikt. Upgrade om meer planten toe te voegen.`,
+          [
+            { text: 'Sluiten', style: 'cancel' },
+            { text: 'Upgrade bekijken', onPress: () => setShowTierModal(true) },
+          ],
+        );
+        setPlantsToPlace([]);
+        return;
+      }
       // Crop rotation check
       const rotationWarning = checkCropRotation(newPlant, g.plants, rotationHistory);
       if (rotationWarning) {
@@ -666,7 +678,7 @@ const MapScreen = (): React.JSX.Element => {
     const g = ensureGarden();
     const id = newId();
     const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
-    addPlant({
+    const added = addPlant({
       id, gardenId: g.id,
       species: '',
       commonName: modalName.trim(),
@@ -683,7 +695,16 @@ const MapScreen = (): React.JSX.Element => {
       identificationConfidence: 1,
     });
     setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null);
-    
+    if (!added) {
+      Alert.alert(
+        'Plantlimiet bereikt',
+        `Je hebt het maximale aantal planten (${FREE_PLANT_LIMIT}) voor het gratis abonnement bereikt. Upgrade om meer planten toe te voegen.`,
+        [
+          { text: 'Sluiten', style: 'cancel' },
+          { text: 'Upgrade bekijken', onPress: () => setShowTierModal(true) },
+        ],
+      );
+    }
   };
 
   // ── scan ──────────────────────────────────────────────────────────────────

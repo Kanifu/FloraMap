@@ -229,7 +229,11 @@ const PlantCardScreen = (): React.JSX.Element => {
       maintenanceTasks: plant.maintenanceTasks.map((t) => {
         if (t.type === 'water' && !t.completedDate) {
           const days = parseInt(editWater, 10);
-          return days > 0 ? { ...t, intervalDays: days } : t;
+          if (!(days > 0)) return t;
+          const base = new Date(plant.lastMaintenanceDate ?? plant.plantedDate ?? now);
+          const newDue = new Date(base);
+          newDue.setDate(newDue.getDate() + days);
+          return { ...t, intervalDays: days, dueDate: newDue.toISOString() };
         }
         return t;
       }),
@@ -329,6 +333,15 @@ const PlantCardScreen = (): React.JSX.Element => {
     if (!plant) return;
     const wg = harvestWeight ? parseFloat(harvestWeight) : undefined;
     const cnt = harvestCount ? parseInt(harvestCount, 10) : undefined;
+
+    if (harvestWeight.trim() && (wg === undefined || !Number.isFinite(wg) || wg < 0)) {
+      Alert.alert('Ongeldig gewicht', 'Voer een geldig, positief gewicht in gram in.');
+      return;
+    }
+    if (harvestCount.trim() && (cnt === undefined || !Number.isFinite(cnt) || cnt < 0)) {
+      Alert.alert('Ongeldig aantal', 'Voer een geldig, positief aantal in.');
+      return;
+    }
     if (!wg && !cnt) return;
     const entry: HarvestEntry = {
       id: newId(),
