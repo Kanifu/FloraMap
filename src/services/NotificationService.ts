@@ -91,10 +91,9 @@ export const scheduleDailyMaintenanceNotification = async (
       sound: true,
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: 8,
       minute: 0,
-      repeats: true,
     },
   });
 };

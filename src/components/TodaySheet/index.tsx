@@ -42,7 +42,7 @@ export const TodaySheet = ({
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
         if (!task.completedDate && task.dueDate <= now) {
-          items.push({ plant, task, isOverdue: task.dueDate < now.slice(0, 10) });
+          items.push({ plant, task, isOverdue: task.dueDate.slice(0, 10) < now.slice(0, 10) });
         }
       }
     }

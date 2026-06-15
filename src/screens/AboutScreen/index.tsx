@@ -62,6 +62,29 @@ const DEVELOPER_LINKS = [
   { label: '✉️ jordyzinkstok@gmail.com', url: 'mailto:jordyzinkstok@gmail.com' },
 ];
 
+/** Field-level validation for an imported backup, to avoid feeding corrupt data into the store */
+const isValidGardenBackup = (g: unknown): g is Garden => {
+  if (!g || typeof g !== 'object') return false;
+  const garden = g as Record<string, unknown>;
+  if (typeof garden.id !== 'string' || typeof garden.userId !== 'string' || typeof garden.name !== 'string') return false;
+  if (!Array.isArray(garden.polygons) || !Array.isArray(garden.plants)) return false;
+  return (garden.plants as unknown[]).every((p) => {
+    if (!p || typeof p !== 'object') return false;
+    const plant = p as Record<string, unknown>;
+    return (
+      typeof plant.id === 'string' &&
+      typeof plant.gardenId === 'string' &&
+      typeof plant.species === 'string' &&
+      typeof plant.commonName === 'string' &&
+      typeof plant.x === 'number' &&
+      typeof plant.y === 'number' &&
+      typeof plant.z === 'number' &&
+      Array.isArray(plant.maintenanceTasks) &&
+      typeof plant.identificationConfidence === 'number'
+    );
+  });
+};
+
 const LINKS = [
   { label: '🔒 Privacybeleid', url: 'https://kanifu.github.io/floramap-web/privacy-policy.html' },
   { label: '🌐 Open-Meteo weer API', url: 'https://open-meteo.com' },
@@ -251,12 +274,13 @@ const AboutScreen = (): React.JSX.Element => {
       const raw = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
       const parsed = JSON.parse(raw);
 
-      // Basic validation
-      const importedGarden: Garden = parsed.garden ?? parsed;
-      if (!importedGarden.id || !Array.isArray(importedGarden.plants)) {
+      // Field-level validation
+      const candidate = parsed.garden ?? parsed;
+      if (!isValidGardenBackup(candidate)) {
         Alert.alert('Ongeldig bestand', 'Dit bestand bevat geen geldige FloraMap-data.');
         return;
       }
+      const importedGarden = candidate;
 
       Alert.alert(
         'Backup importeren',
@@ -267,8 +291,12 @@ const AboutScreen = (): React.JSX.Element => {
             text: 'Importeren',
             style: 'destructive',
             onPress: () => {
-              setGarden(importedGarden);
-              Alert.alert('Gelukt! 🌿', 'Je tuin is hersteld vanuit de backup.');
+              try {
+                setGarden(importedGarden);
+                Alert.alert('Gelukt! 🌿', 'Je tuin is hersteld vanuit de backup.');
+              } catch {
+                Alert.alert('Importeren mislukt', 'Kon de backup niet toepassen.');
+              }
             },
           },
         ],
@@ -346,20 +374,24 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* Dev-only tier switcher */}
+            {__DEV__ && (
+              <>
+                <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+                <View style={styles.tierDebugRow}>
+                  {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                      onPress={() => setUserTier(t)}>
+                      <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         </View>
 

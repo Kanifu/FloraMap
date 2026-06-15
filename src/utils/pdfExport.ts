@@ -13,8 +13,9 @@ const formatDate = (iso?: string): string => {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-const escapHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const plantRows = (plants: Plant[]): string =>
   plants.map((p) => {
@@ -22,15 +23,15 @@ const plantRows = (plants: Plant[]): string =>
     const nextTask = tasks.sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
     return `
     <tr>
-      <td><strong>${escapHtml(p.commonName)}</strong></td>
-      <td><em>${escapHtml(p.species)}</em></td>
+      <td><strong>${escapeHtml(p.commonName)}</strong></td>
+      <td><em>${escapeHtml(p.species)}</em></td>
       <td>${formatDate(p.plantedDate)}</td>
       <td>${nextTask ? `${TASK_ICONS[nextTask.type]} ${TASK_LABELS[nextTask.type]} — ${formatDate(nextTask.dueDate)}` : '✅ Geen taken'}</td>
     </tr>`;
   }).join('');
 
 const taskRows = (garden: Garden): string => {
-  const now = new Date().toISOString();
+  const today = new Date().toISOString().slice(0, 10);
   const rows: { plant: Plant; task: MaintenanceTask }[] = [];
   for (const plant of garden.plants) {
     for (const task of plant.maintenanceTasks) {
@@ -39,13 +40,13 @@ const taskRows = (garden: Garden): string => {
   }
   rows.sort((a, b) => a.task.dueDate.localeCompare(b.task.dueDate));
   return rows.slice(0, 30).map(({ plant, task }) => {
-    const isOverdue = task.dueDate < now;
+    const isOverdue = task.dueDate.slice(0, 10) < today;
     return `
     <tr${isOverdue ? ' class="overdue"' : ''}>
       <td>${TASK_ICONS[task.type]} ${TASK_LABELS[task.type]}</td>
-      <td>${escapHtml(plant.commonName)}</td>
+      <td>${escapeHtml(plant.commonName)}</td>
       <td>${formatDate(task.dueDate)}${isOverdue ? ' ⚠️' : ''}</td>
-      <td>${task.notes ? escapHtml(task.notes) : '—'}</td>
+      <td>${task.notes ? escapeHtml(task.notes) : '—'}</td>
     </tr>`;
   }).join('');
 };
@@ -59,7 +60,7 @@ export const generateGardenHTML = (garden: Garden, appVersion: string): string =
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FloraMap — ${escapHtml(garden.name)}</title>
+  <title>FloraMap — ${escapeHtml(garden.name)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, Arial, sans-serif; font-size: 13px; color: #1a1a1a; padding: 24px; line-height: 1.5; }
@@ -82,7 +83,7 @@ export const generateGardenHTML = (garden: Garden, appVersion: string): string =
   </style>
 </head>
 <body>
-  <h1>🌿 FloraMap — ${escapHtml(garden.name)}</h1>
+  <h1>🌿 FloraMap — ${escapeHtml(garden.name)}</h1>
   <p class="meta">Geëxporteerd op ${exportDate} · Versie ${appVersion}</p>
 
   <div class="stats">
@@ -113,11 +114,11 @@ export const generateGardenHTML = (garden: Garden, appVersion: string): string =
     <tbody>
     ${garden.soilProfiles!.map((sp) => `
       <tr>
-        <td><strong>${escapHtml(sp.zoneName)}</strong></td>
+        <td><strong>${escapeHtml(sp.zoneName)}</strong></td>
         <td>${sp.ph?.toFixed(1) ?? '—'}</td>
         <td>${sp.soilType ?? '—'}</td>
         <td>${formatDate(sp.lastTestedDate)}</td>
-        <td>${sp.amendments.length > 0 ? sp.amendments.slice(-2).map((a) => escapHtml(a.type)).join(', ') : '—'}</td>
+        <td>${sp.amendments.length > 0 ? sp.amendments.slice(-2).map((a) => escapeHtml(a.type)).join(', ') : '—'}</td>
       </tr>`).join('')}
     </tbody>
   </table>` : ''}

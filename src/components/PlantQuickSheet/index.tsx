@@ -49,12 +49,14 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
     if (!plant) return;
     const newName = editName.trim() || plant.commonName;
     const newSpecies = editSpecies.trim() || plant.species;
+    const speciesChanged = editSpecies.trim().length > 0
+      && editSpecies.trim().toLowerCase() !== (plant.species ?? '').toLowerCase();
 
-    // Look up in database to refresh care data
-    const match = plantDatabase.find((p) =>
-      p.commonName.toLowerCase() === newName.toLowerCase() ||
-      p.species.toLowerCase() === newSpecies.toLowerCase()
-    );
+    // Look up in database to refresh care data. Match on the corrected name first;
+    // only fall back to a species match if the user deliberately edited the species,
+    // otherwise a stale species value could pull in care data for an unrelated plant.
+    const match = plantDatabase.find((p) => p.commonName.toLowerCase() === newName.toLowerCase())
+      ?? (speciesChanged ? plantDatabase.find((p) => p.species.toLowerCase() === newSpecies.toLowerCase()) : undefined);
 
     setIsEditingName(false);
 
@@ -92,12 +94,11 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
 
   if (!plant) return null;
 
-  const now = new Date().toISOString();
+  const todayStr = new Date().toISOString().slice(0, 10);
   const activeTasks = plant.maintenanceTasks
     .filter((t) => !t.completedDate)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
-  const todayStr = new Date().toISOString().slice(0, 10);
   const lastDoneToday = plant.maintenanceTasks.some(
     (t) => t.completedDate?.slice(0, 10) === todayStr
   );
@@ -166,7 +167,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
               </View>
             ) : (
               activeTasks.slice(0, 4).map((task) => {
-                const isOverdue = task.dueDate < now;
+                const isOverdue = task.dueDate.slice(0, 10) < todayStr;
                 const isWaterInRain = task.type === 'water' && weatherRainExpected;
                 return (
                   <TouchableOpacity

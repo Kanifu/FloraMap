@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line, ClipPath, Image as SvgImage } from 'react-native-svg';
-import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary } from '@/models';
+import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary, PlantStatus } from '@/models';
 import { CompanionPair } from '@/data/companionPlanting';
 
 export const CELL_CM    = 30;
@@ -100,7 +100,7 @@ interface GardenMapProps {
   showCompanionOverlay?: boolean;
   thirstyPlantIds?: string[];
   plantStatuses?: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'>;
-  plantStatusMap?: unknown;
+  plantStatusMap?: Map<string, PlantStatus>;
   boundaries?: GardenBoundary[];
   showNames?: boolean;
   renderScale?: number;
@@ -133,6 +133,7 @@ const GardenMapBase = ({
   showCompanionOverlay = false,
   thirstyPlantIds = [],
   plantStatuses = {},
+  plantStatusMap,
   boundaries = [],
   showNames = true,
   renderScale = 1,
@@ -171,6 +172,20 @@ const GardenMapBase = ({
   };
 
   const thirstySet = new Set(thirstyPlantIds);
+
+  // ── SPEC2 §3.2: per-plant action badge (water/fertilize/prune/harvest/overdue) ──
+  const getBadge = (plantId: string): { emoji: string; color: string } | null => {
+    const s = plantStatusMap?.get(plantId);
+    if (!s) return null;
+
+    if (s.overdueCount >= 2) return { emoji: `${s.overdueCount}`, color: '#e63946' };
+    if (s.needsWater) return { emoji: '💧', color: '#3a86ff' };
+    if (s.needsFertilize) return { emoji: '🌱', color: '#2d6a4f' };
+    if (s.needsPrune) return { emoji: '✂', color: '#6b705c' };
+    if (s.harvestReady) return { emoji: '🍓', color: '#ffb703' };
+
+    return null;
+  };
 
   return (
     <Pressable onPress={isInteractive ? handleBgTap : undefined}
@@ -431,6 +446,24 @@ const GardenMapBase = ({
                   </>
                 )}
 
+                {/* Status badge (SPEC2 §3.2b) */}
+                {(() => {
+                  const badge = getBadge(plant.id);
+                  if (!badge) return null;
+
+                  const bx = zLeft + zW - 10;
+                  const by = zTop + 10;
+
+                  return (
+                    <G key={`badge-${plant.id}`}>
+                      <Circle cx={bx} cy={by} r={11} fill={badge.color} />
+                      <SvgText x={bx} y={by + 4} textAnchor="middle" fontSize={10} fill="#fff" fontWeight="700">
+                        {badge.emoji}
+                      </SvgText>
+                    </G>
+                  );
+                })()}
+
                 {/* Scan photo badge top-right */}
                 {plant.imageUri && (
                   <G>
@@ -513,6 +546,24 @@ const GardenMapBase = ({
                   {emoji}
                 </SvgText>
               )}
+
+              {/* Status badge (SPEC2 §3.2b) */}
+              {(() => {
+                const badge = getBadge(plant.id);
+                if (!badge) return null;
+
+                const bx = cx + 14;
+                const by = cy - 14;
+
+                return (
+                  <G key={`badge-${plant.id}`}>
+                    <Circle cx={bx} cy={by} r={9} fill={badge.color} />
+                    <SvgText x={bx} y={by + 4} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="700">
+                      {badge.emoji}
+                    </SvgText>
+                  </G>
+                );
+              })()}
 
               {/* Plant name */}
               {showNames && (

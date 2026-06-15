@@ -20,6 +20,7 @@ import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, creat
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 interface Message {
@@ -96,6 +97,7 @@ const AssistantScreen = (): React.JSX.Element => {
   const [addedTaskKeys, setAddedTaskKeys] = useState<Set<string>>(new Set());
   const [dailyTip, setDailyTip] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   const garden = useGardenStore((s) => s.garden);
@@ -202,7 +204,11 @@ const AssistantScreen = (): React.JSX.Element => {
       if (addedPlantKeys.has(key)) return;
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
-      addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length));
+      const added = addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length));
+      if (!added) {
+        setShowUpgradeModal(true);
+        return;
+      }
       setAddedPlantKeys((prev) => new Set([...prev, key]));
     },
     [garden, setGarden, addPlant, addedPlantKeys],
@@ -212,12 +218,18 @@ const AssistantScreen = (): React.JSX.Element => {
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      let limitReached = false;
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
         if (addedPlantKeys.has(key)) return;
-        addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
+        const added = addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
+        if (!added) {
+          limitReached = true;
+          return;
+        }
         setAddedPlantKeys((prev) => new Set([...prev, key]));
       });
+      if (limitReached) setShowUpgradeModal(true);
     },
     [garden, setGarden, addPlant, addedPlantKeys],
   );
@@ -365,6 +377,13 @@ const AssistantScreen = (): React.JSX.Element => {
         </TouchableOpacity>
       </View>
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
+      <UpgradeModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureLabel="Plantlimiet bereikt"
+        featureDescription="Je hebt het maximale aantal planten voor het gratis abonnement bereikt. Upgrade om onbeperkt planten toe te voegen."
+        requiredTier="plus"
+      />
 
       <FlatList
         ref={listRef}
