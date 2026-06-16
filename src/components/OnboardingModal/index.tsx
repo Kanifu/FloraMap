@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
@@ -40,6 +40,8 @@ const EXPERIENCE_OPTIONS: { key: Experience; emoji: string; label: string }[] = 
   { key: 'expert',    emoji: '🌳', label: 'Expert' },
 ];
 
+const ONBOARDING_PROGRESS_KEY = 'floramap_onboarding_progress';
+
 export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   const [step, setStep] = useState(0);
   const [locationGranted, setLocationGranted] = useState(false);
@@ -49,6 +51,34 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
 
   const totalSteps = 7;
   const isLast = step === totalSteps - 1;
+
+  // Restore progress when modal opens so users can resume a mid-flow interruption (#139)
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem(ONBOARDING_PROGRESS_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (typeof saved.step === 'number' && saved.step > 0) setStep(saved.step);
+        if (Array.isArray(saved.selectedTypes)) setSelectedTypes(saved.selectedTypes);
+        if (saved.experience) setExperience(saved.experience as Experience);
+        if (typeof saved.sizeIndex === 'number') {
+          setSelectedSize(SIZE_PRESETS[saved.sizeIndex] ?? SIZE_PRESETS[2]);
+        }
+      } catch { /* corrupt data — ignore and start fresh */ }
+    });
+  }, [visible]);
+
+  const persistProgress = (newStep: number, overrides?: {
+    types?: GardenType[]; exp?: Experience | null; sizeIndex?: number;
+  }) => {
+    AsyncStorage.setItem(ONBOARDING_PROGRESS_KEY, JSON.stringify({
+      step: newStep,
+      selectedTypes: overrides?.types ?? selectedTypes,
+      experience: overrides?.exp !== undefined ? overrides.exp : experience,
+      sizeIndex: overrides?.sizeIndex ?? SIZE_PRESETS.indexOf(selectedSize),
+    }));
+  };
 
   const handleLocationRequest = async () => {
     try {
@@ -61,6 +91,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       // locatie is optioneel — stil doorgaan
     }
     setStep(2);
+    persistProgress(2);
   };
 
   const toggleGardenType = (type: GardenType) => {
@@ -74,11 +105,13 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       // Stap 2 navigatie via locationRequest of skip
       await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(2);
+      persistProgress(2);
       return;
     }
     if (step === 2) {
       await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(3);
+      persistProgress(3);
       return;
     }
     if (step === 3) {
@@ -86,10 +119,12 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
         await AsyncStorage.setItem('floramap_experience', experience);
       }
       setStep(4);
+      persistProgress(4);
       return;
     }
     if (isLast) {
       setStep(0);
+      AsyncStorage.removeItem(ONBOARDING_PROGRESS_KEY);
       const gardenType = selectedTypes[0] ?? 'moestuin';
       const gardenName = gardenType === 'balkon' ? 'Mijn balkon'
         : gardenType === 'siertuin' ? 'Mijn siertuin'
@@ -99,11 +134,17 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       onDone({ gridCols: selectedSize.cols, gridRows: selectedSize.rows, gardenName });
       return;
     }
-    setStep((n) => n + 1);
+    const next = step + 1;
+    setStep(next);
+    persistProgress(next);
   };
 
   const handleBack = () => {
-    if (step > 0) setStep((n) => n - 1);
+    if (step > 0) {
+      const prev = step - 1;
+      setStep(prev);
+      persistProgress(prev);
+    }
   };
 
   const renderStep = () => {

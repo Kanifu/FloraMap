@@ -139,20 +139,6 @@ export const ZONE_COLORS = [
   '#a8dadc', '#e9c46a', '#c9b1ff', '#ffd6e0',
 ];
 
-/** @deprecated Zones are represented as Plants with width/height > 1. This interface is unused. */
-export interface PlantZone {
-  id: string;
-  gardenId: string;
-  commonName: string;
-  species?: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  careTips?: string[];
-  notes?: string;
-}
 
 export type BoundaryType =
   | 'fence'       // 🪵 Schutting
@@ -181,8 +167,6 @@ export interface Garden {
   gridRows?: number;  // default 25
   polygons: GardenPolygon[];
   plants: Plant[];
-  /** @deprecated Use Plants with width/height > 1 instead */
-  zones?: PlantZone[];
   tasks?: GardenTask[];
   boundaries?: GardenBoundary[];
   lastScannedAt?: string;

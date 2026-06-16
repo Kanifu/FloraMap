@@ -109,7 +109,7 @@ export function TierComparisonModal({ visible, onClose }: Props): React.JSX.Elem
 
           <View style={s.footer}>
             <Text style={s.footerNote}>
-              Upgrades zijn beschikbaar via de instellingen. Neem contact op voor meer informatie.
+              Upgrade-opties zijn binnenkort beschikbaar. Meer informatie volgt.
             </Text>
             <TouchableOpacity style={s.closeBtn} onPress={onClose} activeOpacity={0.85}>
               <Text style={s.closeBtnText}>Sluiten</Text>
