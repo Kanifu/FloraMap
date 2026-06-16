@@ -360,7 +360,7 @@ const AssistantScreen = (): React.JSX.Element => {
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityLabel="Stuur een bugmelding" accessibilityRole="button">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
@@ -403,7 +403,7 @@ const AssistantScreen = (): React.JSX.Element => {
         <View style={styles.pendingImageRow}>
           <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
           <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
+          <TouchableOpacity onPress={() => setPendingImage(null)} accessibilityLabel="Foto verwijderen" accessibilityRole="button">
             <Text style={styles.removePending}>✕</Text>
           </TouchableOpacity>
         </View>
@@ -411,10 +411,10 @@ const AssistantScreen = (): React.JSX.Element => {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage} accessibilityLabel="Camera openen" accessibilityRole="button">
             <Text style={styles.iconButtonText}>📷</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery} accessibilityLabel="Foto uit galerij kiezen" accessibilityRole="button">
             <Text style={styles.iconButtonText}>🖼️</Text>
           </TouchableOpacity>
           <TextInput
@@ -430,7 +430,9 @@ const AssistantScreen = (): React.JSX.Element => {
           <TouchableOpacity
             style={[styles.sendButton, (!inputText.trim() && !pendingImage) && styles.sendButtonDisabled]}
             onPress={handleSend}
-            disabled={isLoading || (!inputText.trim() && !pendingImage)}>
+            disabled={isLoading || (!inputText.trim() && !pendingImage)}
+            accessibilityLabel="Bericht verzenden"
+            accessibilityRole="button">
             <Text style={styles.sendButtonText}>↑</Text>
           </TouchableOpacity>
         </View>

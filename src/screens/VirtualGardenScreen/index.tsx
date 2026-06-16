@@ -72,7 +72,8 @@ const VirtualGardenScreen = (): React.JSX.Element => {
   const garden              = useGardenStore((s) => s.garden);
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
 
-  const drops = totalTasksCompleted * 2 + currentStreak;
+  // Drops are purely cumulative (task completions only) — streak is shown separately (#140 item 6)
+  const drops = totalTasksCompleted * 2;
 
   const phaseIndex = GROWTH_PHASES.reduce(
     (best, phase, i) => (totalTasksCompleted >= phase.taskThreshold ? i : best),

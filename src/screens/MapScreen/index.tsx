@@ -318,6 +318,7 @@ const MapScreen = (): React.JSX.Element => {
   // Plant search state
   const [showPlantSearch,     setShowPlantSearch]     = useState(false);
   const [plantSearchQuery,    setPlantSearchQuery]    = useState('');
+  const [gardenSwitchToast,   setGardenSwitchToast]  = useState<string | null>(null);
 
   // Boundary state
   const [fabMode,             setFabMode]             = useState<FabMode>('idle');
@@ -637,10 +638,20 @@ const MapScreen = (): React.JSX.Element => {
       `Wil je "${garden.name}" definitief verwijderen? Dit kan niet ongedaan worden gemaakt.`,
       [
         { text: 'Annuleren', style: 'cancel' },
-        { text: 'Verwijderen', style: 'destructive', onPress: () => deleteGarden(garden.id) },
+        {
+          text: 'Verwijderen', style: 'destructive', onPress: () => {
+            const remaining = gardens.filter((g) => g.id !== garden.id);
+            deleteGarden(garden.id);
+            const next = remaining[remaining.length - 1];
+            if (next) {
+              setGardenSwitchToast(`"${next.name}" is nu actief`);
+              setTimeout(() => setGardenSwitchToast(null), 3000);
+            }
+          },
+        },
       ],
     );
-  }, [garden, deleteGarden]);
+  }, [garden, gardens, deleteGarden]);
 
   const handleClearGarden = useCallback(() => {
     Alert.alert(
@@ -1546,12 +1557,25 @@ const MapScreen = (): React.JSX.Element => {
         onClose={() => setDatePlant(null)}
         onSave={(updated) => { updatePlant(updated); setDatePlant(null); }}
       />
+
+      {/* Garden-switch confirmation toast (#140 item 8) */}
+      {gardenSwitchToast !== null && (
+        <View style={styles.gardenSwitchToast} pointerEvents="none">
+          <Text style={styles.gardenSwitchToastText}>{gardenSwitchToast}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  gardenSwitchToast: {
+    position: 'absolute', bottom: 90, alignSelf: 'center',
+    backgroundColor: 'rgba(27,67,50,0.92)', paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 20,
+  },
+  gardenSwitchToastText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   // Empty-state overlay (map is always shown underneath)
   emptyOverlay: {
     ...StyleSheet.absoluteFillObject,
