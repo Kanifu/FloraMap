@@ -54,7 +54,7 @@ export const plantDatabase: PlantProfile[] = [
     careTips: [
       'Neemt veel ruimte in; plant met minimaal 1 meter tussenruimte.',
       'Oogst klein (15-20 cm) voor de lekkerste smaak.',
-      'Goede drainagenodig om wortelrot te voorkomen.',
+      'Goede drainage nodig om wortelrot te voorkomen.',
     ],
   },
   {
@@ -1591,7 +1591,7 @@ export const plantDatabase: PlantProfile[] = [
     fertilizeIntervalDays: 30,
     harvestMonths: [5, 6, 7, 8, 9],
     sowMonths: [4, 5, 6],
-    plantFamily: 'Postelein famile',
+    plantFamily: 'Postelein familie',
     estimatedSizeM: 0.2,
     careTips: [
       'Snelgroeiende saladeplant voor warme maanden.',
@@ -2045,7 +2045,7 @@ export const plantDatabase: PlantProfile[] = [
     fertilizeIntervalDays: 21,
     harvestMonths: [7, 8, 9],
     sowMonths: [3, 4],
-    plantFamily: 'Vlambloem famile',
+    plantFamily: 'Vlambloem familie',
     estimatedSizeM: 0.8,
     careTips: [
       'Vaste plant met geurende bloemen.',
@@ -2157,7 +2157,7 @@ export const plantDatabase: PlantProfile[] = [
     fertilizeIntervalDays: 30,
     harvestMonths: [5, 6, 7, 8],
     sowMonths: [3, 4],
-    plantFamily: 'Ooievaarsbek famile',
+    plantFamily: 'Ooievaarsbek familie',
     estimatedSizeM: 0.6,
     careTips: [
       'Robuuste vaste plant voor halfschaduw tot zon.',
@@ -2205,7 +2205,7 @@ export const plantDatabase: PlantProfile[] = [
     fertilizeIntervalDays: 30,
     harvestMonths: [6, 7, 8, 9],
     sowMonths: [3, 4],
-    plantFamily: 'Kaardebol famile',
+    plantFamily: 'Kaardebol familie',
     estimatedSizeM: 0.5,
     careTips: [
       'Uitstekende vlinder- en bijenplant.',

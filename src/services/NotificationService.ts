@@ -21,7 +21,12 @@ export const scheduleDailyMaintenanceNotification = async (
   garden: Garden | null,
   weatherData?: { rainExpected: boolean; droughtDays: number; tempMax: number },
 ): Promise<void> => {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of scheduled) {
+    if (n.identifier.startsWith('daily-maint')) {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    }
+  }
   if (!garden) return;
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -85,6 +90,7 @@ export const scheduleDailyMaintenanceNotification = async (
   if (!body) return;
 
   await Notifications.scheduleNotificationAsync({
+    identifier: 'daily-maint',
     content: {
       title: '🌿 FloraMap — Tuin update',
       body,

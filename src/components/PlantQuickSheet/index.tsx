@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
   ScrollView, Pressable, TextInput,
@@ -32,6 +32,8 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName,      setEditName]      = useState('');
   const [editSpecies,   setEditSpecies]   = useState('');
+
+  useEffect(() => { setIsEditingName(false); }, [plant?.id]);
 
   const handleComplete = useCallback((taskId: string) => {
     if (!plant) return;

@@ -57,6 +57,8 @@ export interface HarvestEntry {
   id: string;
   date: string;           // ISO 8601
   amountGrams?: number;
+  weightG?: number;
+  count?: number;
   notes?: string;
 }
 
@@ -107,13 +109,6 @@ export interface GardenTask {
   plantName?: string;
 }
 
-export interface HarvestEntry {
-  id: string;
-  date: string;
-  weightG?: number;
-  count?: number;
-  notes?: string;
-}
 
 export type SoilType = 'clay' | 'loam' | 'sand' | 'peat';
 

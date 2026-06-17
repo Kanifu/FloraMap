@@ -53,7 +53,7 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps): React.J
       body:   issueBody,
     });
     const url = `https://github.com/kanifu/floramap/issues/new?${params.toString()}`;
-    Linking.openURL(url).then(() => setSubmitted(true));
+    Linking.openURL(url).then(() => setSubmitted(true)).catch(() => Alert.alert('Fout', 'Kon de browser niet openen.'));
   };
 
   const styles = StyleSheet.create({
