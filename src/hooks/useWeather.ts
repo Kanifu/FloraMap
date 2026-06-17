@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { getCachedLocation } from '@/utils/location';
 
 export interface DailyForecast {
@@ -26,9 +26,10 @@ export const EMPTY_WEATHER: WeatherData = {
   weatherEmoji: '🌡️', dailyForecast: [],
 };
 
-const CACHE_MS = 15 * 60 * 1000; // 15 minutes (refresh more often for accuracy)
+const CACHE_MS = 15 * 60 * 1000;
 let cachedData: WeatherData | null = null;
 let cachedAt = 0;
+let inflight: Promise<WeatherData> | null = null;
 
 export const weatherCodeToEmoji = (code: number): string => {
   if (code === 0) return '☀️';
@@ -120,17 +121,21 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
   }
 };
 
-/** Hook that fetches weather once on mount, cached 30 min across components */
+/** Hook that fetches weather once on mount, cached across components */
 export const useWeather = (): WeatherData => {
   const [weather, setWeather] = useState<WeatherData>(
     cachedData && Date.now() - cachedAt < CACHE_MS ? cachedData : EMPTY_WEATHER
   );
-  const fetched = useRef(false);
 
   useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
-    fetchWeatherData().then(setWeather);
+    if (cachedData && Date.now() - cachedAt < CACHE_MS) {
+      setWeather(cachedData);
+      return;
+    }
+    if (!inflight) {
+      inflight = fetchWeatherData().finally(() => { inflight = null; });
+    }
+    inflight.then(setWeather);
   }, []);
 
   return weather;

@@ -375,50 +375,50 @@ const AssistantScreen = (): React.JSX.Element => {
       </View>
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
 
-      <FlatList
-        ref={listRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messageList}
-        ListHeaderComponent={
-          dailyTip ? (
-            <View style={styles.tipCard}>
-              <Text style={styles.tipTitle}>💡 Tip van de dag</Text>
-              <Text style={styles.tipBody}>{dailyTip}</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+        <FlatList
+          ref={listRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messageList}
+          ListHeaderComponent={
+            dailyTip ? (
+              <View style={styles.tipCard}>
+                <Text style={styles.tipTitle}>💡 Tip van de dag</Text>
+                <Text style={styles.tipBody}>{dailyTip}</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🌱</Text>
+              <Text style={styles.emptyTitle}>Stel een vraag of scan een plant</Text>
+              <Text style={styles.emptySubtitle}>
+                Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
+              </Text>
+              <View style={styles.emptyButtons}>
+                <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
+                  <Text style={styles.emptyButtonText}>📷 Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
+                  <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🌱</Text>
-            <Text style={styles.emptyTitle}>Stel een vraag of scan een plant</Text>
-            <Text style={styles.emptySubtitle}>
-              Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
-            </Text>
-            <View style={styles.emptyButtons}>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
-                <Text style={styles.emptyButtonText}>📷 Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
-                <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
-              </TouchableOpacity>
-            </View>
+          }
+        />
+
+        {pendingImage && (
+          <View style={styles.pendingImageRow}>
+            <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
+            <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
+            <TouchableOpacity onPress={() => setPendingImage(null)}>
+              <Text style={styles.removePending}>✕</Text>
+            </TouchableOpacity>
           </View>
-        }
-      />
+        )}
 
-      {pendingImage && (
-        <View style={styles.pendingImageRow}>
-          <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
-          <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
-            <Text style={styles.removePending}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputRow}>
           <TouchableOpacity style={styles.iconButton} onPress={handlePickImage} accessibilityLabel="Camera openen" accessibilityRole="button">
             <Text style={styles.iconButtonText}>📷</Text>

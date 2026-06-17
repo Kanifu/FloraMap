@@ -79,7 +79,6 @@ interface GardenActions {
   setUserTier: (tier: Tier) => void;
   // Compatibility shim for MaintenanceScreen (main branch pattern)
   recordTaskCompletion: () => void;
-  gardenStats: GardenStats;
 }
 
 /** Build the compat gardenStats object from flat fields + unlocked achievements */

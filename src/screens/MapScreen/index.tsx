@@ -71,25 +71,27 @@ const makeGardenTaskFromAssistant = (task: AssistantTask): GardenTask => ({
   dueDate: new Date(Date.now() + (urgencyDays[task.urgency] ?? 3) * 86_400_000).toISOString(),
 });
 
+const taskId = (suffix: string) => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${suffix}`;
+
 const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] => {
   switch (type) {
     case 'seed':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water',    dueDate: addDays(1),  intervalDays: 2 },
-        { id: `${Date.now()}-r`, plantId, type: 'repot',    dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
+        { id: taskId('w'), plantId, type: 'water',    dueDate: addDays(1),  intervalDays: 2 },
+        { id: taskId('r'), plantId, type: 'repot',    dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
       ];
     case 'seedling':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(2), intervalDays: 3 },
-        { id: `${Date.now()}-r`, plantId, type: 'repot', dueDate: addDays(21), notes: 'Verplant naar buiten' },
+        { id: taskId('w'), plantId, type: 'water', dueDate: addDays(2), intervalDays: 3 },
+        { id: taskId('r'), plantId, type: 'repot', dueDate: addDays(21), notes: 'Verplant naar buiten' },
       ];
     case 'cutting':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(1),  intervalDays: 2 },
-        { id: `${Date.now()}-t`, plantId, type: 'treat', dueDate: addDays(14), notes: 'Controleer beworteling' },
+        { id: taskId('w'), plantId, type: 'water', dueDate: addDays(1),  intervalDays: 2 },
+        { id: taskId('t'), plantId, type: 'treat', dueDate: addDays(14), notes: 'Controleer beworteling' },
       ];
     default:
-      return [{ id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(7), intervalDays: 7 }];
+      return [{ id: taskId('w'), plantId, type: 'water', dueDate: addDays(7), intervalDays: 7 }];
   }
 };
 
