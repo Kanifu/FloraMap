@@ -345,12 +345,13 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const plant = garden?.plants.find((p) => p.id === plantId);
     const task  = plant?.maintenanceTasks.find((t) => t.id === taskId);
     completeMaintenanceTask(plantId, taskId);
+    recordTaskCompletion();
     if (task?.intervalDays) {
       const msg = `✓ ${TASK_LABELS[task.type]} klaar · volgende beurt over ${task.intervalDays} dagen`;
       setToast(msg);
       setTimeout(() => setToast(null), 3000);
     }
-  }, [completeMaintenanceTask, garden]);
+  }, [completeMaintenanceTask, recordTaskCompletion, garden]);
 
   const handleGardenTaskComplete = useCallback((taskId: string) => {
     completeGardenTask(taskId);

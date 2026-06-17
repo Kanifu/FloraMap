@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ONBOARDING_STEP_KEY = 'floramap_onboarding_step';
 
 export interface OnboardingResult {
   gridCols: number;
@@ -50,6 +52,20 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   const totalSteps = 7;
   const isLast = step === totalSteps - 1;
 
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem(ONBOARDING_STEP_KEY).then((val) => {
+      if (val) {
+        const saved = parseInt(val, 10);
+        if (saved > 0 && saved < totalSteps) setStep(saved);
+      }
+    });
+  }, [visible]);
+
+  useEffect(() => {
+    if (step > 0) AsyncStorage.setItem(ONBOARDING_STEP_KEY, String(step));
+  }, [step]);
+
   const handleLocationRequest = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -90,6 +106,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
     }
     if (isLast) {
       setStep(0);
+      AsyncStorage.removeItem(ONBOARDING_STEP_KEY);
       const gardenType = selectedTypes[0] ?? 'moestuin';
       const gardenName = gardenType === 'balkon' ? 'Mijn balkon'
         : gardenType === 'siertuin' ? 'Mijn siertuin'
