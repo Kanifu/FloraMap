@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Pressable } from 'react-native';
 import Svg, { Polygon, Circle, G, Text as SvgText, Rect, Path, Defs, Pattern, Line, ClipPath, Image as SvgImage } from 'react-native-svg';
 import { Garden, Plant, GardenPolygon, GardenPolygonType, GardenBoundary } from '@/models';
@@ -155,6 +155,7 @@ const GardenMapBase = ({
   const cancelLP = () => {
     if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; }
   };
+  useEffect(() => () => cancelLP(), []);
   const handlePlantTap = (plant: Plant) => {
     cancelLP();
     if (!lpFired.current && !isInteractive) onPlantPress(plant);

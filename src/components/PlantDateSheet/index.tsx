@@ -38,11 +38,7 @@ const addDays = (d: Date, n: number): Date => {
   return r;
 };
 
-const toDateInput = (iso: string): string => iso.slice(0, 10);
-const fromDateInput = (dateStr: string): string => new Date(dateStr).toISOString();
-
 export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): React.JSX.Element | null {
-  const now = new Date();
   const [customDate, setCustomDate] = useState('');
   const [showCustom, setShowCustom] = useState(false);
   const [dateError, setDateError] = useState('');
@@ -54,7 +50,7 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
     : 'Onbekend';
 
   const handleQuickSelect = (days: number) => {
-    const date = addDays(now, days);
+    const date = addDays(new Date(), days);
     const updated = { ...plant, plantedDate: date.toISOString(), maintenanceTasks: recalculateTasks(plant, date.toISOString()) };
     onSave(updated);
     onClose();
@@ -62,8 +58,12 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
 
   const handleCustomSave = () => {
     if (!customDate) { setDateError('Voer een datum in.'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(customDate.trim())) {
+      setDateError('Gebruik formaat JJJJ-MM-DD (bijv. 2026-06-17).');
+      return;
+    }
     try {
-      const parsed = new Date(customDate);
+      const parsed = new Date(customDate.trim() + 'T12:00:00');
       if (isNaN(parsed.getTime())) throw new Error('invalid');
       const iso = parsed.toISOString();
       setDateError('');
@@ -93,7 +93,7 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
                 activeOpacity={0.8}>
                 <Text style={s.optionLabel}>{label}</Text>
                 <Text style={s.optionDate}>
-                  {addDays(now, days).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                  {addDays(new Date(), days).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
                 </Text>
               </TouchableOpacity>
             ))}

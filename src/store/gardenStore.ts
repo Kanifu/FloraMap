@@ -79,7 +79,6 @@ interface GardenActions {
   setUserTier: (tier: Tier) => void;
   // Compatibility shim for MaintenanceScreen (main branch pattern)
   recordTaskCompletion: () => void;
-  gardenStats: GardenStats;
 }
 
 /** Build the compat gardenStats object from flat fields + unlocked achievements */
@@ -96,7 +95,7 @@ const buildGardenStats = (
   lastCompletionDate: lastTaskDate ?? undefined,
   badges: BADGE_DEFINITIONS
     .filter((def) => unlockedAchievements[def.id])
-    .map((def) => ({ id: def.id, name: (def as any).name ?? def.id, emoji: def.emoji ?? '🏅', unlockedAt: unlockedAchievements[def.id] })),
+    .map((def) => ({ id: def.id, name: def.name, emoji: def.emoji, description: def.description, unlockedAt: unlockedAchievements[def.id] })),
 });
 
 /** Sync updated active garden into the gardens array */
@@ -172,7 +171,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       clearGarden: () => {
         const state = get();
         if (!state.garden) return;
-        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [] };
+        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [], boundaries: [], soilProfiles: [] };
         set({ garden: cleared, gardens: state.gardens.map((g) => g.id === cleared.id ? cleared : g) });
       },
 
@@ -523,7 +522,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const remaining = state.gardens.filter((g) => g.id !== id);
         if (state.activeGardenId === id) {
-          const next = remaining[remaining.length - 1] ?? null;
+          const next = remaining[0] ?? null;
           set({ gardens: remaining, garden: next, activeGardenId: next?.id ?? null });
         } else {
           set({ gardens: remaining });
@@ -583,11 +582,18 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
-        // Migrate old format: single garden → gardens array
-        if (state && state.garden && state.gardens.length === 0) {
+        if (!state) return;
+        if (state.garden && state.gardens.length === 0) {
           state.gardens = [state.garden];
           state.activeGardenId = state.garden.id;
         }
+        state.gardenStats = buildGardenStats(
+          state.currentStreak,
+          state.longestStreak,
+          state.totalTasksCompleted,
+          state.lastTaskDate,
+          state.unlockedAchievements,
+        );
       },
     },
   ),

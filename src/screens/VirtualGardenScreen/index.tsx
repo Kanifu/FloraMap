@@ -54,9 +54,9 @@ const PlantPot = ({ phaseIndex }: PlantPotProps): React.JSX.Element => {
       {/* Decorative dots on pot */}
       {phaseIndex >= 2 && (
         <>
-          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
-          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12}" />
-          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
+          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
+          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12)" />
+          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
         </>
       )}
     </Svg>
@@ -68,11 +68,12 @@ const VirtualGardenScreen = (): React.JSX.Element => {
   const navigation = useNavigation();
   const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
   const currentStreak       = useGardenStore((s) => s.currentStreak);
+  const longestStreak       = useGardenStore((s) => s.longestStreak);
   const totalScans          = useGardenStore((s) => s.totalScans);
   const garden              = useGardenStore((s) => s.garden);
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
 
-  const drops = totalTasksCompleted * 2 + currentStreak;
+  const drops = totalTasksCompleted * 2 + longestStreak;
 
   const phaseIndex = GROWTH_PHASES.reduce(
     (best, phase, i) => (totalTasksCompleted >= phase.taskThreshold ? i : best),

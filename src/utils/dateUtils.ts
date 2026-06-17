@@ -7,10 +7,11 @@
  * e.g. "Vandaag", "Morgen", "Over 5 dagen", "Gisteren", "3 dagen geleden"
  */
 export const relativeDueLabel = (dueDateStr: string): string => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDateStr);
-  due.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const dueDate = dueDateStr.length >= 10 ? dueDateStr.slice(0, 10) : dueDateStr;
+  const today = new Date(todayStr + 'T00:00:00');
+  const due = new Date(dueDate + 'T00:00:00');
   const diff = Math.round((due.getTime() - today.getTime()) / 86_400_000);
   if (diff === 0) return 'Vandaag';
   if (diff === 1) return 'Morgen';

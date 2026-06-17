@@ -30,6 +30,7 @@ import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 import { useWeather } from '@/hooks/useWeather';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -71,25 +72,32 @@ const makeGardenTaskFromAssistant = (task: AssistantTask): GardenTask => ({
   dueDate: new Date(Date.now() + (urgencyDays[task.urgency] ?? 3) * 86_400_000).toISOString(),
 });
 
+const taskId = (suffix: string) => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${suffix}`;
+
+const nextZoneColor = (plants: Plant[]): string => {
+  const used = new Set(plants.map((p) => p.color).filter(Boolean));
+  return ZONE_COLORS.find((c) => !used.has(c)) ?? ZONE_COLORS[plants.length % ZONE_COLORS.length];
+};
+
 const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] => {
   switch (type) {
     case 'seed':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water',    dueDate: addDays(1),  intervalDays: 2 },
-        { id: `${Date.now()}-r`, plantId, type: 'repot',    dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
+        { id: taskId('w'), plantId, type: 'water',    dueDate: addDays(1),  intervalDays: 2 },
+        { id: taskId('r'), plantId, type: 'repot',    dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
       ];
     case 'seedling':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(2), intervalDays: 3 },
-        { id: `${Date.now()}-r`, plantId, type: 'repot', dueDate: addDays(21), notes: 'Verplant naar buiten' },
+        { id: taskId('w'), plantId, type: 'water', dueDate: addDays(2), intervalDays: 3 },
+        { id: taskId('r'), plantId, type: 'repot', dueDate: addDays(21), notes: 'Verplant naar buiten' },
       ];
     case 'cutting':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(1),  intervalDays: 2 },
-        { id: `${Date.now()}-t`, plantId, type: 'treat', dueDate: addDays(14), notes: 'Controleer beworteling' },
+        { id: taskId('w'), plantId, type: 'water', dueDate: addDays(1),  intervalDays: 2 },
+        { id: taskId('t'), plantId, type: 'treat', dueDate: addDays(14), notes: 'Controleer beworteling' },
       ];
     default:
-      return [{ id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(7), intervalDays: 7 }];
+      return [{ id: taskId('w'), plantId, type: 'water', dueDate: addDays(7), intervalDays: 7 }];
   }
 };
 
@@ -253,6 +261,7 @@ const MapScreen = (): React.JSX.Element => {
   const switchGarden           = useGardenStore((s) => s.switchGarden);
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
   const renameGarden           = useGardenStore((s) => s.renameGarden);
+  const { enabled: multiGardenEnabled } = useFeatureFlag('multi_garden');
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -606,12 +615,12 @@ const MapScreen = (): React.JSX.Element => {
       const bh = Math.abs(y - firstPoint.y) + 1;
       setFirstPoint(null); setDrawStep(null);
       if (drawTarget) {
-        const color = drawTarget.color ?? ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length];
+        const color = drawTarget.color ?? nextZoneColor(garden?.plants ?? []);
         updatePlant({ ...drawTarget, x: bx, y: by, width: bw, height: bh, color });
         setDrawTarget(null);
       } else {
         setPendingBounds({ x: bx, y: by, width: bw, height: bh });
-        setModalColor(ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length]);
+        setModalColor(nextZoneColor(garden?.plants ?? []));
         setModalName(''); setModalNotes(''); setModalPlantType('plant');
         setShowModal(true);
       }
@@ -619,6 +628,11 @@ const MapScreen = (): React.JSX.Element => {
   }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, boundaryEditId, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updateBoundary, updatePlant, ensureGarden, rotationHistory]);
 
   const handleCreateGarden = useCallback(() => {
+    if (gardens.length >= 1 && !multiGardenEnabled) {
+      setShowNewGarden(false);
+      setShowTierModal(true);
+      return;
+    }
     const name = newGardenName.trim() || 'Nieuwe tuin';
     const g = createGarden(name);
     if (newGardenCols !== 25 || newGardenRows !== 25) {
@@ -628,7 +642,7 @@ const MapScreen = (): React.JSX.Element => {
     setNewGardenName('');
     setNewGardenCols(25);
     setNewGardenRows(25);
-  }, [newGardenName, newGardenCols, newGardenRows, createGarden, setGarden]);
+  }, [newGardenName, newGardenCols, newGardenRows, createGarden, setGarden, gardens.length, multiGardenEnabled]);
 
   const handleDeleteActiveGarden = useCallback(() => {
     if (!garden) return;
@@ -688,6 +702,13 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (!fromGallery) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Camera vereist', 'Geef FloraMap toegang tot je camera om planten te scannen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -970,24 +991,24 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.max(0.5, mapScale - 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityLabel="Uitzoomen" accessibilityRole="button">
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
             lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityLabel="Zoom resetten" accessibilityRole="button">
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.min(3.0, mapScale + 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityLabel="Inzoomen" accessibilityRole="button">
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85} accessibilityLabel={fabMode === 'menu' ? 'Menu sluiten' : 'Toevoegen'} accessibilityRole="button">
             <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
           </TouchableOpacity>
         )}
@@ -1341,7 +1362,7 @@ const MapScreen = (): React.JSX.Element => {
       </Modal>
 
       {/* New plant/zone modal */}
-      <Modal visible={showModal} transparent animationType="slide">
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); setPendingBounds(null); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>

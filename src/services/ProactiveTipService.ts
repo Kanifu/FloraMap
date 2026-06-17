@@ -30,7 +30,8 @@ export const getDailyTip = async (garden: Garden | null): Promise<string | null>
   const prompt = `Geef één concrete tuintip voor deze maand (${currentMonth}) voor een tuinder met: ${plantNames}. Maximaal 2 zinnen. Geen markdown.`;
 
   try {
-    const response = await gardenAssistantService.chat(prompt, null, [], []);
+    const gardenPlants = garden.plants.map((p) => `${p.commonName} (${p.species}) op ${p.x},${p.y}`);
+    const response = await gardenAssistantService.chat(prompt, null, [], gardenPlants);
     const tip = response.text.trim();
     if (!tip) return null;
 
@@ -54,10 +55,11 @@ export const scheduleDailyTipNotification = async (tip: string): Promise<void> =
         sound: true,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
         hour: 10,
         minute: 0,
         repeats: false,
-      } as Notifications.NotificationTriggerInput,
+      },
     });
   } catch { /* ignore */ }
 };

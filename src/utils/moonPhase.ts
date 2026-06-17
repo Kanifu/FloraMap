@@ -93,9 +93,10 @@ const GARDENING_TIPS: Record<MoonPhase, string> = {
 export const getMoonInfo = (d: Date = new Date()): MoonInfo => {
   const age = moonAge(d);
   const SYNODIC = 29.53058867;
-  const illumination = age < SYNODIC / 2
+  const rawIllumination = age < SYNODIC / 2
     ? age / (SYNODIC / 2)
     : (SYNODIC - age) / (SYNODIC / 2);
+  const illumination = Math.min(1, Math.max(0, rawIllumination));
 
   let phase: MoonPhase;
   const pct = age / SYNODIC;

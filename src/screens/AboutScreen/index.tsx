@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView,
   ScrollView, TouchableOpacity, Linking, Alert,
@@ -79,7 +79,7 @@ const AboutScreen = (): React.JSX.Element => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const theme = useTheme();
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     header: {
       flexDirection: 'row',
@@ -212,7 +212,7 @@ const AboutScreen = (): React.JSX.Element => {
     tierDebugBtnActive: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
     tierDebugBtnText: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
     tierDebugBtnTextActive: { color: theme.primary },
-  });
+  }), [theme]);
 
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -346,20 +346,23 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {__DEV__ && (
+              <>
+                <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+                <View style={styles.tierDebugRow}>
+                  {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                      onPress={() => setUserTier(t)}>
+                      <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         </View>
 

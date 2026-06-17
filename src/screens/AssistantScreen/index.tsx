@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
@@ -40,7 +41,6 @@ const makeDefaultGarden = (): Garden => ({
   name: 'Mijn tuin',
   polygons: [],
   plants: [],
-  zones: [],
   tasks: [],
   lastScannedAt: new Date().toISOString(),
 });
@@ -185,6 +185,11 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Camera vereist', 'Geef FloraMap toegang tot je camera om planten te scannen.');
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
@@ -212,12 +217,14 @@ const AssistantScreen = (): React.JSX.Element => {
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      const newKeys = new Set(addedPlantKeys);
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
-        if (addedPlantKeys.has(key)) return;
+        if (newKeys.has(key)) return;
         addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
-        setAddedPlantKeys((prev) => new Set([...prev, key]));
+        newKeys.add(key);
       });
+      setAddedPlantKeys(newKeys);
     },
     [garden, setGarden, addPlant, addedPlantKeys],
   );
@@ -238,12 +245,14 @@ const AssistantScreen = (): React.JSX.Element => {
     (tasks: AssistantTask[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      const newKeys = new Set(addedTaskKeys);
       tasks.forEach((task, idx) => {
         const key = `${messageId}-task-${idx}`;
-        if (addedTaskKeys.has(key)) return;
+        if (newKeys.has(key)) return;
         addGardenTask(makeGardenTask(task));
-        setAddedTaskKeys((prev) => new Set([...prev, key]));
+        newKeys.add(key);
       });
+      setAddedTaskKeys(newKeys);
     },
     [garden, setGarden, addGardenTask, addedTaskKeys],
   );
@@ -356,65 +365,65 @@ const AssistantScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn} accessibilityLabel="Terug naar tuin" accessibilityRole="button">
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
 
-      <FlatList
-        ref={listRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messageList}
-        ListHeaderComponent={
-          dailyTip ? (
-            <View style={styles.tipCard}>
-              <Text style={styles.tipTitle}>💡 Tip van de dag</Text>
-              <Text style={styles.tipBody}>{dailyTip}</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+        <FlatList
+          ref={listRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messageList}
+          ListHeaderComponent={
+            dailyTip ? (
+              <View style={styles.tipCard}>
+                <Text style={styles.tipTitle}>💡 Tip van de dag</Text>
+                <Text style={styles.tipBody}>{dailyTip}</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🌱</Text>
+              <Text style={styles.emptyTitle}>Stel een vraag of scan een plant</Text>
+              <Text style={styles.emptySubtitle}>
+                Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
+              </Text>
+              <View style={styles.emptyButtons}>
+                <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
+                  <Text style={styles.emptyButtonText}>📷 Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
+                  <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🌱</Text>
-            <Text style={styles.emptyTitle}>Stel een vraag of scan een plant</Text>
-            <Text style={styles.emptySubtitle}>
-              Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
-            </Text>
-            <View style={styles.emptyButtons}>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
-                <Text style={styles.emptyButtonText}>📷 Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
-                <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
-              </TouchableOpacity>
-            </View>
+          }
+        />
+
+        {pendingImage && (
+          <View style={styles.pendingImageRow}>
+            <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
+            <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
+            <TouchableOpacity onPress={() => setPendingImage(null)}>
+              <Text style={styles.removePending}>✕</Text>
+            </TouchableOpacity>
           </View>
-        }
-      />
+        )}
 
-      {pendingImage && (
-        <View style={styles.pendingImageRow}>
-          <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
-          <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
-            <Text style={styles.removePending}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage} accessibilityLabel="Camera openen" accessibilityRole="button">
             <Text style={styles.iconButtonText}>📷</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery} accessibilityLabel="Foto uit galerij kiezen" accessibilityRole="button">
             <Text style={styles.iconButtonText}>🖼️</Text>
           </TouchableOpacity>
           <TextInput
