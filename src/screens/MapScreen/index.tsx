@@ -1348,7 +1348,7 @@ const MapScreen = (): React.JSX.Element => {
       </Modal>
 
       {/* New plant/zone modal */}
-      <Modal visible={showModal} transparent animationType="slide">
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); setPendingBounds(null); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>
