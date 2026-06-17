@@ -30,6 +30,7 @@ import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import type { HandlerStateChangeEvent, PinchGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/components/GardenMap';
 import { useWeather } from '@/hooks/useWeather';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 const ONBOARDED_KEY = 'floramap_onboarded';
 
@@ -72,6 +73,11 @@ const makeGardenTaskFromAssistant = (task: AssistantTask): GardenTask => ({
 });
 
 const taskId = (suffix: string) => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${suffix}`;
+
+const nextZoneColor = (plants: Plant[]): string => {
+  const used = new Set(plants.map((p) => p.color).filter(Boolean));
+  return ZONE_COLORS.find((c) => !used.has(c)) ?? ZONE_COLORS[plants.length % ZONE_COLORS.length];
+};
 
 const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] => {
   switch (type) {
@@ -255,6 +261,7 @@ const MapScreen = (): React.JSX.Element => {
   const switchGarden           = useGardenStore((s) => s.switchGarden);
   const deleteGarden           = useGardenStore((s) => s.deleteGarden);
   const renameGarden           = useGardenStore((s) => s.renameGarden);
+  const { enabled: multiGardenEnabled } = useFeatureFlag('multi_garden');
 
   const unlockedBadgeCount = Object.keys(unlockedAchievements).length;
   const recentBadgeEmojis  = ACHIEVEMENTS
@@ -608,12 +615,12 @@ const MapScreen = (): React.JSX.Element => {
       const bh = Math.abs(y - firstPoint.y) + 1;
       setFirstPoint(null); setDrawStep(null);
       if (drawTarget) {
-        const color = drawTarget.color ?? ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length];
+        const color = drawTarget.color ?? nextZoneColor(garden?.plants ?? []);
         updatePlant({ ...drawTarget, x: bx, y: by, width: bw, height: bh, color });
         setDrawTarget(null);
       } else {
         setPendingBounds({ x: bx, y: by, width: bw, height: bh });
-        setModalColor(ZONE_COLORS[(garden?.plants.length ?? 0) % ZONE_COLORS.length]);
+        setModalColor(nextZoneColor(garden?.plants ?? []));
         setModalName(''); setModalNotes(''); setModalPlantType('plant');
         setShowModal(true);
       }
@@ -621,6 +628,11 @@ const MapScreen = (): React.JSX.Element => {
   }, [boundaryDrawStep, boundaryFirstPoint, pendingBoundaryType, pendingBoundaryIsLine, boundaryEditId, plantsToPlace, correctionName, correctionSpecies, movingPlant, drawStep, firstPoint, drawTarget, garden, addPlant, addBoundary, updateBoundary, updatePlant, ensureGarden, rotationHistory]);
 
   const handleCreateGarden = useCallback(() => {
+    if (gardens.length >= 1 && !multiGardenEnabled) {
+      setShowNewGarden(false);
+      setShowTierModal(true);
+      return;
+    }
     const name = newGardenName.trim() || 'Nieuwe tuin';
     const g = createGarden(name);
     if (newGardenCols !== 25 || newGardenRows !== 25) {
@@ -630,7 +642,7 @@ const MapScreen = (): React.JSX.Element => {
     setNewGardenName('');
     setNewGardenCols(25);
     setNewGardenRows(25);
-  }, [newGardenName, newGardenCols, newGardenRows, createGarden, setGarden]);
+  }, [newGardenName, newGardenCols, newGardenRows, createGarden, setGarden, gardens.length, multiGardenEnabled]);
 
   const handleDeleteActiveGarden = useCallback(() => {
     if (!garden) return;
