@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
-import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, SuggestedPlacement, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -29,6 +29,7 @@ interface Message {
   imageUri?: string;
   identifiedPlants?: IdentifiedPlant[];
   detectedTasks?: AssistantTask[];
+  suggestedPlacements?: SuggestedPlacement[];
   loading?: boolean;
 }
 
@@ -40,7 +41,6 @@ const makeDefaultGarden = (): Garden => ({
   name: 'Mijn tuin',
   polygons: [],
   plants: [],
-  zones: [],
   tasks: [],
   lastScannedAt: new Date().toISOString(),
 });
@@ -166,6 +166,7 @@ const AssistantScreen = (): React.JSX.Element => {
           text: response.text,
           identifiedPlants: response.identifiedPlants,
           detectedTasks: response.detectedTasks,
+          suggestedPlacements: response.suggestedPlacements,
         };
 
         setMessages((prev) => [...prev.filter((m) => !m.loading), assistantMsg]);
@@ -349,6 +350,22 @@ const AssistantScreen = (): React.JSX.Element => {
                 <Text style={styles.addAllButtonText}>Alle taken toevoegen aan Onderhoud</Text>
               </TouchableOpacity>
             )}
+          </View>
+        )}
+
+        {/* Suggested placements card */}
+        {item.suggestedPlacements && item.suggestedPlacements.length > 0 && (
+          <View style={[styles.card, { borderLeftColor: '#52b788', borderLeftWidth: 3 }]}>
+            <Text style={styles.cardTitle}>📍 Voorgestelde posities</Text>
+            {item.suggestedPlacements.map((pl, idx) => (
+              <View key={idx} style={styles.taskRow}>
+                <View style={styles.taskInfo}>
+                  <Text style={styles.plantCommonName}>{pl.commonName}</Text>
+                  {pl.species ? <Text style={styles.plantSpecies}>{pl.species}</Text> : null}
+                  <Text style={styles.taskPlantName}>Rij {pl.y}, kolom {pl.x}</Text>
+                </View>
+              </View>
+            ))}
           </View>
         )}
       </View>
