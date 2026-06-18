@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Tier } from '@/hooks/useFeatureFlag';
+import { Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -41,13 +42,8 @@ const PREMIUM_EXTRA_BENEFITS = [
   'Statistieken & seizoensdashboard',
 ];
 
-export const UpgradeModal: React.FC<Props> = ({
-  visible, onClose, featureLabel, featureDescription, requiredTier,
-}) => {
-  const theme = useTheme();
-  const isPremium = requiredTier === 'premium';
-
-  const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isPremium: boolean) =>
+  StyleSheet.create({
     overlay: {
       flex: 1,
       backgroundColor: theme.overlay,
@@ -141,6 +137,14 @@ export const UpgradeModal: React.FC<Props> = ({
       color: theme.textSecondary,
     },
   });
+
+export const UpgradeModal: React.FC<Props> = ({
+  visible, onClose, featureLabel, featureDescription, requiredTier,
+}) => {
+  const theme = useTheme();
+  const isPremium = requiredTier === 'premium';
+
+  const styles = useMemo(() => createStyles(theme, isPremium), [theme, isPremium]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
