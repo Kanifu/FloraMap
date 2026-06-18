@@ -215,12 +215,20 @@ const AssistantScreen = (): React.JSX.Element => {
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      const newKeys: string[] = [];
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
         if (addedPlantKeys.has(key)) return;
         addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
-        setAddedPlantKeys((prev) => new Set([...prev, key]));
+        newKeys.push(key);
       });
+      if (newKeys.length > 0) {
+        setAddedPlantKeys((prev) => {
+          const next = new Set(prev);
+          for (const k of newKeys) next.add(k);
+          return next;
+        });
+      }
     },
     [garden, setGarden, addPlant, addedPlantKeys],
   );
@@ -241,12 +249,20 @@ const AssistantScreen = (): React.JSX.Element => {
     (tasks: AssistantTask[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      const newKeys: string[] = [];
       tasks.forEach((task, idx) => {
         const key = `${messageId}-task-${idx}`;
         if (addedTaskKeys.has(key)) return;
         addGardenTask(makeGardenTask(task));
-        setAddedTaskKeys((prev) => new Set([...prev, key]));
+        newKeys.push(key);
       });
+      if (newKeys.length > 0) {
+        setAddedTaskKeys((prev) => {
+          const next = new Set(prev);
+          for (const k of newKeys) next.add(k);
+          return next;
+        });
+      }
     },
     [garden, setGarden, addGardenTask, addedTaskKeys],
   );

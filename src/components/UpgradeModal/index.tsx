@@ -144,8 +144,8 @@ export const UpgradeModal: React.FC<Props> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.tierBadge}>{TIER_LABELS[requiredTier]}-feature</Text>
           <Text style={styles.title}>{featureLabel}</Text>
@@ -171,8 +171,8 @@ export const UpgradeModal: React.FC<Props> = ({
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
             <Text style={styles.cancelBtnText}>Sluiten</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 };

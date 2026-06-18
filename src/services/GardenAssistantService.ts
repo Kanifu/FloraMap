@@ -7,6 +7,22 @@ const GEMINI_PATH = `/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Derive MIME type from a file URI's extension; defaults to image/jpeg. */
+const getMimeType = (uri: string): string => {
+  const ext = uri.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'png':  return 'image/png';
+    case 'webp': return 'image/webp';
+    case 'gif':  return 'image/gif';
+    case 'bmp':  return 'image/bmp';
+    case 'heic': return 'image/heic';
+    case 'heif': return 'image/heif';
+    case 'jpg':
+    case 'jpeg':
+    default:     return 'image/jpeg';
+  }
+};
+
 const fetchWithRetry = async (url: string, init: RequestInit, retries = 3, timeoutMs = 30000): Promise<Response> => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
@@ -144,16 +160,25 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
 
     for (const turn of history) {
       if (turn.imageUri) {
-        const base64 = await FileSystem.readAsStringAsync(turn.imageUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        contents.push({
-          role: 'user',
-          parts: [
-            { text: turn.text || 'Wat zijn de planten in deze foto?' },
-            { inlineData: { mimeType: 'image/jpeg', data: base64 } },
-          ],
-        });
+        try {
+          const base64 = await FileSystem.readAsStringAsync(turn.imageUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          contents.push({
+            role: 'user',
+            parts: [
+              { text: turn.text || 'Wat zijn de planten in deze foto?' },
+              { inlineData: { mimeType: getMimeType(turn.imageUri), data: base64 } },
+            ],
+          });
+        } catch {
+          // Image file may have been deleted; fall back to text-only turn
+          console.warn('[GardenAssistant] Could not re-read historical image, skipping:', turn.imageUri);
+          contents.push({
+            role: 'user',
+            parts: [{ text: turn.text || '(foto niet meer beschikbaar)' }],
+          });
+        }
       } else {
         contents.push({
           role: turn.role,
@@ -168,7 +193,7 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
       const base64 = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } });
+      currentParts.push({ inlineData: { mimeType: getMimeType(imageUri), data: base64 } });
       if (!userText) currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });
     }
     contents.push({ role: 'user', parts: currentParts });
