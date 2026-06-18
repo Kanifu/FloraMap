@@ -20,6 +20,8 @@ import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, creat
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { FREE_PLANT_LIMIT, TIER_RANK } from '@/constants/tiers';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 interface Message {
@@ -95,11 +97,13 @@ const AssistantScreen = (): React.JSX.Element => {
   const [addedPlantKeys, setAddedPlantKeys] = useState<Set<string>>(new Set());
   const [addedTaskKeys, setAddedTaskKeys] = useState<Set<string>>(new Set());
   const [dailyTip, setDailyTip] = useState<string | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [showFeedback,      setShowFeedback]      = useState(false);
+  const [showUpgradePlant, setShowUpgradePlant] = useState(false);
   const listRef = useRef<FlatList>(null);
 
-  const garden = useGardenStore((s) => s.garden);
+  const garden    = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
+  const userTier  = useGardenStore((s) => s.userTier);
 
   useEffect(() => {
     getDailyTip(garden).then((tip) => {
@@ -201,25 +205,39 @@ const AssistantScreen = (): React.JSX.Element => {
       const key = `${messageId}-${plant.species}`;
       if (addedPlantKeys.has(key)) return;
       const activeGarden = garden ?? makeDefaultGarden();
+      if (TIER_RANK[userTier] < TIER_RANK['plus'] && activeGarden.plants.length >= FREE_PLANT_LIMIT) {
+        setShowUpgradePlant(true);
+        return;
+      }
       if (!garden) setGarden(activeGarden);
       addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length));
       setAddedPlantKeys((prev) => new Set([...prev, key]));
     },
-    [garden, setGarden, addPlant, addedPlantKeys],
+    [garden, setGarden, addPlant, addedPlantKeys, userTier],
   );
 
   const handleAddAll = useCallback(
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
+      if (TIER_RANK[userTier] < TIER_RANK['plus'] && activeGarden.plants.length >= FREE_PLANT_LIMIT) {
+        setShowUpgradePlant(true);
+        return;
+      }
       if (!garden) setGarden(activeGarden);
+      let added = 0;
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
         if (addedPlantKeys.has(key)) return;
+        if (TIER_RANK[userTier] < TIER_RANK['plus'] && activeGarden.plants.length + added >= FREE_PLANT_LIMIT) {
+          setShowUpgradePlant(true);
+          return;
+        }
         addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
         setAddedPlantKeys((prev) => new Set([...prev, key]));
+        added += 1;
       });
     },
-    [garden, setGarden, addPlant, addedPlantKeys],
+    [garden, setGarden, addPlant, addedPlantKeys, userTier],
   );
 
   const handleAddTask = useCallback(
@@ -435,6 +453,13 @@ const AssistantScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <UpgradeModal
+        visible={showUpgradePlant}
+        onClose={() => setShowUpgradePlant(false)}
+        featureLabel="Meer planten toevoegen"
+        featureDescription={`De gratis versie ondersteunt maximaal ${FREE_PLANT_LIMIT} planten. Upgrade naar Plus voor onbeperkt tuinieren.`}
+        requiredTier="plus"
+      />
     </SafeAreaView>
   );
 };

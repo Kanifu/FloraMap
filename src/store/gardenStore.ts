@@ -96,7 +96,7 @@ const buildGardenStats = (
   lastCompletionDate: lastTaskDate ?? undefined,
   badges: BADGE_DEFINITIONS
     .filter((def) => unlockedAchievements[def.id])
-    .map((def) => ({ id: def.id, name: (def as any).name ?? def.id, emoji: def.emoji ?? '🏅', unlockedAt: unlockedAchievements[def.id] })),
+    .map((def) => ({ id: def.id, name: def.name, emoji: def.emoji, unlockedAt: unlockedAchievements[def.id] })),
 });
 
 /** Sync updated active garden into the gardens array */
@@ -172,7 +172,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       clearGarden: () => {
         const state = get();
         if (!state.garden) return;
-        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [] };
+        const cleared = { ...state.garden, plants: [], polygons: [], tasks: [], boundaries: [], soilProfiles: [] };
         set({ garden: cleared, gardens: state.gardens.map((g) => g.id === cleared.id ? cleared : g) });
       },
 
@@ -282,47 +282,23 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
         const newTotal = state.totalTasksCompleted + 1;
 
-        const toUnlock: string[] = [];
-        if (newTotal === 1) toUnlock.push('first_task');
-        if (newTotal >= 10) toUnlock.push('ten_tasks');
-        if (newTotal >= 50) toUnlock.push('fifty_tasks');
-        if (newTotal >= 100) toUnlock.push('hundred_tasks');
-        if (newStreak >= 3) toUnlock.push('streak_3');
-        if (newStreak >= 7) toUnlock.push('streak_7');
-        if (newStreak >= 30) toUnlock.push('streak_30');
-        if (completedTask?.type === 'water') {
-          const waterCount = countCompletedTasksByType(updated, 'water');
-          if (waterCount >= 1) toUnlock.push('first_water');
-          if (waterCount >= 20) toUnlock.push('twenty_water');
-        }
-        if (completedTask?.type === 'fertilize') {
-          const fertilizeCount = countCompletedTasksByType(updated, 'fertilize');
-          if (fertilizeCount >= 1) toUnlock.push('first_fertilize');
-          if (fertilizeCount >= 10) toUnlock.push('ten_fertilize');
-        }
-        if (completedTask?.type === 'prune') {
-          const pruneCount = countCompletedTasksByType(updated, 'prune');
-          if (pruneCount >= 1) toUnlock.push('first_prune');
-        }
+        const waterCount    = completedTask?.type === 'water'     ? countCompletedTasksByType(updated, 'water')     : 0;
+        const fertilizeCount = completedTask?.type === 'fertilize' ? countCompletedTasksByType(updated, 'fertilize') : 0;
+        const pruneCount    = completedTask?.type === 'prune'     ? countCompletedTasksByType(updated, 'prune')     : 0;
 
-        // Also check badge definitions from main's system
-        const badgeCriteria: Record<string, boolean> = {
-          first_task: newTotal >= 1,
-          streak_3:   newStreak >= 3,
-          streak_7:   newStreak >= 7,
-          streak_30:  newStreak >= 30,
-          ten_tasks: newTotal >= 10,
-          fifty_tasks: newTotal >= 50,
-          hundred_tasks: newTotal >= 100,
-          first_water: countCompletedTasksByType(updated, 'water') >= 1,
-          twenty_water: countCompletedTasksByType(updated, 'water') >= 20,
-          first_fertilize: countCompletedTasksByType(updated, 'fertilize') >= 1,
-          ten_fertilize: countCompletedTasksByType(updated, 'fertilize') >= 10,
-          first_prune: countCompletedTasksByType(updated, 'prune') >= 1,
-        };
-        for (const def of BADGE_DEFINITIONS) {
-          if (badgeCriteria[def.id]) toUnlock.push(def.id);
-        }
+        const toUnlock: string[] = [];
+        if (newTotal >= 1)   toUnlock.push('first_task');
+        if (newTotal >= 10)  toUnlock.push('ten_tasks');
+        if (newTotal >= 50)  toUnlock.push('fifty_tasks');
+        if (newTotal >= 100) toUnlock.push('hundred_tasks');
+        if (newStreak >= 3)  toUnlock.push('streak_3');
+        if (newStreak >= 7)  toUnlock.push('streak_7');
+        if (newStreak >= 30) toUnlock.push('streak_30');
+        if (waterCount >= 1)     toUnlock.push('first_water');
+        if (waterCount >= 20)    toUnlock.push('twenty_water');
+        if (fertilizeCount >= 1) toUnlock.push('first_fertilize');
+        if (fertilizeCount >= 10) toUnlock.push('ten_fertilize');
+        if (pruneCount >= 1)     toUnlock.push('first_prune');
 
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
 
@@ -396,6 +372,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const { garden } = state;
         if (!garden) return;
+        if (TIER_RANK[state.userTier] < TIER_RANK['plus']) return;
         const updated = {
           ...garden,
           plants: garden.plants.map((p) =>
@@ -583,11 +560,21 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
+        if (!state) return;
         // Migrate old format: single garden → gardens array
-        if (state && state.garden && state.gardens.length === 0) {
+        if (state.garden && state.gardens.length === 0) {
           state.gardens = [state.garden];
           state.activeGardenId = state.garden.id;
         }
+        // Rebuild computed gardenStats from persisted flat fields so that
+        // streaks, badges and task counts are correct immediately after restart.
+        state.gardenStats = buildGardenStats(
+          state.currentStreak,
+          state.longestStreak,
+          state.totalTasksCompleted,
+          state.lastTaskDate,
+          state.unlockedAchievements,
+        );
       },
     },
   ),
