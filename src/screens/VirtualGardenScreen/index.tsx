@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Path, Rect, Ellipse, Text as SvgText, Circle, G } from 'react-native-svg';
 import { useGardenStore } from '@/store/gardenStore';
 import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 import { ACHIEVEMENTS } from '@/data/achievements';
 
 interface GrowthPhase {
@@ -54,14 +55,93 @@ const PlantPot = ({ phaseIndex }: PlantPotProps): React.JSX.Element => {
       {/* Decorative dots on pot */}
       {phaseIndex >= 2 && (
         <>
-          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
-          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12}" />
-          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
+          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
+          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12)" />
+          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
         </>
       )}
     </Svg>
   );
 };
+
+const createStyles = (theme: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: theme.border, gap: 10,
+  },
+  backBtn: { paddingRight: 4 },
+  backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: theme.primaryDark },
+  content: { padding: 20, gap: 18, paddingBottom: 40 },
+  potCard: {
+    backgroundColor: theme.card, borderRadius: 20, borderWidth: 1, borderColor: theme.borderLight,
+    alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, gap: 8,
+  },
+  phaseLabel: { fontSize: 22, fontWeight: '800', color: theme.primaryDark },
+  phaseDesc: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', lineHeight: 20 },
+  progressSection: { gap: 6 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  progressLabel: { fontSize: 13, fontWeight: '600', color: theme.textSecondary },
+  progressVal: { fontSize: 12, color: theme.textMuted },
+  progressBar: {
+    height: 12, backgroundColor: theme.cardAlt, borderRadius: 6,
+    borderWidth: 1, borderColor: theme.border, overflow: 'hidden',
+  },
+  progressFill: { height: '100%', backgroundColor: theme.primary, borderRadius: 6 },
+  maxLabel: { fontSize: 12, color: theme.primary, fontWeight: '600', textAlign: 'center' },
+  statsRow: { flexDirection: 'row', gap: 10 },
+  statCard: {
+    flex: 1, backgroundColor: theme.primaryBg, borderRadius: 12,
+    borderWidth: 1, borderColor: theme.borderLight,
+    padding: 12, alignItems: 'center', gap: 4,
+  },
+  statEmoji: { fontSize: 20 },
+  statNumber: { fontSize: 20, fontWeight: '800', color: theme.primaryDark },
+  statLabel: { fontSize: 10, color: theme.textSecondary, fontWeight: '600', textAlign: 'center' },
+  sectionTitle: {
+    fontSize: 13, fontWeight: '700', color: theme.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+  },
+  milestoneCard: {
+    backgroundColor: theme.card, borderRadius: 14, borderWidth: 1, borderColor: theme.border,
+    overflow: 'hidden',
+  },
+  milestoneRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
+  },
+  milestoneBorder: { borderBottomWidth: 1, borderBottomColor: theme.border },
+  milestoneEmoji: { fontSize: 28 },
+  milestoneBody: { flex: 1, gap: 2 },
+  milestoneLabel: { fontSize: 14, fontWeight: '700', color: theme.primaryDark },
+  milestoneSub: { fontSize: 12, color: theme.textSecondary },
+  milestoneBadge: {
+    backgroundColor: theme.primaryLight, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  milestoneBadgeText: { fontSize: 11, color: theme.primary, fontWeight: '700' },
+  milestoneLockedBadge: { backgroundColor: theme.cardAlt },
+  milestoneLockedText: { color: theme.textMuted },
+  infoCard: {
+    backgroundColor: theme.primaryBg, borderRadius: 12, borderWidth: 1, borderColor: theme.borderLight,
+    padding: 14, gap: 6,
+  },
+  infoTitle: { fontSize: 13, fontWeight: '700', color: theme.primary },
+  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  infoText: { fontSize: 12, color: theme.textSecondary, flex: 1, lineHeight: 18 },
+  achievementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  achievementChip: {
+    width: '48%', backgroundColor: theme.card, borderRadius: 12,
+    borderWidth: 1, borderColor: theme.border,
+    padding: 10, gap: 4,
+  },
+  achievementChipLocked: { opacity: 0.45 },
+  achievementEmoji: { fontSize: 24 },
+  achievementName: { fontSize: 12, fontWeight: '700', color: theme.primaryDark },
+  achievementDesc: { fontSize: 10, color: theme.textSecondary, lineHeight: 14 },
+});
 
 const VirtualGardenScreen = (): React.JSX.Element => {
   const theme = useTheme();
@@ -72,7 +152,7 @@ const VirtualGardenScreen = (): React.JSX.Element => {
   const garden              = useGardenStore((s) => s.garden);
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
 
-  const drops = totalTasksCompleted * 2 + currentStreak;
+  const drops = totalTasksCompleted * 2;
 
   const phaseIndex = GROWTH_PHASES.reduce(
     (best, phase, i) => (totalTasksCompleted >= phase.taskThreshold ? i : best),
@@ -92,84 +172,7 @@ const VirtualGardenScreen = (): React.JSX.Element => {
     .filter((achievement) => !unlockedAchievements[achievement.id])
     .slice(0, 4);
 
-  const s = StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.background },
-    header: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 16, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: theme.border, gap: 10,
-    },
-    backBtn: { paddingRight: 4 },
-    backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
-    headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: theme.primaryDark },
-    content: { padding: 20, gap: 18, paddingBottom: 40 },
-    potCard: {
-      backgroundColor: theme.card, borderRadius: 20, borderWidth: 1, borderColor: theme.borderLight,
-      alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, gap: 8,
-    },
-    phaseLabel: { fontSize: 22, fontWeight: '800', color: theme.primaryDark },
-    phaseDesc: { fontSize: 14, color: theme.textSecondary, textAlign: 'center', lineHeight: 20 },
-    progressSection: { gap: 6 },
-    progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    progressLabel: { fontSize: 13, fontWeight: '600', color: theme.textSecondary },
-    progressVal: { fontSize: 12, color: theme.textMuted },
-    progressBar: {
-      height: 12, backgroundColor: theme.cardAlt, borderRadius: 6,
-      borderWidth: 1, borderColor: theme.border, overflow: 'hidden',
-    },
-    progressFill: { height: '100%', backgroundColor: theme.primary, borderRadius: 6 },
-    maxLabel: { fontSize: 12, color: theme.primary, fontWeight: '600', textAlign: 'center' },
-    statsRow: { flexDirection: 'row', gap: 10 },
-    statCard: {
-      flex: 1, backgroundColor: theme.primaryBg, borderRadius: 12,
-      borderWidth: 1, borderColor: theme.borderLight,
-      padding: 12, alignItems: 'center', gap: 4,
-    },
-    statEmoji: { fontSize: 20 },
-    statNumber: { fontSize: 20, fontWeight: '800', color: theme.primaryDark },
-    statLabel: { fontSize: 10, color: theme.textSecondary, fontWeight: '600', textAlign: 'center' },
-    sectionTitle: {
-      fontSize: 13, fontWeight: '700', color: theme.textMuted,
-      textTransform: 'uppercase', letterSpacing: 0.8,
-    },
-    milestoneCard: {
-      backgroundColor: theme.card, borderRadius: 14, borderWidth: 1, borderColor: theme.border,
-      overflow: 'hidden',
-    },
-    milestoneRow: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 16, paddingVertical: 14, gap: 12,
-    },
-    milestoneBorder: { borderBottomWidth: 1, borderBottomColor: theme.border },
-    milestoneEmoji: { fontSize: 28 },
-    milestoneBody: { flex: 1, gap: 2 },
-    milestoneLabel: { fontSize: 14, fontWeight: '700', color: theme.primaryDark },
-    milestoneSub: { fontSize: 12, color: theme.textSecondary },
-    milestoneBadge: {
-      backgroundColor: theme.primaryLight, borderRadius: 10,
-      paddingHorizontal: 8, paddingVertical: 3,
-    },
-    milestoneBadgeText: { fontSize: 11, color: theme.primary, fontWeight: '700' },
-    milestoneLockedBadge: { backgroundColor: theme.cardAlt },
-    milestoneLockedText: { color: theme.textMuted },
-    infoCard: {
-      backgroundColor: theme.primaryBg, borderRadius: 12, borderWidth: 1, borderColor: theme.borderLight,
-      padding: 14, gap: 6,
-    },
-    infoTitle: { fontSize: 13, fontWeight: '700', color: theme.primary },
-    infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-    infoText: { fontSize: 12, color: theme.textSecondary, flex: 1, lineHeight: 18 },
-    achievementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    achievementChip: {
-      width: '48%', backgroundColor: theme.card, borderRadius: 12,
-      borderWidth: 1, borderColor: theme.border,
-      padding: 10, gap: 4,
-    },
-    achievementChipLocked: { opacity: 0.45 },
-    achievementEmoji: { fontSize: 24 },
-    achievementName: { fontSize: 12, fontWeight: '700', color: theme.primaryDark },
-    achievementDesc: { fontSize: 10, color: theme.textSecondary, lineHeight: 14 },
-  });
+  const s = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <SafeAreaView style={s.container}>

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Tier } from '@/hooks/useFeatureFlag';
+import { Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -41,13 +42,8 @@ const PREMIUM_EXTRA_BENEFITS = [
   'Statistieken & seizoensdashboard',
 ];
 
-export const UpgradeModal: React.FC<Props> = ({
-  visible, onClose, featureLabel, featureDescription, requiredTier,
-}) => {
-  const theme = useTheme();
-  const isPremium = requiredTier === 'premium';
-
-  const styles = StyleSheet.create({
+const createStyles = (theme: Theme, isPremium: boolean) =>
+  StyleSheet.create({
     overlay: {
       flex: 1,
       backgroundColor: theme.overlay,
@@ -142,10 +138,18 @@ export const UpgradeModal: React.FC<Props> = ({
     },
   });
 
+export const UpgradeModal: React.FC<Props> = ({
+  visible, onClose, featureLabel, featureDescription, requiredTier,
+}) => {
+  const theme = useTheme();
+  const isPremium = requiredTier === 'premium';
+
+  const styles = useMemo(() => createStyles(theme, isPremium), [theme, isPremium]);
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.tierBadge}>{TIER_LABELS[requiredTier]}-feature</Text>
           <Text style={styles.title}>{featureLabel}</Text>
@@ -171,8 +175,8 @@ export const UpgradeModal: React.FC<Props> = ({
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
             <Text style={styles.cancelBtnText}>Sluiten</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 };

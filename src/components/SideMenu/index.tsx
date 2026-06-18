@@ -21,6 +21,7 @@ interface MenuRow {
 interface SideMenuProps {
   visible: boolean;
   onClose: () => void;
+  gardenName?: string;
   plantCount: number;
   showCompanion: boolean;
   showNames: boolean;
@@ -112,7 +113,7 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
             <View style={s.header}>
               <Text style={s.headerIcon}>🌻</Text>
               <View style={{ flex: 1 }}>
-                <Text style={s.headerTitle}>Mijn tuin</Text>
+                <Text style={s.headerTitle}>{props.gardenName || 'Mijn tuin'}</Text>
                 <Text style={s.headerSub}>{plantCount} {plantCount === 1 ? 'plant' : 'planten'}</Text>
               </View>
               {unlockedBadgeCount > 0 && (

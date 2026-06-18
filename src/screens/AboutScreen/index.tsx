@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView,
   ScrollView, TouchableOpacity, Linking, Alert,
@@ -13,6 +13,7 @@ import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
 import { Garden } from '@/models';
 import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { FREE_PLANT_LIMIT, FEATURE_CONFIGS } from '@/hooks/useFeatureFlag';
@@ -68,18 +69,8 @@ const LINKS = [
   { label: '🤖 Google Gemini API', url: 'https://ai.google.dev' },
 ];
 
-const AboutScreen = (): React.JSX.Element => {
-  const navigation = useNavigation<StackNavigationProp<MaintenanceStackParamList>>();
-  const garden = useGardenStore((s) => s.garden);
-  const setGarden = useGardenStore((s) => s.setGarden);
-  const userTier = useGardenStore((s) => s.userTier);
-  const setUserTier = useGardenStore((s) => s.setUserTier);
-  const [importing, setImporting] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const theme = useTheme();
-
-  const styles = StyleSheet.create({
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     header: {
       flexDirection: 'row',
@@ -214,6 +205,18 @@ const AboutScreen = (): React.JSX.Element => {
     tierDebugBtnTextActive: { color: theme.primary },
   });
 
+const AboutScreen = (): React.JSX.Element => {
+  const navigation = useNavigation<StackNavigationProp<MaintenanceStackParamList>>();
+  const garden = useGardenStore((s) => s.garden);
+  const setGarden = useGardenStore((s) => s.setGarden);
+  const userTier = useGardenStore((s) => s.userTier);
+  const setUserTier = useGardenStore((s) => s.setUserTier);
+  const [importing, setImporting] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
     if (!garden) {
@@ -346,20 +349,23 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {__DEV__ && (
+              <>
+                <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+                <View style={styles.tierDebugRow}>
+                  {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                      onPress={() => setUserTier(t)}>
+                      <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         </View>
 

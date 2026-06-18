@@ -53,13 +53,6 @@ export interface PhotoLogEntry {
   note?: string;
 }
 
-export interface HarvestEntry {
-  id: string;
-  date: string;           // ISO 8601
-  amountGrams?: number;
-  notes?: string;
-}
-
 export interface RotationRecord {
   plantFamily: string;
   x: number;
@@ -109,8 +102,9 @@ export interface GardenTask {
 
 export interface HarvestEntry {
   id: string;
-  date: string;
-  weightG?: number;
+  date: string;           // ISO 8601
+  amountGrams?: number;
+  weightG?: number;        // legacy alias — use amountGrams
   count?: number;
   notes?: string;
 }
@@ -139,21 +133,6 @@ export const ZONE_COLORS = [
   '#a8dadc', '#e9c46a', '#c9b1ff', '#ffd6e0',
 ];
 
-/** @deprecated Zones are represented as Plants with width/height > 1. This interface is unused. */
-export interface PlantZone {
-  id: string;
-  gardenId: string;
-  commonName: string;
-  species?: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  careTips?: string[];
-  notes?: string;
-}
-
 export type BoundaryType =
   | 'fence'       // 🪵 Schutting
   | 'wall'        // 🧱 Muur
@@ -181,8 +160,6 @@ export interface Garden {
   gridRows?: number;  // default 25
   polygons: GardenPolygon[];
   plants: Plant[];
-  /** @deprecated Use Plants with width/height > 1 instead */
-  zones?: PlantZone[];
   tasks?: GardenTask[];
   boundaries?: GardenBoundary[];
   lastScannedAt?: string;

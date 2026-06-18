@@ -120,7 +120,7 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
   }
 };
 
-/** Hook that fetches weather once on mount, cached 30 min across components */
+/** Hook that fetches weather once on mount, cached 15 min across components */
 export const useWeather = (): WeatherData => {
   const [weather, setWeather] = useState<WeatherData>(
     cachedData && Date.now() - cachedAt < CACHE_MS ? cachedData : EMPTY_WEATHER
