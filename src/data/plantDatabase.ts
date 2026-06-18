@@ -681,6 +681,7 @@ export const plantDatabase: PlantProfile[] = [
     harvestMonths: [8, 9, 10],
     sowMonths: [10, 3],
     plantFamily: 'Rozenfamilie',
+    estimatedSizeM: 4.0,
     careTips: [
       'Snoei jaarlijks voor een goede opbrengst.',
       'Plant twee rassen voor kruisbestuiving.',
@@ -696,6 +697,7 @@ export const plantDatabase: PlantProfile[] = [
     harvestMonths: [8, 9, 10],
     sowMonths: [10, 3],
     plantFamily: 'Rozenfamilie',
+    estimatedSizeM: 4.0,
     careTips: [
       'Oogst iets voor de rijpheid voor langere bewaring.',
       'Snoei in de winter voor betere lichttoegang.',
@@ -711,6 +713,7 @@ export const plantDatabase: PlantProfile[] = [
     harvestMonths: [6, 7],
     sowMonths: [10, 3],
     plantFamily: 'Rozenfamilie',
+    estimatedSizeM: 3.5,
     careTips: [
       'Dek af met net om vogels op afstand te houden.',
       'Snoei direct na de oogst (niet in de winter).',
@@ -726,6 +729,7 @@ export const plantDatabase: PlantProfile[] = [
     harvestMonths: [8, 9, 10],
     sowMonths: [3, 4],
     plantFamily: 'Wingerdsfamilie',
+    estimatedSizeM: 2.5,
     careTips: [
       'Snoei hard terug in de winter voor goede vruchtzetting.',
       'Heeft een warme, zonnige plek nodig.',

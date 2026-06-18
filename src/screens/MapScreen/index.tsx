@@ -688,6 +688,13 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (!fromGallery) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Camera', 'FloraMap heeft cameratoegang nodig om planten te scannen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -1341,7 +1348,7 @@ const MapScreen = (): React.JSX.Element => {
       </Modal>
 
       {/* New plant/zone modal */}
-      <Modal visible={showModal} transparent animationType="slide">
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); setModalName(''); setPendingBounds(null); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>
@@ -1507,6 +1514,7 @@ const MapScreen = (): React.JSX.Element => {
       <SideMenu
         visible={showMenu}
         onClose={() => setShowMenu(false)}
+        gardenName={currentGarden.name}
         plantCount={currentGarden.plants.length}
         showCompanion={showCompanionOverlay}
         showNames={showNames}

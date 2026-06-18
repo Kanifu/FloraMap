@@ -185,6 +185,8 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
