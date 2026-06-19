@@ -979,18 +979,18 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.max(0.5, mapScale - 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel="Uitzoomen">
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
             lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={`Zoom herstellen, nu ${Math.round(mapScale * 100)}%`}>
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.min(3.0, mapScale + 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel="Inzoomen">
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>

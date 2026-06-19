@@ -381,21 +381,21 @@ const PlantCardScreen = (): React.JSX.Element => {
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow} accessibilityRole="button" accessibilityLabel="Terug naar tuin">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle} numberOfLines={1}>{plant.commonName}</Text>
         {isEditing ? (
           <View style={s.editActions}>
-            <TouchableOpacity onPress={handleCancelEdit} style={s.editActionBtn}>
+            <TouchableOpacity onPress={handleCancelEdit} style={s.editActionBtn} accessibilityRole="button" accessibilityLabel="Bewerking annuleren">
               <Text style={s.editCancelText}>Annuleer</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} style={[s.editActionBtn, s.editSaveBtn]}>
+            <TouchableOpacity onPress={handleSave} style={[s.editActionBtn, s.editSaveBtn]} accessibilityRole="button" accessibilityLabel="Wijzigingen opslaan">
               <Text style={s.editSaveText}>Opslaan</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity onPress={startEdit} style={s.editActionBtn}>
+          <TouchableOpacity onPress={startEdit} style={s.editActionBtn} accessibilityRole="button" accessibilityLabel="Plant bewerken">
             <Text style={s.editStartText}>✏️ Bewerken</Text>
           </TouchableOpacity>
         )}
@@ -470,7 +470,9 @@ const PlantCardScreen = (): React.JSX.Element => {
             <TouchableOpacity
               style={s.enrichBtn}
               onPress={handleEnrichWithAI}
-              disabled={enriching}>
+              disabled={enriching}
+              accessibilityRole="button"
+              accessibilityLabel="Plantinformatie aanvullen via AI">
               {enriching
                 ? <ActivityIndicator size="small" color={theme.primary} />
                 : <Text style={s.enrichBtnText}>🌿 Vul plantinfo aan via AI</Text>}
@@ -522,7 +524,9 @@ const PlantCardScreen = (): React.JSX.Element => {
                     <TouchableOpacity
                       style={[s.doneBtn, isEditing && s.doneBtnEditing]}
                       onPress={() => !isEditing && handleCompleteTask(task.id)}
-                      disabled={isEditing}>
+                      disabled={isEditing}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${task.type} taak voltooien`}>
                       <Text style={s.doneBtnText}>✓ Klaar</Text>
                     </TouchableOpacity>
                   </View>
@@ -573,7 +577,7 @@ const PlantCardScreen = (): React.JSX.Element => {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <Text style={s.sectionTitle}>📷 Groeifasen</Text>
-              <TouchableOpacity onPress={handleAddPhoto} style={s.addPhotoBtn}>
+              <TouchableOpacity onPress={handleAddPhoto} style={s.addPhotoBtn} accessibilityRole="button" accessibilityLabel="Groeifoto toevoegen">
                 <Text style={s.addPhotoBtnText}>+ Foto</Text>
               </TouchableOpacity>
             </View>
@@ -609,7 +613,7 @@ const PlantCardScreen = (): React.JSX.Element => {
               <View style={s.section}>
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionTitle}>🍓 Oogst bijhouden</Text>
-                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn}>
+                  <TouchableOpacity onPress={() => setShowHarvestForm((v) => !v)} style={s.addPhotoBtn} accessibilityRole="button" accessibilityLabel={showHarvestForm ? 'Oogstformulier sluiten' : 'Oogst toevoegen'}>
                     <Text style={s.addPhotoBtnText}>{showHarvestForm ? '✕ Sluiten' : '+ Oogst'}</Text>
                   </TouchableOpacity>
                 </View>
