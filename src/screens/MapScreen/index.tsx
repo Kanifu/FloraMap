@@ -133,6 +133,14 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState('');
 
+  // Reset editing state whenever a different plant is selected, so stale
+  // showColors / showNote / noteText from the previous plant never leak through.
+  useEffect(() => {
+    setShowColors(false);
+    setShowNote(false);
+    setNoteText(plant?.notes ?? '');
+  }, [plant?.id]);
+
   const handleOpen = () => {
     setShowColors(false);
     setShowNote(false);

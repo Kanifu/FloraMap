@@ -311,7 +311,7 @@ const GardenMapBase = ({
         })}
 
         {/* ── Companion overlay ─────────────────────────────────────────────── */}
-        {showCompanionOverlay && companionPairs.map((pair, idx) => {
+        {showCompanionOverlay && companionPairs.map((pair) => {
           const pA = garden.plants.find((p) => p.id === pair.plantIdA);
           const pB = garden.plants.find((p) => p.id === pair.plantIdB);
           if (!pA || !pB) return null;
@@ -320,7 +320,7 @@ const GardenMapBase = ({
           const col = pair.relation === 'good' ? '#2d6a4f' : '#e63946';
           const mx = (x1 + x2) / 2; const my = (y1 + y2) / 2;
           return (
-            <G key={`cp-${idx}`}>
+            <G key={`cp-${pair.plantIdA}-${pair.plantIdB}`}>
               <Path d={arcPath(x1, y1, x2, y2)} stroke={col} strokeWidth={3}
                 strokeDasharray={pair.relation === 'good' ? '8,4' : '4,3'}
                 fill="none" opacity={0.9} />
