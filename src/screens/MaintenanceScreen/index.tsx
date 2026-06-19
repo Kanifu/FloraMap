@@ -471,7 +471,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Text style={styles.backBtnText}>← Tuin</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Onderhoud</Text>

@@ -1237,7 +1237,7 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Disease scan loading overlay */}
       {diseaseScanning && (
-        <Modal visible transparent animationType="fade">
+        <Modal visible transparent animationType="fade" onRequestClose={() => setDiseaseScanning(false)}>
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#2d6a4f" />
             <Text style={styles.loadingText}>Ziektescan bezig…</Text>
@@ -1348,7 +1348,7 @@ const MapScreen = (): React.JSX.Element => {
       </Modal>
 
       {/* New plant/zone modal */}
-      <Modal visible={showModal} transparent animationType="slide">
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>

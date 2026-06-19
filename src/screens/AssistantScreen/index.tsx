@@ -223,12 +223,16 @@ const AssistantScreen = (): React.JSX.Element => {
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      const newKeys: string[] = [];
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
-        if (addedPlantKeys.has(key)) return;
+        if (addedPlantKeys.has(key) || newKeys.includes(key)) return;
         addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
-        setAddedPlantKeys((prev) => new Set([...prev, key]));
+        newKeys.push(key);
       });
+      if (newKeys.length > 0) {
+        setAddedPlantKeys((prev) => new Set([...prev, ...newKeys]));
+      }
     },
     [garden, setGarden, addPlant, addedPlantKeys],
   );
@@ -367,7 +371,7 @@ const AssistantScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
