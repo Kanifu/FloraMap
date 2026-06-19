@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
   TextInput, Linking, Platform, Alert,
@@ -58,7 +58,7 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps): React.J
       .catch(() => Alert.alert('Fout', 'Kan browser niet openen.'));
   };
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
     sheet:     { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 16 },
     handle:    { width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: 'center', marginBottom: 4 },
@@ -95,7 +95,7 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps): React.J
     successIcon: { fontSize: 52 },
     successTitle: { fontSize: 20, fontWeight: '700', color: theme.primaryDark },
     successSub:   { fontSize: 14, color: theme.textSecondary, textAlign: 'center', lineHeight: 20 },
-  });
+  }), [theme]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>

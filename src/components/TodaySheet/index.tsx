@@ -37,12 +37,13 @@ export const TodaySheet = ({
 
   const tasks = useMemo((): TaskItem[] => {
     if (!garden) return [];
-    const now = new Date().toISOString();
+    const todayStr = new Date().toISOString().slice(0, 10);
     const items: TaskItem[] = [];
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (!task.completedDate && task.dueDate <= now) {
-          items.push({ plant, task, isOverdue: task.dueDate < now.slice(0, 10) });
+        const dueDateStr = task.dueDate.slice(0, 10);
+        if (!task.completedDate && dueDateStr <= todayStr) {
+          items.push({ plant, task, isOverdue: dueDateStr < todayStr });
         }
       }
     }
