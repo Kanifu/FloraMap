@@ -1580,15 +1580,6 @@ const styles = StyleSheet.create({
   emptyCardScanBtnText:  { color: '#fff', fontWeight: '700', fontSize: 15 },
   emptyCardManualBtn:    { backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 13, borderRadius: 13, minWidth: 200, alignItems: 'center', borderWidth: 1, borderColor: '#b7e4c7' },
   emptyCardManualBtnText:{ color: '#2d6a4f', fontWeight: '700', fontSize: 15 },
-  // Legacy names kept so nothing else breaks
-  emptyContainer:        { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', padding: 32, gap: 14 },
-  emptyIcon:             { fontSize: 64 },
-  emptyTitle:            { fontSize: 22, fontWeight: '700', color: '#1b4332' },
-  emptySubtitle:         { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
-  emptyScanBtn:          { backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center' },
-  emptyScanBtnText:      { color: '#fff', fontWeight: '700', fontSize: 16 },
-  emptyManualBtn:        { backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, minWidth: 200, alignItems: 'center', borderWidth: 1, borderColor: '#b7e4c7' },
-  emptyManualBtnText: { color: '#2d6a4f', fontWeight: '700', fontSize: 16 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
@@ -1613,36 +1604,11 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
-  scanBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  scanBtnText: { fontSize: 20 },
   menuBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#1b4332', alignItems: 'center', justifyContent: 'center',
   },
   menuBtnText: { fontSize: 20, color: '#fff', fontWeight: '700', lineHeight: 22 },
-  deleteBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#fff5f5', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#f4bfc0',
-  },
-  deleteBtnText: { fontSize: 18 },
-  companionBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  companionBtnActive: {
-    backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
-  },
-  companionBtnText: { fontSize: 20 },
-  // Legacy statusBar (unused, kept for safety)
-  statusBar: { flexDirection: 'row', gap: 12, paddingHorizontal: 14, paddingVertical: 7 },
-  statusBarUrgent: { fontSize: 12, color: '#c1121f', fontWeight: '600' },
-  statusBarSoon: { fontSize: 12, color: '#92400e', fontWeight: '600' },
   // Dashboard bar
   dashBar: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6,
@@ -1711,15 +1677,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
-  assistantFab: {
-    position: 'absolute', bottom: 82, right: 20,
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#1b4332', alignItems: 'center', justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3,
-    borderWidth: 1, borderColor: '#2d6a4f',
-  },
-  assistantFabText: { fontSize: 20 },
   fabMenu: {
     position: 'absolute', bottom: 80, right: 16,
     backgroundColor: '#fff', borderRadius: 14,
@@ -1731,9 +1688,6 @@ const styles = StyleSheet.create({
   fabMenuItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 13, gap: 12,
-  },
-  fabMenuDivider: {
-    height: StyleSheet.hairlineWidth, backgroundColor: '#e9ecef', marginHorizontal: 16,
   },
   fabMenuIcon: { fontSize: 22 },
   fabMenuLabel: { fontSize: 15, fontWeight: '600', color: '#1b4332' },
