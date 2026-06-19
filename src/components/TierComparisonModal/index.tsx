@@ -30,7 +30,7 @@ const FEATURE_ORDER: FeatureKey[] = [
 
 const TIER_LABELS = ['Gratis', 'Plus ⭐', 'Premium 💎'];
 const TIER_KEYS   = ['free', 'plus', 'premium'] as const;
-const TIER_COLORS = ['#6b705c', '#2d6a4f', '#1b4332'];
+const _TIER_COLORS = ['#6b705c', '#2d6a4f', '#1b4332'];
 const TIER_BG     = ['#f8f9fa', '#d8f3dc', '#1b4332'];
 const TIER_TEXT   = ['#1b4332', '#1b4332', '#fff'];
 

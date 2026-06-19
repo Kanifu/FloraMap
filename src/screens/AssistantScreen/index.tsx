@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
@@ -185,11 +186,21 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Camera-toegang nodig', 'Geef FloraMap toegang tot je camera in de instellingen.');
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
 
   const handlePickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Galerij-toegang nodig', 'Geef FloraMap toegang tot je foto\'s in de instellingen.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };

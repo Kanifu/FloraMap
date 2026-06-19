@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ONBOARDING_PROGRESS_KEY = 'floramap_onboarding_progress';
 
 export interface OnboardingResult {
   gridCols: number;
@@ -47,6 +49,39 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   const [experience, setExperience] = useState<Experience | null>(null);
   const [selectedSize, setSelectedSize] = useState(SIZE_PRESETS[2]); // default: Moestuin
 
+  const restoredRef = useRef(false);
+
+  // Restore saved progress on mount
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    AsyncStorage.getItem(ONBOARDING_PROGRESS_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (typeof saved.step === 'number') setStep(saved.step);
+        if (Array.isArray(saved.selectedTypes)) setSelectedTypes(saved.selectedTypes);
+        if (saved.experience) setExperience(saved.experience);
+        if (saved.selectedSize) {
+          const preset = SIZE_PRESETS.find((p) => p.cols === saved.selectedSize.cols && p.rows === saved.selectedSize.rows);
+          if (preset) setSelectedSize(preset);
+        }
+      } catch {
+        // corrupt data — start fresh
+      }
+    });
+  }, []);
+
+  const saveProgress = (updates: Partial<{ step: number; selectedTypes: GardenType[]; experience: Experience | null; selectedSize: typeof SIZE_PRESETS[number] }>) => {
+    const state = {
+      step: updates.step ?? step,
+      selectedTypes: updates.selectedTypes ?? selectedTypes,
+      experience: updates.experience ?? experience,
+      selectedSize: updates.selectedSize ?? selectedSize,
+    };
+    AsyncStorage.setItem(ONBOARDING_PROGRESS_KEY, JSON.stringify(state));
+  };
+
   const totalSteps = 7;
   const isLast = step === totalSteps - 1;
 
@@ -61,12 +96,15 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       // locatie is optioneel — stil doorgaan
     }
     setStep(2);
+    saveProgress({ step: 2 });
   };
 
   const toggleGardenType = (type: GardenType) => {
-    setSelectedTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
-    );
+    setSelectedTypes((prev) => {
+      const next = prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type];
+      saveProgress({ selectedTypes: next });
+      return next;
+    });
   };
 
   const handleNext = async () => {
@@ -74,11 +112,13 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       // Stap 2 navigatie via locationRequest of skip
       await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(2);
+      saveProgress({ step: 2 });
       return;
     }
     if (step === 2) {
       await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(3);
+      saveProgress({ step: 3 });
       return;
     }
     if (step === 3) {
@@ -86,10 +126,12 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
         await AsyncStorage.setItem('floramap_experience', experience);
       }
       setStep(4);
+      saveProgress({ step: 4 });
       return;
     }
     if (isLast) {
       setStep(0);
+      await AsyncStorage.removeItem(ONBOARDING_PROGRESS_KEY);
       const gardenType = selectedTypes[0] ?? 'moestuin';
       const gardenName = gardenType === 'balkon' ? 'Mijn balkon'
         : gardenType === 'siertuin' ? 'Mijn siertuin'
@@ -99,11 +141,17 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       onDone({ gridCols: selectedSize.cols, gridRows: selectedSize.rows, gardenName });
       return;
     }
-    setStep((n) => n + 1);
+    const nextStep = step + 1;
+    setStep(nextStep);
+    saveProgress({ step: nextStep });
   };
 
   const handleBack = () => {
-    if (step > 0) setStep((n) => n - 1);
+    if (step > 0) {
+      const prevStep = step - 1;
+      setStep(prevStep);
+      saveProgress({ step: prevStep });
+    }
   };
 
   const renderStep = () => {
@@ -136,7 +184,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
                 <Text style={s.locationGrantedText}>✅ Locatie toegestaan</Text>
               </View>
             )}
-            <TouchableOpacity style={s.skipLink} onPress={() => setStep(2)}>
+            <TouchableOpacity style={s.skipLink} onPress={() => { setStep(2); saveProgress({ step: 2 }); }}>
               <Text style={s.skipLinkText}>Overslaan →</Text>
             </TouchableOpacity>
           </>
@@ -176,7 +224,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
                 <TouchableOpacity
                   key={key}
                   style={[s.expBtn, experience === key && s.expBtnActive]}
-                  onPress={() => setExperience(key)}
+                  onPress={() => { setExperience(key); saveProgress({ experience: key }); }}
                   activeOpacity={0.8}>
                   <Text style={s.expEmoji}>{emoji}</Text>
                   <Text style={[s.expLabel, experience === key && s.expLabelActive]}>
@@ -199,7 +247,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
                 <TouchableOpacity
                   key={preset.label}
                   style={[s.typeBtn, selectedSize.cols === preset.cols && s.typeBtnActive]}
-                  onPress={() => setSelectedSize(preset)}
+                  onPress={() => { setSelectedSize(preset); saveProgress({ selectedSize: preset }); }}
                   activeOpacity={0.8}>
                   <Text style={s.typeBtnEmoji}>{preset.label.split(' ')[0]}</Text>
                   <Text style={[s.typeBtnLabel, selectedSize.cols === preset.cols && s.typeBtnLabelActive]}>
@@ -224,8 +272,8 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
             </Text>
             <View style={s.infoBox}>
               <Text style={s.infoText}>🗺️ Je tuinkaart is{' '}
-                <Text style={s.bold}>48 × 48 vakjes</Text>
-                {' '}= 14,4 × 14,4 m
+                <Text style={s.bold}>{selectedSize.cols} × {selectedSize.rows} vakjes</Text>
+                {' '}= {selectedSize.sub}
               </Text>
               <Text style={s.infoText}>📐 1 vakje = 30 × 30 cm</Text>
             </View>
@@ -277,7 +325,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
             )}
 
             {step === 1 && locationGranted && (
-              <TouchableOpacity style={s.btn} onPress={() => setStep(2)} activeOpacity={0.85}>
+              <TouchableOpacity style={s.btn} onPress={() => { setStep(2); saveProgress({ step: 2 }); }} activeOpacity={0.85}>
                 <Text style={s.btnText}>Volgende</Text>
               </TouchableOpacity>
             )}

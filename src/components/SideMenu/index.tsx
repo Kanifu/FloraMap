@@ -50,8 +50,8 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
   const {
     visible, onClose, plantCount, showCompanion, showNames,
     onToggleCompanion, onToggleNames,
-    onOpenAssistant, onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
-    onOpenStats, onOpenTierComparison, onOpenVirtualGarden,
+    onOpenAssistant: _onOpenAssistant, onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
+    onOpenStats, onOpenTierComparison: _onOpenTierComparison, onOpenVirtualGarden,
     onReportBug, onClearGarden, onDeleteGarden,
     onCreateGarden, onOpenGardenPicker,
     unlockedBadgeCount, recentBadgeEmojis,

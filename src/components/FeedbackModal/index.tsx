@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
-  TextInput, ScrollView, Linking, Platform, Alert,
+  TextInput, Linking, Platform, Alert,
 } from 'react-native';
 import Constants from 'expo-constants';
 import { useTheme } from '@/hooks/useTheme';

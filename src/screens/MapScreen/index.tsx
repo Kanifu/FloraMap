@@ -688,6 +688,13 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (!fromGallery) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Camera-toegang nodig', 'Geef FloraMap toegang tot je camera in de instellingen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });

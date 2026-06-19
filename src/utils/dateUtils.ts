@@ -9,8 +9,13 @@
 export const relativeDueLabel = (dueDateStr: string): string => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDateStr);
-  due.setHours(0, 0, 0, 0);
+
+  // Parse date string as local date to avoid UTC/local mismatch
+  // If dueDateStr is ISO with time component, extract just the date part
+  const dateOnly = dueDateStr.slice(0, 10); // "YYYY-MM-DD"
+  const [y, m, d] = dateOnly.split('-').map(Number);
+  const due = new Date(y, m - 1, d); // local midnight
+
   const diff = Math.round((due.getTime() - today.getTime()) / 86_400_000);
   if (diff === 0) return 'Vandaag';
   if (diff === 1) return 'Morgen';
