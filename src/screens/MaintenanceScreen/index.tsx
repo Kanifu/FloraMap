@@ -480,13 +480,15 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityRole="button"
+            accessibilityLabel="Exporteer taken naar agenda">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn} accessibilityRole="button" accessibilityLabel="Feedback geven">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn} accessibilityRole="button" accessibilityLabel="Over de app">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>

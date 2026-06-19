@@ -371,11 +371,11 @@ const AssistantScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Terug naar tuin">
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityRole="button" accessibilityLabel="Feedback geven">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
@@ -387,6 +387,7 @@ const AssistantScreen = (): React.JSX.Element => {
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messageList}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           dailyTip ? (
             <View style={styles.tipCard}>
@@ -403,10 +404,10 @@ const AssistantScreen = (): React.JSX.Element => {
               Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
             </Text>
             <View style={styles.emptyButtons}>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
+              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage} accessibilityRole="button" accessibilityLabel="Maak een foto met de camera">
                 <Text style={styles.emptyButtonText}>📷 Camera</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
+              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery} accessibilityRole="button" accessibilityLabel="Kies een foto uit de galerij">
                 <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
               </TouchableOpacity>
             </View>
