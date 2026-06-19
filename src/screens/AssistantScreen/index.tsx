@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
@@ -185,11 +186,21 @@ const AssistantScreen = (): React.JSX.Element => {
   );
 
   const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Camera-toegang nodig', 'Geef FloraMap toegang tot je camera in de instellingen.');
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
 
   const handlePickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Galerij-toegang nodig', 'Geef FloraMap toegang tot je foto\'s in de instellingen.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
     if (!result.canceled) setPendingImage(result.assets[0].uri);
   };
@@ -212,12 +223,16 @@ const AssistantScreen = (): React.JSX.Element => {
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
       if (!garden) setGarden(activeGarden);
+      const newKeys: string[] = [];
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
-        if (addedPlantKeys.has(key)) return;
+        if (addedPlantKeys.has(key) || newKeys.includes(key)) return;
         addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
-        setAddedPlantKeys((prev) => new Set([...prev, key]));
+        newKeys.push(key);
       });
+      if (newKeys.length > 0) {
+        setAddedPlantKeys((prev) => new Set([...prev, ...newKeys]));
+      }
     },
     [garden, setGarden, addPlant, addedPlantKeys],
   );
@@ -356,11 +371,11 @@ const AssistantScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Terug naar tuin">
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityRole="button" accessibilityLabel="Feedback geven">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
@@ -372,6 +387,7 @@ const AssistantScreen = (): React.JSX.Element => {
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messageList}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           dailyTip ? (
             <View style={styles.tipCard}>
@@ -388,10 +404,10 @@ const AssistantScreen = (): React.JSX.Element => {
               Maak een foto om planten te herkennen en onderhoudstaken op te sporen, of vraag advies over je tuin.
             </Text>
             <View style={styles.emptyButtons}>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage}>
+              <TouchableOpacity style={styles.emptyButton} onPress={handlePickImage} accessibilityRole="button" accessibilityLabel="Maak een foto met de camera">
                 <Text style={styles.emptyButtonText}>📷 Camera</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery}>
+              <TouchableOpacity style={styles.emptyButton} onPress={handlePickFromGallery} accessibilityRole="button" accessibilityLabel="Kies een foto uit de galerij">
                 <Text style={styles.emptyButtonText}>🖼️ Galerij</Text>
               </TouchableOpacity>
             </View>

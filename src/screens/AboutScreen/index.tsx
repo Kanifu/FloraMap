@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView,
   ScrollView, TouchableOpacity, Linking, Alert,
@@ -79,7 +79,7 @@ const AboutScreen = (): React.JSX.Element => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const theme = useTheme();
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     header: {
       flexDirection: 'row',
@@ -212,7 +212,7 @@ const AboutScreen = (): React.JSX.Element => {
     tierDebugBtnActive: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
     tierDebugBtnText: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
     tierDebugBtnTextActive: { color: theme.primary },
-  });
+  }), [theme]);
 
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -336,7 +336,7 @@ const AboutScreen = (): React.JSX.Element => {
                 <View style={styles.tierProgress}>
                   <View style={[
                     styles.tierProgressFill,
-                    { width: `${Math.min(100, ((garden?.plants.length ?? 0) / FREE_PLANT_LIMIT) * 100)}%` as any },
+                    { width: `${Math.min(100, ((garden?.plants.length ?? 0) / FREE_PLANT_LIMIT) * 100)}%` },
                   ]} />
                 </View>
                 <TouchableOpacity

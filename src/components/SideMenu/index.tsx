@@ -50,8 +50,8 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
   const {
     visible, onClose, plantCount, showCompanion, showNames,
     onToggleCompanion, onToggleNames,
-    onOpenAssistant, onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
-    onOpenStats, onOpenTierComparison, onOpenVirtualGarden,
+    onOpenAssistant: _onOpenAssistant, onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
+    onOpenStats, onOpenTierComparison: _onOpenTierComparison, onOpenVirtualGarden,
     onReportBug, onClearGarden, onDeleteGarden,
     onCreateGarden, onOpenGardenPicker,
     unlockedBadgeCount, recentBadgeEmojis,
@@ -116,7 +116,7 @@ export function SideMenu(props: SideMenuProps): React.JSX.Element {
                 <Text style={s.headerSub}>{plantCount} {plantCount === 1 ? 'plant' : 'planten'}</Text>
               </View>
               {unlockedBadgeCount > 0 && (
-                <TouchableOpacity style={s.badgeChip} onPress={run(onOpenStats)} activeOpacity={0.8}>
+                <TouchableOpacity style={s.badgeChip} onPress={run(onOpenStats)} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel={`${unlockedBadgeCount} badges behaald, bekijk statistieken`}>
                   <Text style={s.badgeChipEmojis}>{recentBadgeEmojis.slice(0, 3).join('')}</Text>
                   <Text style={s.badgeChipCount}>{unlockedBadgeCount} 🏆</Text>
                 </TouchableOpacity>

@@ -133,6 +133,14 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState('');
 
+  // Reset editing state whenever a different plant is selected, so stale
+  // showColors / showNote / noteText from the previous plant never leak through.
+  useEffect(() => {
+    setShowColors(false);
+    setShowNote(false);
+    setNoteText(plant?.notes ?? '');
+  }, [plant?.id]);
+
   const handleOpen = () => {
     setShowColors(false);
     setShowNote(false);
@@ -688,6 +696,13 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (!fromGallery) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Camera-toegang nodig', 'Geef FloraMap toegang tot je camera in de instellingen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -748,12 +763,6 @@ const MapScreen = (): React.JSX.Element => {
     addGardenTask(makeGardenTaskFromAssistant(task));
   };
 
-  const startManualAdd = () => {
-    ensureGarden();
-    
-    setDrawStep('first');
-  };
-
   // ── plant search ───────────────────────────────────────────────────────────
   const currentMonth = new Date().getMonth();
   const seasonalPlants = useMemo<PlantProfile[]>(() =>
@@ -795,7 +804,7 @@ const MapScreen = (): React.JSX.Element => {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.85 });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets?.length) return;
     setDiseaseScanning(true);
     try {
       const response = await gardenAssistantService.chat(
@@ -829,7 +838,7 @@ const MapScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setShowGardenPicker(true)} activeOpacity={0.75}>
+        <TouchableOpacity onPress={() => setShowGardenPicker(true)} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={`Tuin: ${currentGarden.name}`} accessibilityHint="Open tuinkiezer">
           <View style={styles.gardenNameRow}>
             <Text style={styles.gardenName}>{currentGarden.name}</Text>
             {gardens.length > 1 && <Text style={styles.gardenChevron}>⌄</Text>}
@@ -838,12 +847,12 @@ const MapScreen = (): React.JSX.Element => {
         </TouchableOpacity>
         <View style={styles.headerRight}>
           {pendingTaskCount > 0 && (
-            <TouchableOpacity style={styles.badge} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.badge} onPress={() => setShowTodaySheet(true)} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel={`${pendingTaskCount} verlopen taken`}>
               <Text style={styles.badgeText}>{pendingTaskCount} verlopen</Text>
             </TouchableOpacity>
           )}
           {scanning && <ActivityIndicator size="small" color="#2d6a4f" style={{ marginRight: 4 }} />}
-          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)} accessibilityRole="button" accessibilityLabel="Menu openen">
             <Text style={styles.menuBtnText}>☰</Text>
           </TouchableOpacity>
         </View>
@@ -970,24 +979,24 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.max(0.5, mapScale - 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel="Uitzoomen">
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
             lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={`Zoom herstellen, nu ${Math.round(mapScale * 100)}%`}>
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.min(3.0, mapScale + 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel="Inzoomen">
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel={fabMode === 'menu' ? 'Menu sluiten' : 'Toevoegen'}>
             <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
           </TouchableOpacity>
         )}
@@ -995,15 +1004,15 @@ const MapScreen = (): React.JSX.Element => {
         {/* FAB menu */}
         {!isInteractive && fabMode === 'menu' && (
           <View style={styles.fabMenu}>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={handleOpenAiSheet} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={handleOpenAiSheet} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="AI toevoegen of scannen">
               <Text style={styles.fabMenuIcon}>✨</Text>
               <Text style={styles.fabMenuLabel}>AI toevoegen / scannen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); ensureGarden(); setDrawStep('first'); }} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Plant of zone handmatig toevoegen">
               <Text style={styles.fabMenuIcon}>✏️</Text>
               <Text style={styles.fabMenuLabel}>Plant / zone handmatig toevoegen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.fabMenuItem} onPress={() => { setFabMode('idle'); setShowBoundaryPicker(true); }} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Tuingrens toevoegen">
               <Text style={styles.fabMenuIcon}>🏡</Text>
               <Text style={styles.fabMenuLabel}>Grens toevoegen</Text>
             </TouchableOpacity>
@@ -1230,7 +1239,7 @@ const MapScreen = (): React.JSX.Element => {
 
       {/* Disease scan loading overlay */}
       {diseaseScanning && (
-        <Modal visible transparent animationType="fade">
+        <Modal visible transparent animationType="fade" onRequestClose={() => setDiseaseScanning(false)}>
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#2d6a4f" />
             <Text style={styles.loadingText}>Ziektescan bezig…</Text>
@@ -1341,7 +1350,7 @@ const MapScreen = (): React.JSX.Element => {
       </Modal>
 
       {/* New plant/zone modal */}
-      <Modal visible={showModal} transparent animationType="slide">
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>
@@ -1571,15 +1580,6 @@ const styles = StyleSheet.create({
   emptyCardScanBtnText:  { color: '#fff', fontWeight: '700', fontSize: 15 },
   emptyCardManualBtn:    { backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 13, borderRadius: 13, minWidth: 200, alignItems: 'center', borderWidth: 1, borderColor: '#b7e4c7' },
   emptyCardManualBtnText:{ color: '#2d6a4f', fontWeight: '700', fontSize: 15 },
-  // Legacy names kept so nothing else breaks
-  emptyContainer:        { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', padding: 32, gap: 14 },
-  emptyIcon:             { fontSize: 64 },
-  emptyTitle:            { fontSize: 22, fontWeight: '700', color: '#1b4332' },
-  emptySubtitle:         { fontSize: 15, color: '#6b705c', textAlign: 'center', lineHeight: 22 },
-  emptyScanBtn:          { backgroundColor: '#2d6a4f', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, marginTop: 8, minWidth: 200, alignItems: 'center' },
-  emptyScanBtnText:      { color: '#fff', fontWeight: '700', fontSize: 16 },
-  emptyManualBtn:        { backgroundColor: '#f1f8f3', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, minWidth: 200, alignItems: 'center', borderWidth: 1, borderColor: '#b7e4c7' },
-  emptyManualBtnText: { color: '#2d6a4f', fontWeight: '700', fontSize: 16 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
@@ -1604,36 +1604,11 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: { backgroundColor: '#ffb703', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   badgeText: { color: '#1b1b1b', fontWeight: '700', fontSize: 13 },
-  scanBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  scanBtnText: { fontSize: 20 },
   menuBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#1b4332', alignItems: 'center', justifyContent: 'center',
   },
   menuBtnText: { fontSize: 20, color: '#fff', fontWeight: '700', lineHeight: 22 },
-  deleteBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#fff5f5', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#f4bfc0',
-  },
-  deleteBtnText: { fontSize: 18 },
-  companionBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f1f8f3', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#b7e4c7',
-  },
-  companionBtnActive: {
-    backgroundColor: '#2d6a4f', borderColor: '#2d6a4f',
-  },
-  companionBtnText: { fontSize: 20 },
-  // Legacy statusBar (unused, kept for safety)
-  statusBar: { flexDirection: 'row', gap: 12, paddingHorizontal: 14, paddingVertical: 7 },
-  statusBarUrgent: { fontSize: 12, color: '#c1121f', fontWeight: '600' },
-  statusBarSoon: { fontSize: 12, color: '#92400e', fontWeight: '600' },
   // Dashboard bar
   dashBar: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6,
@@ -1702,15 +1677,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
-  assistantFab: {
-    position: 'absolute', bottom: 82, right: 20,
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#1b4332', alignItems: 'center', justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3,
-    borderWidth: 1, borderColor: '#2d6a4f',
-  },
-  assistantFabText: { fontSize: 20 },
   fabMenu: {
     position: 'absolute', bottom: 80, right: 16,
     backgroundColor: '#fff', borderRadius: 14,
@@ -1722,9 +1688,6 @@ const styles = StyleSheet.create({
   fabMenuItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 13, gap: 12,
-  },
-  fabMenuDivider: {
-    height: StyleSheet.hairlineWidth, backgroundColor: '#e9ecef', marginHorizontal: 16,
   },
   fabMenuIcon: { fontSize: 22 },
   fabMenuLabel: { fontSize: 15, fontWeight: '600', color: '#1b4332' },

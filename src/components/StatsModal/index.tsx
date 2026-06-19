@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Pressable,
@@ -46,34 +46,42 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
 
   const plants = garden?.plants ?? [];
-  const totalPlants    = plants.length;
-  const totalCompleted = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length, 0);
-  const activeTasks    = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length, 0);
-  const totalHarvestGrams = plants.reduce((sum, p) =>
-    sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0), 0);
 
-  const harvestRanking = plants
+  const { totalPlants, totalCompleted, activeTasks, totalHarvestGrams } = useMemo(() => {
+    const totalPlants    = plants.length;
+    const totalCompleted = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length, 0);
+    const activeTasks    = plants.reduce((sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length, 0);
+    const totalHarvestGrams = plants.reduce((sum, p) =>
+      sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0), 0);
+    return { totalPlants, totalCompleted, activeTasks, totalHarvestGrams };
+  }, [plants]);
+
+  const harvestRanking = useMemo(() => plants
     .map((p) => ({ id: p.id, name: p.commonName, emoji: getPlantEmoji(p.commonName),
       totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0) }))
     .filter((p) => p.totalGrams > 0)
     .sort((a, b) => b.totalGrams - a.totalGrams)
-    .slice(0, 5);
+    .slice(0, 5), [plants]);
 
-  const taskTypeCounts: Record<string, number> = {};
-  for (const p of plants) {
-    for (const t of p.maintenanceTasks) {
-      if (t.completedDate) taskTypeCounts[t.type] = (taskTypeCounts[t.type] ?? 0) + 1;
+  const { taskTypeEntries, maxTaskCount } = useMemo(() => {
+    const taskTypeCounts: Record<string, number> = {};
+    for (const p of plants) {
+      for (const t of p.maintenanceTasks) {
+        if (t.completedDate) taskTypeCounts[t.type] = (taskTypeCounts[t.type] ?? 0) + 1;
+      }
     }
-  }
-  const taskTypeEntries = Object.entries(taskTypeCounts).sort((a, b) => b[1] - a[1]);
-  const maxTaskCount = taskTypeEntries.length > 0 ? taskTypeEntries[0][1] : 1;
-  const achievementGroups = Object.entries(
+    const taskTypeEntries = Object.entries(taskTypeCounts).sort((a, b) => b[1] - a[1]);
+    const maxTaskCount = taskTypeEntries.length > 0 ? taskTypeEntries[0][1] : 1;
+    return { taskTypeEntries, maxTaskCount };
+  }, [plants]);
+
+  const achievementGroups = useMemo(() => Object.entries(
     ACHIEVEMENTS.reduce<Record<string, typeof ACHIEVEMENTS>>((groups, achievement) => {
       const key = achievement.category;
       groups[key] = [...(groups[key] ?? []), achievement];
       return groups;
     }, {}),
-  );
+  ), []);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

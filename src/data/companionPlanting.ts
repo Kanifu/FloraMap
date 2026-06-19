@@ -374,7 +374,7 @@ export const findCompanionPairs = (plants: Plant[]): CompanionPair[] => {
               reason: rule.reason,
             });
           }
-          break; // First matching rule wins for this pair
+          // Continue checking — don't break, so both good and bad relations for the same pair are reported
         }
       }
     }

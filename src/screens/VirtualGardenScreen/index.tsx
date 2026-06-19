@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Path, Rect, Ellipse, Text as SvgText, Circle, G } from 'react-native-svg';
@@ -92,7 +92,7 @@ const VirtualGardenScreen = (): React.JSX.Element => {
     .filter((achievement) => !unlockedAchievements[achievement.id])
     .slice(0, 4);
 
-  const s = StyleSheet.create({
+  const s = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     header: {
       flexDirection: 'row', alignItems: 'center',
@@ -169,7 +169,7 @@ const VirtualGardenScreen = (): React.JSX.Element => {
     achievementEmoji: { fontSize: 24 },
     achievementName: { fontSize: 12, fontWeight: '700', color: theme.primaryDark },
     achievementDesc: { fontSize: 10, color: theme.textSecondary, lineHeight: 14 },
-  });
+  }), [theme]);
 
   return (
     <SafeAreaView style={s.container}>

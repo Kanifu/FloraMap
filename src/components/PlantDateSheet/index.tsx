@@ -38,9 +38,6 @@ const addDays = (d: Date, n: number): Date => {
   return r;
 };
 
-const toDateInput = (iso: string): string => iso.slice(0, 10);
-const fromDateInput = (dateStr: string): string => new Date(dateStr).toISOString();
-
 export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): React.JSX.Element | null {
   const now = new Date();
   const [customDate, setCustomDate] = useState('');

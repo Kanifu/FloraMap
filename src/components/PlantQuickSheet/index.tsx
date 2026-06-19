@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
   ScrollView, Pressable, TextInput,
@@ -32,6 +32,10 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName,      setEditName]      = useState('');
   const [editSpecies,   setEditSpecies]   = useState('');
+
+  useEffect(() => {
+    setIsEditingName(false);
+  }, [plant?.id]);
 
   const handleComplete = useCallback((taskId: string) => {
     if (!plant) return;
@@ -92,12 +96,10 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
 
   if (!plant) return null;
 
-  const now = new Date().toISOString();
+  const todayStr = new Date().toISOString().slice(0, 10);
   const activeTasks = plant.maintenanceTasks
     .filter((t) => !t.completedDate)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-
-  const todayStr = new Date().toISOString().slice(0, 10);
   const lastDoneToday = plant.maintenanceTasks.some(
     (t) => t.completedDate?.slice(0, 10) === todayStr
   );
@@ -166,7 +168,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
               </View>
             ) : (
               activeTasks.slice(0, 4).map((task) => {
-                const isOverdue = task.dueDate < now;
+                const isOverdue = task.dueDate.slice(0, 10) < todayStr;
                 const isWaterInRain = task.type === 'water' && weatherRainExpected;
                 return (
                   <TouchableOpacity

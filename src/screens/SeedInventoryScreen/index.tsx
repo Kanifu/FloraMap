@@ -89,13 +89,18 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const renderItem = ({ item }: { item: SeedPacket }) => {
     const isExpired = item.expiryYear !== undefined && item.expiryYear < CURRENT_YEAR;
-    const isExpiringSoon = item.expiryYear !== undefined && item.expiryYear === CURRENT_YEAR;
+    const isExpiringSoon = item.expiryYear !== undefined && !isExpired && (
+      item.expiryYear === CURRENT_YEAR ||
+      (item.expiryYear === CURRENT_YEAR + 1 && new Date().getMonth() >= 9)
+    );
 
     return (
       <TouchableOpacity
         style={[styles.card, item.isUsedUp && styles.cardUsedUp]}
         onLongPress={() => handleDelete(item)}
-        activeOpacity={0.8}>
+        activeOpacity={0.8}
+        accessibilityLabel={`${item.commonName}${item.isUsedUp ? ', op' : ''}${isExpired ? ', verlopen' : ''}`}
+        accessibilityHint="Houd ingedrukt om te verwijderen">
         <View style={styles.cardMain}>
           <Text style={styles.cardEmoji}>{item.emoji || '🌱'}</Text>
           <View style={styles.cardInfo}>
@@ -136,7 +141,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
         </View>
         <TouchableOpacity
           style={[styles.usedUpBtn, item.isUsedUp && styles.usedUpBtnActive]}
-          onPress={() => toggleUsedUp(item)}>
+          onPress={() => toggleUsedUp(item)}
+          accessibilityRole="button"
+          accessibilityLabel={item.isUsedUp ? 'Markeer als beschikbaar' : 'Markeer als op'}>
           <Text style={styles.usedUpBtnText}>{item.isUsedUp ? '↩️' : '✓ Op'}</Text>
         </TouchableOpacity>
       </TouchableOpacity>
