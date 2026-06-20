@@ -524,7 +524,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const remaining = state.gardens.filter((g) => g.id !== id);
         if (state.activeGardenId === id) {
-          const next = remaining[remaining.length - 1] ?? null;
+          const next = remaining.length > 0 ? remaining[0] : null;
           set({ gardens: remaining, garden: next, activeGardenId: next?.id ?? null });
         } else {
           set({ gardens: remaining });
@@ -584,10 +584,16 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
+        if (!state) return;
         // Migrate old format: single garden → gardens array
-        if (state && state.garden && state.gardens.length === 0) {
+        if (state.garden && state.gardens.length === 0) {
           state.gardens = [state.garden];
           state.activeGardenId = state.garden.id;
+        }
+        // Ensure activeGardenId is valid
+        if (state.gardens.length > 0 && !state.activeGardenId) {
+          state.activeGardenId = state.gardens[0].id;
+          state.garden = state.gardens[0];
         }
       },
     },

@@ -42,8 +42,6 @@ interface SideMenuProps {
   recentBadgeEmojis: string[];
   // kept for backward compat — badge chip now opens stats
   onOpenAchievements: () => void;
-  // kept for backward compat — scan moved to FAB
-  onScan?: () => void;
 }
 
 export function SideMenu(props: SideMenuProps): React.JSX.Element {

@@ -1512,7 +1512,6 @@ const MapScreen = (): React.JSX.Element => {
         showNames={showNames}
         onToggleCompanion={() => setShowCompanionOverlay((v) => !v)}
         onToggleNames={() => setShowNames((v) => !v)}
-        onScan={handleOpenAiSheet}
         onOpenAssistant={handleOpenAiSheet}
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
