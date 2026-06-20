@@ -4,8 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Garden, Plant, DiffProposal, GardenTask, MaintenanceTask,
   GardenBoundary, SoilProfile, SoilAmendment, HarvestEntry,
-  RotationRecord, SeedPacket, BADGE_DEFINITIONS,
+  RotationRecord, SeedPacket,
 } from '@/models';
+import { ACHIEVEMENTS } from '@/data/achievements';
 import { Tier, TIER_RANK, FREE_PLANT_LIMIT } from '@/constants/tiers';
 
 interface GardenState {
@@ -94,9 +95,9 @@ const buildGardenStats = (
   longestStreak,
   totalTasksCompleted,
   lastCompletionDate: lastTaskDate ?? undefined,
-  badges: BADGE_DEFINITIONS
+  badges: ACHIEVEMENTS
     .filter((def) => unlockedAchievements[def.id])
-    .map((def) => ({ id: def.id, name: (def as any).name ?? def.id, emoji: def.emoji ?? '🏅', unlockedAt: unlockedAchievements[def.id] })),
+    .map((def) => ({ id: def.id, name: def.title, emoji: def.emoji, description: def.description, unlockedAt: unlockedAchievements[def.id] })),
 });
 
 /** Sync updated active garden into the gardens array */
@@ -129,7 +130,7 @@ const countHarvests = (garden: Garden): number =>
 
 const countHarvestGrams = (garden: Garden): number =>
   garden.plants.reduce(
-    (sum, plant) => sum + (plant.harvestLog ?? []).reduce((plantSum, entry) => plantSum + (entry.weightG ?? entry.amountGrams ?? 0), 0),
+    (sum, plant) => sum + (plant.harvestLog ?? []).reduce((plantSum, entry) => plantSum + (entry.amountGrams ?? 0), 0),
     0,
   );
 
@@ -320,7 +321,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           ten_fertilize: countCompletedTasksByType(updated, 'fertilize') >= 10,
           first_prune: countCompletedTasksByType(updated, 'prune') >= 1,
         };
-        for (const def of BADGE_DEFINITIONS) {
+        for (const def of ACHIEVEMENTS) {
           if (badgeCriteria[def.id]) toUnlock.push(def.id);
         }
 

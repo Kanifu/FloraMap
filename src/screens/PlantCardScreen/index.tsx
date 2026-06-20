@@ -333,7 +333,7 @@ const PlantCardScreen = (): React.JSX.Element => {
     const entry: HarvestEntry = {
       id: newId(),
       date: new Date().toISOString(),
-      weightG: wg && !isNaN(wg) ? Math.round(wg) : undefined,
+      amountGrams: wg && !isNaN(wg) ? Math.round(wg) : undefined,
       count: cnt && !isNaN(cnt) ? cnt : undefined,
       notes: harvestNotes.trim() || undefined,
     };
@@ -603,7 +603,7 @@ const PlantCardScreen = (): React.JSX.Element => {
           {/* ── Harvest log ── */}
           {plant.harvestMonths && plant.harvestMonths.length > 0 && (() => {
             const log = [...(plant.harvestLog ?? [])].sort((a, b) => b.date.localeCompare(a.date));
-            const totalG = log.reduce((s, e) => s + (e.weightG ?? 0), 0);
+            const totalG = log.reduce((s, e) => s + (e.amountGrams ?? 0), 0);
             const totalCount = log.reduce((s, e) => s + (e.count ?? 0), 0);
             return (
               <View style={s.section}>
@@ -675,7 +675,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                         🌾 {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </Text>
                       <Text style={s.harvestEntryAmount}>
-                        {[entry.weightG ? `${entry.weightG}g` : '', entry.count ? `${entry.count}x` : ''].filter(Boolean).join(' · ')}
+                        {[entry.amountGrams ? `${entry.amountGrams}g` : '', entry.count ? `${entry.count}x` : ''].filter(Boolean).join(' · ')}
                       </Text>
                     </TouchableOpacity>
                   ))

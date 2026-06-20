@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ONBOARDING_PROGRESS_KEY = 'floramap_onboarding_progress';
 
 export interface OnboardingResult {
   gridCols: number;
@@ -46,9 +48,38 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   const [selectedTypes, setSelectedTypes] = useState<GardenType[]>([]);
   const [experience, setExperience] = useState<Experience | null>(null);
   const [selectedSize, setSelectedSize] = useState(SIZE_PRESETS[2]); // default: Moestuin
+  const [loaded, setLoaded] = useState(false);
 
   const totalSteps = 7;
   const isLast = step === totalSteps - 1;
+
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem(ONBOARDING_PROGRESS_KEY).then((val) => {
+      if (val) {
+        try {
+          const saved = JSON.parse(val);
+          if (saved.step !== undefined) setStep(saved.step);
+          if (saved.selectedTypes) setSelectedTypes(saved.selectedTypes);
+          if (saved.experience) setExperience(saved.experience);
+          if (saved.locationGranted) setLocationGranted(true);
+          if (saved.selectedSizeIdx !== undefined) {
+            setSelectedSize(SIZE_PRESETS[saved.selectedSizeIdx] ?? SIZE_PRESETS[2]);
+          }
+        } catch { /* ignore corrupt data */ }
+      }
+      setLoaded(true);
+    });
+  }, [visible]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const sizeIdx = SIZE_PRESETS.findIndex((p) => p.cols === selectedSize.cols);
+    AsyncStorage.setItem(ONBOARDING_PROGRESS_KEY, JSON.stringify({
+      step, selectedTypes, experience, locationGranted,
+      selectedSizeIdx: sizeIdx >= 0 ? sizeIdx : 2,
+    }));
+  }, [step, selectedTypes, experience, locationGranted, selectedSize, loaded]);
 
   const handleLocationRequest = async () => {
     try {
@@ -77,7 +108,6 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       return;
     }
     if (step === 2) {
-      await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(3);
       return;
     }
@@ -89,6 +119,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       return;
     }
     if (isLast) {
+      AsyncStorage.removeItem(ONBOARDING_PROGRESS_KEY);
       setStep(0);
       const gardenType = selectedTypes[0] ?? 'moestuin';
       const gardenName = gardenType === 'balkon' ? 'Mijn balkon'

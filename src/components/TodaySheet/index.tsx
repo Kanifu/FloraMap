@@ -41,8 +41,10 @@ export const TodaySheet = ({
     const items: TaskItem[] = [];
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (!task.completedDate && task.dueDate <= now) {
-          items.push({ plant, task, isOverdue: task.dueDate < now.slice(0, 10) });
+        const todayDate = now.slice(0, 10);
+        const taskDate = task.dueDate.slice(0, 10);
+        if (!task.completedDate && taskDate <= todayDate) {
+          items.push({ plant, task, isOverdue: taskDate < todayDate });
         }
       }
     }
@@ -92,7 +94,9 @@ export const TodaySheet = ({
                     <TouchableOpacity
                       style={s.checkBtn}
                       onPress={() => handleComplete(plant, task.id)}
-                      activeOpacity={0.75}>
+                      activeOpacity={0.75}
+                      accessibilityLabel={`${TASK_LABELS[task.type]} voltooien voor ${plant.commonName}`}
+                      accessibilityRole="button">
                       <Text style={s.checkBtnText}>✓</Text>
                     </TouchableOpacity>
                   </View>
