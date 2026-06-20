@@ -57,6 +57,7 @@ export interface HarvestEntry {
   id: string;
   date: string;           // ISO 8601
   amountGrams?: number;
+  count?: number;
   notes?: string;
 }
 
@@ -107,13 +108,6 @@ export interface GardenTask {
   plantName?: string;
 }
 
-export interface HarvestEntry {
-  id: string;
-  date: string;
-  weightG?: number;
-  count?: number;
-  notes?: string;
-}
 
 export type SoilType = 'clay' | 'loam' | 'sand' | 'peat';
 
@@ -138,21 +132,6 @@ export const ZONE_COLORS = [
   '#95d5b2', '#52b788', '#ffb703', '#e76f51',
   '#a8dadc', '#e9c46a', '#c9b1ff', '#ffd6e0',
 ];
-
-/** @deprecated Zones are represented as Plants with width/height > 1. This interface is unused. */
-export interface PlantZone {
-  id: string;
-  gardenId: string;
-  commonName: string;
-  species?: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  careTips?: string[];
-  notes?: string;
-}
 
 export type BoundaryType =
   | 'fence'       // 🪵 Schutting
@@ -181,8 +160,6 @@ export interface Garden {
   gridRows?: number;  // default 25
   polygons: GardenPolygon[];
   plants: Plant[];
-  /** @deprecated Use Plants with width/height > 1 instead */
-  zones?: PlantZone[];
   tasks?: GardenTask[];
   boundaries?: GardenBoundary[];
   lastScannedAt?: string;
@@ -232,12 +209,3 @@ export interface GardenStats {
   badges: Badge[];
 }
 
-export const BADGE_DEFINITIONS: Omit<Badge, 'unlockedAt'>[] = [
-  { id: 'first_task',  name: 'Eerste stap',     emoji: '🌱', description: 'Eerste taak voltooid' },
-  { id: 'streak_3',   name: 'Op dreef',          emoji: '🔥', description: '3 dagen op rij actief' },
-  { id: 'streak_7',   name: 'Groene week',       emoji: '🌿', description: '7 dagen streak' },
-  { id: 'streak_30',  name: 'Tuinmeester',       emoji: '🏆', description: '30 dagen streak' },
-  { id: 'ten_tasks',  name: 'Vlijtige tuinier',  emoji: '💪', description: '10 taken voltooid' },
-  { id: 'fifty_tasks', name: 'Doorgewinterd',    emoji: '⭐', description: '50 taken voltooid' },
-  { id: 'hundred_tasks', name: 'Groene duim',    emoji: '🎯', description: '100 taken voltooid' },
-];

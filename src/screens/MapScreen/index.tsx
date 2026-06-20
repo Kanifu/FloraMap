@@ -673,8 +673,8 @@ const MapScreen = (): React.JSX.Element => {
       x: pendingBounds.x, y: pendingBounds.y, z: 0,
       width: pendingBounds.width, height: pendingBounds.height,
       color: isZone ? modalColor : undefined,
-      plantedDate: modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
-      sowDate: modalPlantType === 'seed' ? (modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
+      plantedDate: (modalPlantedDate && !isNaN(new Date(modalPlantedDate).getTime())) ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
+      sowDate: modalPlantType === 'seed' ? ((modalPlantedDate && !isNaN(new Date(modalPlantedDate).getTime())) ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
       notes: modalNotes.trim() || undefined,
       addedVia: isZone ? 'manual' : modalPlantType as PlantAddedVia,
       maintenanceTasks: isZone
@@ -843,7 +843,8 @@ const MapScreen = (): React.JSX.Element => {
             </TouchableOpacity>
           )}
           {scanning && <ActivityIndicator size="small" color="#2d6a4f" style={{ marginRight: 4 }} />}
-          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}
+            accessibilityLabel="Menu openen" accessibilityRole="button">
             <Text style={styles.menuBtnText}>☰</Text>
           </TouchableOpacity>
         </View>
@@ -970,24 +971,25 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.max(0.5, mapScale - 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityLabel="Uitzoomen" accessibilityRole="button">
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
             lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityLabel="Zoom resetten naar 100%" accessibilityRole="button">
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.min(3.0, mapScale + 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75} accessibilityLabel="Inzoomen" accessibilityRole="button">
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}
+            accessibilityLabel={fabMode === 'menu' ? 'Actiemenu sluiten' : 'Actiemenu openen'} accessibilityRole="button">
             <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
           </TouchableOpacity>
         )}
@@ -1512,7 +1514,6 @@ const MapScreen = (): React.JSX.Element => {
         showNames={showNames}
         onToggleCompanion={() => setShowCompanionOverlay((v) => !v)}
         onToggleNames={() => setShowNames((v) => !v)}
-        onScan={handleOpenAiSheet}
         onOpenAssistant={handleOpenAiSheet}
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}

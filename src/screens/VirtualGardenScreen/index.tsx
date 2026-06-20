@@ -54,9 +54,9 @@ const PlantPot = ({ phaseIndex }: PlantPotProps): React.JSX.Element => {
       {/* Decorative dots on pot */}
       {phaseIndex >= 2 && (
         <>
-          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
-          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12}" />
-          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18}" />
+          <Circle cx={80} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
+          <Circle cx={100} cy={200} r={3} fill="rgba(255,255,255,0.12)" />
+          <Circle cx={120} cy={196} r={4} fill="rgba(255,255,255,0.18)" />
         </>
       )}
     </Svg>
@@ -72,7 +72,9 @@ const VirtualGardenScreen = (): React.JSX.Element => {
   const garden              = useGardenStore((s) => s.garden);
   const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
 
-  const drops = totalTasksCompleted * 2 + currentStreak;
+  const cumulativeDrops = totalTasksCompleted * 2;
+  const streakBonus = currentStreak;
+  const drops = cumulativeDrops + streakBonus;
 
   const phaseIndex = GROWTH_PHASES.reduce(
     (best, phase, i) => (totalTasksCompleted >= phase.taskThreshold ? i : best),
@@ -174,7 +176,8 @@ const VirtualGardenScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}
+          accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Virtuele tuin</Text>
@@ -210,7 +213,7 @@ const VirtualGardenScreen = (): React.JSX.Element => {
         <View style={s.statsRow}>
           <View style={s.statCard}>
             <Text style={s.statEmoji}>💧</Text>
-            <Text style={s.statNumber}>{drops}</Text>
+            <Text style={s.statNumber}>{cumulativeDrops}</Text>
             <Text style={s.statLabel}>Druppels</Text>
           </View>
           <View style={s.statCard}>
@@ -281,7 +284,7 @@ const VirtualGardenScreen = (): React.JSX.Element => {
           </View>
           <View style={s.infoRow}>
             <Text>🔥</Text>
-            <Text style={s.infoText}>+1 druppel per dag dat je actief bent (streak bonus)</Text>
+            <Text style={s.infoText}>Streak bonus: {streakBonus} extra druppels door je huidige reeks</Text>
           </View>
           <View style={s.infoRow}>
             <Text>🌱</Text>
