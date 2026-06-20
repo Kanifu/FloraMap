@@ -673,8 +673,8 @@ const MapScreen = (): React.JSX.Element => {
       x: pendingBounds.x, y: pendingBounds.y, z: 0,
       width: pendingBounds.width, height: pendingBounds.height,
       color: isZone ? modalColor : undefined,
-      plantedDate: modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
-      sowDate: modalPlantType === 'seed' ? (modalPlantedDate ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
+      plantedDate: (modalPlantedDate && !isNaN(new Date(modalPlantedDate).getTime())) ? new Date(modalPlantedDate).toISOString() : new Date().toISOString(),
+      sowDate: modalPlantType === 'seed' ? ((modalPlantedDate && !isNaN(new Date(modalPlantedDate).getTime())) ? new Date(modalPlantedDate).toISOString() : new Date().toISOString()) : undefined,
       notes: modalNotes.trim() || undefined,
       addedVia: isZone ? 'manual' : modalPlantType as PlantAddedVia,
       maintenanceTasks: isZone
