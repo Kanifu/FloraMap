@@ -176,7 +176,8 @@ const VirtualGardenScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}
+          accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Virtuele tuin</Text>
