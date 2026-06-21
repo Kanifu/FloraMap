@@ -1,12 +1,5 @@
-import { Plant, MaintenanceTaskType } from '@/models';
-
-const TASK_LABELS: Record<MaintenanceTaskType, string> = {
-  water: 'Begieten',
-  prune: 'Snoeien',
-  fertilize: 'Bemesten',
-  repot: 'Verpotten',
-  treat: 'Behandelen',
-};
+import { Plant } from '@/models';
+import { TASK_LABELS } from '@/constants/tasks';
 
 const toICSDate = (iso: string): string => iso.slice(0, 10).replace(/-/g, '');
 
@@ -15,7 +8,7 @@ export function generateICS(plants: Plant[]): string {
 
   for (const plant of plants) {
     for (const task of plant.maintenanceTasks) {
-      if (task.completedDate) continue;
+      if (task.completedDate) {continue;}
       const dateStr = toICSDate(task.dueDate);
       events.push(
         [

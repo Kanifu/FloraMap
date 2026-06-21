@@ -1,15 +1,8 @@
-import { Garden, Plant, MaintenanceTask, MaintenanceTaskType } from '@/models';
-
-const TASK_LABELS: Record<MaintenanceTaskType, string> = {
-  water: 'Begieten', prune: 'Snoeien', fertilize: 'Bemesten', repot: 'Verpotten', treat: 'Behandelen',
-};
-
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧', prune: '✂️', fertilize: '🌱', repot: '🪴', treat: '🩹',
-};
+import { Garden, Plant, MaintenanceTask } from '@/models';
+import { TASK_LABELS, TASK_ICONS } from '@/constants/tasks';
 
 const formatDate = (iso?: string): string => {
-  if (!iso) return '—';
+  if (!iso) {return '—';}
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
@@ -34,7 +27,7 @@ const taskRows = (garden: Garden): string => {
   const rows: { plant: Plant; task: MaintenanceTask }[] = [];
   for (const plant of garden.plants) {
     for (const task of plant.maintenanceTasks) {
-      if (!task.completedDate) rows.push({ plant, task });
+      if (!task.completedDate) {rows.push({ plant, task });}
     }
   }
   rows.sort((a, b) => a.task.dueDate.localeCompare(b.task.dueDate));

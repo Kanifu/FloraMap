@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
@@ -26,6 +26,23 @@ const SIZE_PRESETS = [
 type GardenType = 'moestuin' | 'siertuin' | 'balkon' | 'kruidentuin' | 'fruitbomen';
 type Experience = 'beginner' | 'gevorderd' | 'expert';
 
+const ONBOARDING_PROGRESS_KEY = 'floramap_onboarding_progress';
+
+interface OnboardingProgress {
+  step: number;
+  selectedTypes: GardenType[];
+  experience: Experience | null;
+  selectedSizeIndex: number;
+}
+
+async function saveProgress(progress: OnboardingProgress) {
+  await AsyncStorage.setItem(ONBOARDING_PROGRESS_KEY, JSON.stringify(progress));
+}
+
+async function clearProgress() {
+  await AsyncStorage.removeItem(ONBOARDING_PROGRESS_KEY);
+}
+
 const GARDEN_TYPES: { key: GardenType; emoji: string; label: string }[] = [
   { key: 'moestuin',    emoji: '🥬', label: 'Moestuin' },
   { key: 'siertuin',   emoji: '🌸', label: 'Siertuin' },
@@ -40,15 +57,40 @@ const EXPERIENCE_OPTIONS: { key: Experience; emoji: string; label: string }[] = 
   { key: 'expert',    emoji: '🌳', label: 'Expert' },
 ];
 
-export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
+export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element | null {
   const [step, setStep] = useState(0);
   const [locationGranted, setLocationGranted] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<GardenType[]>([]);
   const [experience, setExperience] = useState<Experience | null>(null);
-  const [selectedSize, setSelectedSize] = useState(SIZE_PRESETS[2]); // default: Moestuin
+  const [selectedSize, setSelectedSize] = useState(SIZE_PRESETS[2]);
+  const [restored, setRestored] = useState(false);
 
   const totalSteps = 7;
   const isLast = step === totalSteps - 1;
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(ONBOARDING_PROGRESS_KEY);
+        if (raw) {
+          const p: OnboardingProgress = JSON.parse(raw);
+          setStep(p.step);
+          setSelectedTypes(p.selectedTypes);
+          setExperience(p.experience);
+          if (p.selectedSizeIndex >= 0 && p.selectedSizeIndex < SIZE_PRESETS.length) {
+            setSelectedSize(SIZE_PRESETS[p.selectedSizeIndex]);
+          }
+        }
+      } catch {}
+      setRestored(true);
+    })();
+  }, []);
+
+  const sizeIndex = () => SIZE_PRESETS.findIndex((p) => p.cols === selectedSize.cols);
+
+  const persistStep = (nextStep: number, types = selectedTypes, exp = experience) => {
+    saveProgress({ step: nextStep, selectedTypes: types, experience: exp, selectedSizeIndex: sizeIndex() });
+  };
 
   const handleLocationRequest = async () => {
     try {
@@ -57,10 +99,9 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
         setLocationGranted(true);
         await AsyncStorage.setItem('floramap_location_granted', '1');
       }
-    } catch {
-      // locatie is optioneel — stil doorgaan
-    }
+    } catch {}
     setStep(2);
+    persistStep(2);
   };
 
   const toggleGardenType = (type: GardenType) => {
@@ -71,14 +112,15 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
 
   const handleNext = async () => {
     if (step === 1) {
-      // Stap 2 navigatie via locationRequest of skip
       await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(2);
+      persistStep(2);
       return;
     }
     if (step === 2) {
       await AsyncStorage.setItem('floramap_garden_types', JSON.stringify(selectedTypes));
       setStep(3);
+      persistStep(3);
       return;
     }
     if (step === 3) {
@@ -86,10 +128,12 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
         await AsyncStorage.setItem('floramap_experience', experience);
       }
       setStep(4);
+      persistStep(4);
       return;
     }
     if (isLast) {
       setStep(0);
+      await clearProgress();
       const gardenType = selectedTypes[0] ?? 'moestuin';
       const gardenName = gardenType === 'balkon' ? 'Mijn balkon'
         : gardenType === 'siertuin' ? 'Mijn siertuin'
@@ -99,11 +143,17 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
       onDone({ gridCols: selectedSize.cols, gridRows: selectedSize.rows, gardenName });
       return;
     }
-    setStep((n) => n + 1);
+    const next = step + 1;
+    setStep(next);
+    persistStep(next);
   };
 
   const handleBack = () => {
-    if (step > 0) setStep((n) => n - 1);
+    if (step > 0) {
+      const prev = step - 1;
+      setStep(prev);
+      persistStep(prev);
+    }
   };
 
   const renderStep = () => {
@@ -136,7 +186,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
                 <Text style={s.locationGrantedText}>✅ Locatie toegestaan</Text>
               </View>
             )}
-            <TouchableOpacity style={s.skipLink} onPress={() => setStep(2)}>
+            <TouchableOpacity style={s.skipLink} onPress={() => { setStep(2); persistStep(2); }}>
               <Text style={s.skipLinkText}>Overslaan →</Text>
             </TouchableOpacity>
           </>
@@ -249,10 +299,12 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
   };
 
   const getNextLabel = (): string => {
-    if (step === 1) return locationGranted ? 'Volgende' : 'Overslaan';
-    if (isLast) return '🌿 Beginnen';
+    if (step === 1) {return locationGranted ? 'Volgende' : 'Overslaan';}
+    if (isLast) {return '🌿 Beginnen';}
     return 'Volgende';
   };
+
+  if (!restored) {return null;}
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
@@ -277,7 +329,7 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element {
             )}
 
             {step === 1 && locationGranted && (
-              <TouchableOpacity style={s.btn} onPress={() => setStep(2)} activeOpacity={0.85}>
+              <TouchableOpacity style={s.btn} onPress={() => { setStep(2); persistStep(2); }} activeOpacity={0.85}>
                 <Text style={s.btnText}>Volgende</Text>
               </TouchableOpacity>
             )}

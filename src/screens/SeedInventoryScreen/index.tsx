@@ -38,8 +38,8 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   const sortedPackets = useMemo(() => {
     return [...seedPackets].sort((a, b) => {
       // non-usedUp first
-      if (!a.isUsedUp && b.isUsedUp) return -1;
-      if (a.isUsedUp && !b.isUsedUp) return 1;
+      if (!a.isUsedUp && b.isUsedUp) {return -1;}
+      if (a.isUsedUp && !b.isUsedUp) {return 1;}
       // then by expiry year ascending (undefined goes last)
       const aYear = a.expiryYear ?? 9999;
       const bYear = b.expiryYear ?? 9999;
@@ -57,14 +57,14 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   };
 
   const handleAdd = () => {
-    if (!modalCommonName.trim()) return;
+    if (!modalCommonName.trim()) {return;}
     const packet: SeedPacket = {
       id: newId(),
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
-      expiryYear: modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined,
-      amountGrams: modalAmountGrams ? parseFloat(modalAmountGrams) : undefined,
+      expiryYear: modalExpiryYear && !isNaN(parseInt(modalExpiryYear, 10)) ? parseInt(modalExpiryYear, 10) : undefined,
+      amountGrams: modalAmountGrams && !isNaN(parseFloat(modalAmountGrams)) ? parseFloat(modalAmountGrams) : undefined,
       notes: modalNotes.trim() || undefined,
     };
     addSeedPacket(packet);
@@ -89,7 +89,8 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const renderItem = ({ item }: { item: SeedPacket }) => {
     const isExpired = item.expiryYear !== undefined && item.expiryYear < CURRENT_YEAR;
-    const isExpiringSoon = item.expiryYear !== undefined && item.expiryYear === CURRENT_YEAR;
+    const currentMonth = new Date().getMonth();
+    const isExpiringSoon = item.expiryYear !== undefined && (item.expiryYear === CURRENT_YEAR || (item.expiryYear === CURRENT_YEAR + 1 && currentMonth >= 9));
 
     return (
       <TouchableOpacity
@@ -136,7 +137,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
         </View>
         <TouchableOpacity
           style={[styles.usedUpBtn, item.isUsedUp && styles.usedUpBtnActive]}
-          onPress={() => toggleUsedUp(item)}>
+          onPress={() => toggleUsedUp(item)}
+          accessibilityLabel={item.isUsedUp ? `${item.commonName} terugzetten als beschikbaar` : `${item.commonName} markeren als op`}
+          accessibilityRole="button">
           <Text style={styles.usedUpBtnText}>{item.isUsedUp ? '↩️' : '✓ Op'}</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -147,7 +150,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}
+          accessibilityLabel="Terug"
+          accessibilityRole="button">
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌱 Zaadvoorraad</Text>

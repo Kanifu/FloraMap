@@ -16,7 +16,7 @@ interface Props {
 function recalculateTasks(plant: Plant, newPlantedDate: string): MaintenanceTask[] {
   const base = new Date(newPlantedDate);
   return plant.maintenanceTasks.map((task) => {
-    if (task.completedDate || !task.intervalDays) return task;
+    if (task.completedDate || !task.intervalDays) {return task;}
     const due = new Date(base);
     due.setDate(due.getDate() + task.intervalDays);
     return { ...task, dueDate: due.toISOString() };
@@ -38,16 +38,13 @@ const addDays = (d: Date, n: number): Date => {
   return r;
 };
 
-const toDateInput = (iso: string): string => iso.slice(0, 10);
-const fromDateInput = (dateStr: string): string => new Date(dateStr).toISOString();
-
 export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): React.JSX.Element | null {
   const now = new Date();
   const [customDate, setCustomDate] = useState('');
   const [showCustom, setShowCustom] = useState(false);
   const [dateError, setDateError] = useState('');
 
-  if (!plant) return null;
+  if (!plant) {return null;}
 
   const currentPlantedDate = plant.plantedDate
     ? new Date(plant.plantedDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -64,7 +61,7 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
     if (!customDate) { setDateError('Voer een datum in.'); return; }
     try {
       const parsed = new Date(customDate);
-      if (isNaN(parsed.getTime())) throw new Error('invalid');
+      if (isNaN(parsed.getTime())) {throw new Error('invalid');}
       const iso = parsed.toISOString();
       setDateError('');
       const updated = { ...plant, plantedDate: iso, maintenanceTasks: recalculateTasks(plant, iso) };
@@ -108,7 +105,7 @@ export function PlantDateSheet({ plant, visible, onClose, onSave }: Props): Reac
                 <TextInput
                   style={[s.dateInput, dateError ? s.dateInputError : undefined]}
                   value={customDate}
-                  onChangeText={(v) => { setCustomDate(v); if (dateError) setDateError(''); }}
+                  onChangeText={(v) => { setCustomDate(v); if (dateError) {setDateError('');} }}
                   placeholder="JJJJ-MM-DD"
                   placeholderTextColor="#aaa"
                   keyboardType="numbers-and-punctuation"

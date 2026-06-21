@@ -12,7 +12,7 @@ Notifications.setNotificationHandler({
 
 export const requestNotificationPermissions = async (): Promise<boolean> => {
   const { status: existing } = await Notifications.getPermissionsAsync();
-  if (existing === 'granted') return true;
+  if (existing === 'granted') {return true;}
   const { status } = await Notifications.requestPermissionsAsync();
   return status === 'granted';
 };
@@ -22,7 +22,7 @@ export const scheduleDailyMaintenanceNotification = async (
   weatherData?: { rainExpected: boolean; droughtDays: number; tempMax: number },
 ): Promise<void> => {
   await Notifications.cancelAllScheduledNotificationsAsync();
-  if (!garden) return;
+  if (!garden) {return;}
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const in3Days = new Date();
@@ -42,10 +42,10 @@ export const scheduleDailyMaintenanceNotification = async (
       harvestAlerts.push(plant.commonName);
     }
     for (const task of plant.maintenanceTasks) {
-      if (task.completedDate) continue;
+      if (task.completedDate) {continue;}
       const taskDate = task.dueDate.slice(0, 10);
-      if (taskDate < todayStr) overdueCount++;
-      else if (taskDate === todayStr) dueTodayCount++;
+      if (taskDate < todayStr) {overdueCount++;}
+      else if (taskDate === todayStr) {dueTodayCount++;}
 
       // Collect water tasks due within 3 days for drought alert
       if (isActiveDrought && task.type === 'water' && task.dueDate <= in3DaysStr) {
@@ -55,14 +55,14 @@ export const scheduleDailyMaintenanceNotification = async (
   }
 
   const totalDue = dueTodayCount + overdueCount;
-  if (totalDue === 0 && harvestAlerts.length === 0 && droughtWaterPlants.length === 0) return;
+  if (totalDue === 0 && harvestAlerts.length === 0 && droughtWaterPlants.length === 0) {return;}
 
   let body = '';
 
   // Drought alert takes priority
   if (isActiveDrought && droughtWaterPlants.length > 0) {
     const plantNames = [...new Set(droughtWaterPlants)];
-    body = `🔥 ${weatherData!.droughtDays} droge dagen — begiet vandaag: ${plantNames.join(', ')}`;
+    body = `🔥 ${weatherData?.droughtDays ?? '?'} droge dagen — begiet vandaag: ${plantNames.join(', ')}`;
   } else if (totalDue > 0) {
     body = totalDue === 1
       ? 'Je hebt 1 onderhoudstaak die aandacht nodig heeft.'
@@ -82,7 +82,7 @@ export const scheduleDailyMaintenanceNotification = async (
     body = body ? `${body} ${harvestMsg}` : harvestMsg;
   }
 
-  if (!body) return;
+  if (!body) {return;}
 
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -102,20 +102,20 @@ export const scheduleDailyMaintenanceNotification = async (
 export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
   // 1. Request permission
   const { status } = await Notifications.requestPermissionsAsync();
-  if (status !== 'granted') return;
+  if (status !== 'granted') {return;}
 
   // 2. Get location
   const loc = await getCachedLocation();
 
   // 3. Fetch Open-Meteo: daily for 3 days + hourly for frost detection
   const url =
-    `https://api.open-meteo.com/v1/forecast` +
+    'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${loc.latitude}&longitude=${loc.longitude}` +
-    `&daily=temperature_2m_max,windspeed_10m_max,precipitation_sum` +
-    `&hourly=temperature_2m` +
-    `&forecast_days=3&forecast_hours=72&timezone=auto`;
+    '&daily=temperature_2m_max,windspeed_10m_max,precipitation_sum' +
+    '&hourly=temperature_2m' +
+    '&forecast_days=3&forecast_hours=72&timezone=auto';
   const res = await fetch(url);
-  if (!res.ok) return;
+  if (!res.ok) {return;}
   const data = await res.json();
 
   const maxTemps: number[] = data.daily?.temperature_2m_max ?? [];
@@ -150,7 +150,7 @@ export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
   if (minTemp <= 2) {
     const tonight20 = new Date();
     tonight20.setHours(20, 0, 0, 0);
-    if (tonight20 < new Date()) tonight20.setDate(tonight20.getDate() + 1);
+    if (tonight20 < new Date()) {tonight20.setDate(tonight20.getDate() + 1);}
 
     await Notifications.scheduleNotificationAsync({
       identifier: 'frost-alert',
@@ -167,7 +167,7 @@ export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
   if (todayMax > 30 && tomorrowMax > 30) {
     const today14 = new Date();
     today14.setHours(14, 0, 0, 0);
-    if (today14 < new Date()) today14.setDate(today14.getDate() + 1);
+    if (today14 < new Date()) {today14.setDate(today14.getDate() + 1);}
 
     await Notifications.scheduleNotificationAsync({
       identifier: 'heat-alert',

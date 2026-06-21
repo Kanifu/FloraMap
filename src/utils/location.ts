@@ -14,10 +14,10 @@ export async function getCachedLocation(): Promise<Coords> {
     const raw = await AsyncStorage.getItem(CACHE_KEY);
     if (raw) {
       const { coords, ts } = JSON.parse(raw);
-      if (Date.now() - ts < TTL_MS) return coords;
+      if (Date.now() - ts < TTL_MS) {return coords;}
     }
     const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') return FALLBACK;
+    if (status !== 'granted') {return FALLBACK;}
     const loc = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Low,
     });

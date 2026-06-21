@@ -40,7 +40,6 @@ const makeDefaultGarden = (): Garden => ({
   name: 'Mijn tuin',
   polygons: [],
   plants: [],
-  zones: [],
   tasks: [],
   lastScannedAt: new Date().toISOString(),
 });
@@ -103,7 +102,7 @@ const AssistantScreen = (): React.JSX.Element => {
 
   useEffect(() => {
     getDailyTip(garden).then((tip) => {
-      if (tip) setDailyTip(tip);
+      if (tip) {setDailyTip(tip);}
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -128,7 +127,7 @@ const AssistantScreen = (): React.JSX.Element => {
 
   const sendMessage = useCallback(
     async (text: string, imageUri: string | null) => {
-      if (!text.trim() && !imageUri) return;
+      if (!text.trim() && !imageUri) {return;}
 
       const userMsg: Message = {
         id: Date.now().toString(),
@@ -186,12 +185,12 @@ const AssistantScreen = (): React.JSX.Element => {
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    if (!result.canceled) {setPendingImage(result.assets[0].uri);}
   };
 
   const handlePickFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-    if (!result.canceled) setPendingImage(result.assets[0].uri);
+    if (!result.canceled) {setPendingImage(result.assets[0].uri);}
   };
 
   const handleSend = () => sendMessage(inputText, pendingImage);
@@ -199,9 +198,9 @@ const AssistantScreen = (): React.JSX.Element => {
   const handleAddToGarden = useCallback(
     (plant: IdentifiedPlant, messageId: string) => {
       const key = `${messageId}-${plant.species}`;
-      if (addedPlantKeys.has(key)) return;
+      if (addedPlantKeys.has(key)) {return;}
       const activeGarden = garden ?? makeDefaultGarden();
-      if (!garden) setGarden(activeGarden);
+      if (!garden) {setGarden(activeGarden);}
       addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length));
       setAddedPlantKeys((prev) => new Set([...prev, key]));
     },
@@ -211,10 +210,10 @@ const AssistantScreen = (): React.JSX.Element => {
   const handleAddAll = useCallback(
     (plants: IdentifiedPlant[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
-      if (!garden) setGarden(activeGarden);
+      if (!garden) {setGarden(activeGarden);}
       plants.forEach((plant, idx) => {
         const key = `${messageId}-${plant.species}`;
-        if (addedPlantKeys.has(key)) return;
+        if (addedPlantKeys.has(key)) {return;}
         addPlant(makePlant(plant, activeGarden.id, activeGarden.plants.length + idx));
         setAddedPlantKeys((prev) => new Set([...prev, key]));
       });
@@ -225,9 +224,9 @@ const AssistantScreen = (): React.JSX.Element => {
   const handleAddTask = useCallback(
     (task: AssistantTask, messageId: string, taskIdx: number) => {
       const key = `${messageId}-task-${taskIdx}`;
-      if (addedTaskKeys.has(key)) return;
+      if (addedTaskKeys.has(key)) {return;}
       const activeGarden = garden ?? makeDefaultGarden();
-      if (!garden) setGarden(activeGarden);
+      if (!garden) {setGarden(activeGarden);}
       addGardenTask(makeGardenTask(task));
       setAddedTaskKeys((prev) => new Set([...prev, key]));
     },
@@ -237,10 +236,10 @@ const AssistantScreen = (): React.JSX.Element => {
   const handleAddAllTasks = useCallback(
     (tasks: AssistantTask[], messageId: string) => {
       const activeGarden = garden ?? makeDefaultGarden();
-      if (!garden) setGarden(activeGarden);
+      if (!garden) {setGarden(activeGarden);}
       tasks.forEach((task, idx) => {
         const key = `${messageId}-task-${idx}`;
-        if (addedTaskKeys.has(key)) return;
+        if (addedTaskKeys.has(key)) {return;}
         addGardenTask(makeGardenTask(task));
         setAddedTaskKeys((prev) => new Set([...prev, key]));
       });
@@ -360,7 +359,7 @@ const AssistantScreen = (): React.JSX.Element => {
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
@@ -403,7 +402,7 @@ const AssistantScreen = (): React.JSX.Element => {
         <View style={styles.pendingImageRow}>
           <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
           <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
+          <TouchableOpacity onPress={() => setPendingImage(null)} accessibilityLabel="Foto verwijderen" accessibilityRole="button">
             <Text style={styles.removePending}>✕</Text>
           </TouchableOpacity>
         </View>

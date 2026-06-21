@@ -10,13 +10,13 @@ interface PlantIconProps {
 
 const getPlantEmoji = (species: string): string => {
   const lower = species.toLowerCase();
-  if (lower.includes('rosa') || lower.includes('rose')) return '🌹';
-  if (lower.includes('tree') || lower.includes('arbor') || lower.includes('quercus')) return '🌳';
-  if (lower.includes('tulip') || lower.includes('tulipa')) return '🌷';
-  if (lower.includes('sunflower') || lower.includes('helianthus')) return '🌻';
-  if (lower.includes('daisy') || lower.includes('bellis')) return '🌼';
-  if (lower.includes('cactus') || lower.includes('succulent')) return '🌵';
-  if (lower.includes('herb') || lower.includes('mint') || lower.includes('basil')) return '🌿';
+  if (lower.includes('rosa') || lower.includes('rose')) {return '🌹';}
+  if (lower.includes('tree') || lower.includes('arbor') || lower.includes('quercus')) {return '🌳';}
+  if (lower.includes('tulip') || lower.includes('tulipa')) {return '🌷';}
+  if (lower.includes('sunflower') || lower.includes('helianthus')) {return '🌻';}
+  if (lower.includes('daisy') || lower.includes('bellis')) {return '🌼';}
+  if (lower.includes('cactus') || lower.includes('succulent')) {return '🌵';}
+  if (lower.includes('herb') || lower.includes('mint') || lower.includes('basil')) {return '🌿';}
   return '🌿';
 };
 

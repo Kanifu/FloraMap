@@ -9,29 +9,14 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { MaintenanceTaskType, PhotoLogEntry, HarvestEntry } from '@/models';
+import { PhotoLogEntry, HarvestEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
 import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { useTheme } from '@/hooks/useTheme';
+import { TASK_LABELS, TASK_ICONS } from '@/constants/tasks';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
-
-const TASK_LABELS: Record<MaintenanceTaskType, string> = {
-  water: 'Begieten',
-  prune: 'Snoeien',
-  fertilize: 'Bemesten',
-  repot: 'Verpotten',
-  treat: 'Behandelen',
-};
-
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧',
-  prune: '✂️',
-  fertilize: '🌱',
-  repot: '🪴',
-  treat: '🩹',
-};
 
 const LIGHT_LABELS: Record<string, string> = {
   full_sun: '☀️ Vol zon',
@@ -210,7 +195,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   const [harvestNotes,      setHarvestNotes]      = useState('');
 
   const startEdit = () => {
-    if (!plant) return;
+    if (!plant) {return;}
     setEditName(plant.commonName);
     setEditSpecies(plant.species ?? '');
     setEditNotes(plant.notes ?? '');
@@ -220,7 +205,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   };
 
   const handleSave = () => {
-    if (!plant) return;
+    if (!plant) {return;}
     updatePlant({
       ...plant,
       commonName: editName.trim() || plant.commonName,
@@ -241,7 +226,7 @@ const PlantCardScreen = (): React.JSX.Element => {
 
   // ── AI info enrichment (#76) ───────────────────────────────────────────────
   const handleEnrichWithAI = async () => {
-    if (!plant) return;
+    if (!plant) {return;}
     setEnriching(true);
     try {
       const response = await gardenAssistantService.chat(
@@ -285,7 +270,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   // ── task complete ──────────────────────────────────────────────────────────
   const handleCompleteTask = useCallback(
     (taskId: string) => {
-      if (!plant) return;
+      if (!plant) {return;}
       completeMaintenanceTask(plant.id, taskId);   // ✅ fix #6: uses store action
     },
     [plant, completeMaintenanceTask],
@@ -293,7 +278,7 @@ const PlantCardScreen = (): React.JSX.Element => {
 
   // ── photo log ──────────────────────────────────────────────────────────────
   const handleAddPhoto = async () => {
-    if (!plant) return;
+    if (!plant) {return;}
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om een foto toe te voegen.');
@@ -304,7 +289,7 @@ const PlantCardScreen = (): React.JSX.Element => {
       allowsEditing: true,
       aspect: [1, 1],
     });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets[0]) {return;}
     const entry: PhotoLogEntry = {
       id: newId(),
       uri: result.assets[0].uri,
@@ -314,7 +299,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   };
 
   const handleDeletePhoto = (entryId: string) => {
-    if (!plant) return;
+    if (!plant) {return;}
     Alert.alert('Foto verwijderen?', 'Dit kan niet ongedaan worden gemaakt.', [
       { text: 'Annuleren', style: 'cancel' },
       {
@@ -326,10 +311,10 @@ const PlantCardScreen = (): React.JSX.Element => {
 
   // ── harvest ────────────────────────────────────────────────────────────────
   const handleSaveHarvest = () => {
-    if (!plant) return;
+    if (!plant) {return;}
     const wg = harvestWeight ? parseFloat(harvestWeight) : undefined;
     const cnt = harvestCount ? parseInt(harvestCount, 10) : undefined;
-    if (!wg && !cnt) return;
+    if (!wg && !cnt) {return;}
     const entry: HarvestEntry = {
       id: newId(),
       date: new Date().toISOString(),
@@ -345,7 +330,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   };
 
   const handleDeleteHarvest = (entryId: string) => {
-    if (!plant) return;
+    if (!plant) {return;}
     Alert.alert('Oogst verwijderen?', 'Dit kan niet ongedaan worden gemaakt.', [
       { text: 'Annuleren', style: 'cancel' },
       { text: 'Verwijderen', style: 'destructive', onPress: () => deleteHarvestEntry(plant.id, entryId) },
@@ -354,7 +339,7 @@ const PlantCardScreen = (): React.JSX.Element => {
 
   // ── tasks ──────────────────────────────────────────────────────────────────
   const { activeTasks, completedTasks } = useMemo(() => {
-    if (!plant) return { activeTasks: [], completedTasks: [] };
+    if (!plant) {return { activeTasks: [], completedTasks: [] };}
     const sorted = [...plant.maintenanceTasks].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     return {
       activeTasks:    sorted.filter((t) => !t.completedDate),
@@ -586,7 +571,9 @@ const PlantCardScreen = (): React.JSX.Element => {
                     key={entry.id}
                     style={s.photoEntry}
                     onLongPress={() => handleDeletePhoto(entry.id)}
-                    activeOpacity={0.85}>
+                    activeOpacity={0.85}
+                    accessibilityLabel={`Foto van ${new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} — lang indrukken om te verwijderen`}
+                    accessibilityRole="button">
                     <Image source={{ uri: entry.uri }} style={s.photoThumb} />
                     <Text style={s.photoDate}>
                       {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
@@ -670,7 +657,9 @@ const PlantCardScreen = (): React.JSX.Element => {
                       key={entry.id}
                       style={s.harvestEntryRow}
                       onLongPress={() => handleDeleteHarvest(entry.id)}
-                      activeOpacity={0.7}>
+                      activeOpacity={0.7}
+                      accessibilityLabel={`Oogst van ${new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })} — lang indrukken om te verwijderen`}
+                      accessibilityRole="button">
                       <Text style={s.harvestEntryDate}>
                         🌾 {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </Text>

@@ -9,33 +9,18 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
-import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask } from '@/models';
+import { MaintenanceTask, Plant, GardenTask } from '@/models';
 import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
 import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } from '@/services/NotificationService';
 import { plantDatabase } from '@/data/plantDatabase';
-import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/useWeather';
+import { useWeather } from '@/hooks/useWeather';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { TASK_LABELS, TASK_ICONS } from '@/constants/tasks';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'zaai' | 'geschiedenis';
-
-const TASK_LABELS: Record<MaintenanceTaskType, string> = {
-  water: 'Begieten',
-  prune: 'Snoeien',
-  fertilize: 'Bemesten',
-  repot: 'Verpotten',
-  treat: 'Behandelen',
-};
-
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧',
-  prune: '✂️',
-  fertilize: '🌱',
-  repot: '🪴',
-  treat: '🩹',
-};
 
 const MONTH_NAMES = [
   'januari', 'februari', 'maart', 'april', 'mei', 'juni',
@@ -58,8 +43,6 @@ const SEASONAL_TIPS: Record<number, string> = {
   10: '🍁 November: Snoei klimplanten en struiken. Mulch kwetsbare wortels voor de winter.',
   11: '❄️ December: Rust voor de tuin. Maak gereedschap schoon en plan volgend jaar.',
 };
-
-// WeatherData types and fetching are in @/hooks/useWeather
 
 interface FlatTask {
   task: MaintenanceTask;
@@ -84,22 +67,22 @@ const groupTasks = (flatTasks: FlatTask[], now: Date): Section[] => {
   for (const ft of flatTasks) {
     const dueDateStr = startOfDay(ft.task.dueDate);
     // Droogtetaken worden al in de "vandaag"-bucket geplaatst, ook als ze later gepland staan
-    if (dueDateStr <= todayStr || ft.isBroughtForward) today.push(ft);
-    else if (dueDateStr <= weekEndStr) thisWeek.push(ft);
-    else later.push(ft);
+    if (dueDateStr <= todayStr || ft.isBroughtForward) {today.push(ft);}
+    else if (dueDateStr <= weekEndStr) {thisWeek.push(ft);}
+    else {later.push(ft);}
   }
   const sections: Section[] = [];
-  if (today.length > 0) sections.push({ title: 'Vandaag & achterstallig', data: today });
-  if (thisWeek.length > 0) sections.push({ title: 'Deze week', data: thisWeek });
-  if (later.length > 0) sections.push({ title: 'Later', data: later });
+  if (today.length > 0) {sections.push({ title: 'Vandaag & achterstallig', data: today });}
+  if (thisWeek.length > 0) {sections.push({ title: 'Deze week', data: thisWeek });}
+  if (later.length > 0) {sections.push({ title: 'Later', data: later });}
   return sections;
 };
 
 const formatDateLabel = (dateKey: string, todayStr: string): string => {
-  if (dateKey === todayStr) return 'Vandaag';
+  if (dateKey === todayStr) {return 'Vandaag';}
   const tomorrowDate = new Date(todayStr);
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  if (dateKey === tomorrowDate.toISOString().slice(0, 10)) return 'Morgen';
+  if (dateKey === tomorrowDate.toISOString().slice(0, 10)) {return 'Morgen';}
   const d = new Date(dateKey);
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
 };
@@ -176,7 +159,9 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
             isWateringInDrought && styles.klaarButtonDrought,
           ]}
           onPress={handleComplete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={`${TASK_LABELS[task.type]} afronden voor ${plant.commonName}`}
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -201,7 +186,9 @@ const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.El
       </View>
       {!task.completedDate && (
         <TouchableOpacity style={styles.klaarButton} onPress={() => onComplete(task.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={`${task.description} afronden`}
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       )}
@@ -232,7 +219,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   // Schedule notifications when weather loads
   useEffect(() => {
-    if (!weather.loaded) return;
+    if (!weather.loaded) {return;}
     scheduleDailyMaintenanceNotification(garden, {
       rainExpected: weather.rainExpected,
       droughtDays: weather.droughtDays,
@@ -255,13 +242,13 @@ const MaintenanceScreen = (): React.JSX.Element => {
   }, [gardenStats.badges]);
 
   const harvestAlerts = useMemo(() => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     return garden.plants.filter((p) => p.harvestMonths?.includes(currentMonth));
   }, [garden, currentMonth]);
 
   // ── Taken tab data ────────────────────────────────────────────────────────
   const sections = useMemo((): Section[] => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     const now = new Date();
     const nowStr = now.toISOString();
     const in3Days = new Date(now);
@@ -273,7 +260,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const flatTasks: FlatTask[] = [];
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (task.completedDate) continue;
+        if (task.completedDate) {continue;}
         const isOverdue = task.dueDate < nowStr;
         const isRecurring = !!task.intervalDays;
         const isBroughtForward =
@@ -285,8 +272,8 @@ const MaintenanceScreen = (): React.JSX.Element => {
       }
     }
     flatTasks.sort((a, b) => {
-      if (a.isBroughtForward && !b.isBroughtForward) return -1;
-      if (!a.isBroughtForward && b.isBroughtForward) return 1;
+      if (a.isBroughtForward && !b.isBroughtForward) {return -1;}
+      if (!a.isBroughtForward && b.isBroughtForward) {return 1;}
       return a.task.dueDate.localeCompare(b.task.dueDate);
     });
     return groupTasks(flatTasks, now);
@@ -294,7 +281,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   // ── Planning tab data ─────────────────────────────────────────────────────
   const planningGroups = useMemo(() => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     const nowStr = now.toISOString();
@@ -305,9 +292,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const map = new Map<string, FlatTask[]>();
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (task.completedDate) continue;
+        if (task.completedDate) {continue;}
         const dateKey = task.dueDate.slice(0, 10);
-        if (dateKey > limitStr) continue;
+        if (dateKey > limitStr) {continue;}
         const entry: FlatTask = { task, plant, isOverdue: task.dueDate < nowStr, isRecurring: !!task.intervalDays, isBroughtForward: false };
         const existing = map.get(dateKey) ?? [];
         existing.push(entry);
@@ -322,11 +309,11 @@ const MaintenanceScreen = (): React.JSX.Element => {
   // ── Geschiedenis tab data ─────────────────────────────────────────────────
   interface CompletedEntry { task: MaintenanceTask; plant: Plant; }
   const historyGroups = useMemo(() => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     const completed: CompletedEntry[] = [];
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (task.completedDate) completed.push({ task, plant });
+        if (task.completedDate) {completed.push({ task, plant });}
       }
     }
     completed.sort((a, b) => (b.task.completedDate ?? '').localeCompare(a.task.completedDate ?? ''));
@@ -366,7 +353,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   // ── ICS export ────────────────────────────────────────────────────────────
   const handleExportICS = useCallback(async () => {
-    if (!garden) return;
+    if (!garden) {return;}
     const isAvailable = await Sharing.isAvailableAsync();
     if (!isAvailable) {
       Alert.alert('Delen niet beschikbaar', 'Delen wordt niet ondersteund op dit apparaat.');
@@ -457,7 +444,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
   );
 
   const gardenHarvestMonths = useMemo(() => {
-    if (!garden) return [] as { name: string; months: number[] }[];
+    if (!garden) {return [] as { name: string; months: number[] }[];}
     return garden.plants
       .filter((p) => p.harvestMonths && p.harvestMonths.length > 0)
       .map((p) => ({ name: p.commonName, months: p.harvestMonths! }));
@@ -480,13 +467,19 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityLabel="Taken exporteren naar agenda"
+            accessibilityRole="button">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}
+            accessibilityLabel="Bug melden"
+            accessibilityRole="button">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}
+            accessibilityLabel="Over deze app"
+            accessibilityRole="button">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>
@@ -642,7 +635,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
                     <TouchableOpacity
                       style={styles.klaarButton}
                       onPress={() => handleComplete(ft.plant.id, ft.task.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel={`${TASK_LABELS[ft.task.type]} afronden voor ${ft.plant.commonName}`}
+                      accessibilityRole="button">
                       <Text style={styles.klaarButtonText}>✓</Text>
                     </TouchableOpacity>
                   </View>
@@ -716,162 +711,6 @@ const MaintenanceScreen = (): React.JSX.Element => {
           })}
         </ScrollView>
       )}
-
-      {/* Stats tab removed — use 📊 Statistieken in the drawer (StatsModal) */}
-      {(activeTab as string) === 'stats' && (() => {
-        const PLANT_EMOJI_HINTS: Record<string, string> = {
-          tomaat: '🍅', komkommer: '🥒', paprika: '🫑', sla: '🥬', wortel: '🥕',
-          aardappel: '🥔', ui: '🧅', courgette: '🥒', basilicum: '🌿', aardbei: '🍓',
-        };
-        const getPlantEmoji = (name: string): string => {
-          const lower = name.toLowerCase();
-          for (const [key, emoji] of Object.entries(PLANT_EMOJI_HINTS)) {
-            if (lower.includes(key)) return emoji;
-          }
-          return '🌿';
-        };
-
-        const plants = garden?.plants ?? [];
-        const totalPlants = plants.length;
-        const totalCompleted = plants.reduce(
-          (sum, p) => sum + p.maintenanceTasks.filter((t) => !!t.completedDate).length,
-          0,
-        );
-        const activeTasks = plants.reduce(
-          (sum, p) => sum + p.maintenanceTasks.filter((t) => !t.completedDate).length,
-          0,
-        );
-        const totalHarvestGrams = plants.reduce((sum, p) => {
-          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0);
-        }, 0);
-
-        // Top 5 harvest plants
-        const harvestRanking = plants
-          .map((p) => ({
-            id: p.id,
-            name: p.commonName,
-            emoji: getPlantEmoji(p.commonName),
-            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0),
-          }))
-          .filter((p) => p.totalGrams > 0)
-          .sort((a, b) => b.totalGrams - a.totalGrams)
-          .slice(0, 5);
-
-        // Task counts per type (completed)
-        const taskTypeCounts: Record<string, number> = {};
-        for (const p of plants) {
-          for (const t of p.maintenanceTasks) {
-            if (t.completedDate) {
-              taskTypeCounts[t.type] = (taskTypeCounts[t.type] ?? 0) + 1;
-            }
-          }
-        }
-        const taskTypeEntries = Object.entries(taskTypeCounts).sort((a, b) => b[1] - a[1]);
-        const maxTaskCount = taskTypeEntries.length > 0 ? taskTypeEntries[0][1] : 1;
-        const taskTypeIconLabel: Record<string, { icon: string; label: string }> = {
-          water: { icon: '💧', label: 'Begieten' },
-          fertilize: { icon: '🌱', label: 'Bemesten' },
-          prune: { icon: '✂️', label: 'Snoeien' },
-          repot: { icon: '🪴', label: 'Verpotten' },
-          treat: { icon: '🩹', label: 'Behandelen' },
-        };
-
-        const earnedBadgesList = gardenStats.badges;
-
-        return (
-          <ScrollView contentContainerStyle={styles.listContent}>
-            {/* Section 1: Tuin overzicht */}
-            <View style={statsStyles.section}>
-              <Text style={statsStyles.sectionTitle}>🌳 Tuin overzicht</Text>
-              <View style={statsStyles.statRow}>
-                <View style={statsStyles.statCard}>
-                  <Text style={statsStyles.statValue}>{totalPlants}</Text>
-                  <Text style={statsStyles.statLabel}>Planten</Text>
-                </View>
-                <View style={statsStyles.statCard}>
-                  <Text style={statsStyles.statValue}>{totalCompleted}</Text>
-                  <Text style={statsStyles.statLabel}>Taken afgerond</Text>
-                </View>
-                <View style={statsStyles.statCard}>
-                  <Text style={statsStyles.statValue}>{activeTasks}</Text>
-                  <Text style={statsStyles.statLabel}>Open taken</Text>
-                </View>
-              </View>
-              <View style={statsStyles.harvestRow}>
-                <Text style={statsStyles.harvestLabel}>🍓 Totale oogst</Text>
-                <Text style={statsStyles.harvestValue}>
-                  {totalHarvestGrams > 0 ? `${totalHarvestGrams}g` : 'Nog niets geoogst'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Section 2: Streak & badges */}
-            <View style={statsStyles.section}>
-              <Text style={statsStyles.sectionTitle}>🔥 Streak & badges</Text>
-              <View style={statsStyles.streakCard}>
-                <Text style={statsStyles.streakMain}>
-                  {gardenStats.currentStreak > 0 ? '🔥 ' : ''}{gardenStats.currentStreak} {gardenStats.currentStreak === 1 ? 'dag actief' : 'dagen actief'}
-                </Text>
-                <Text style={statsStyles.streakSub}>
-                  Record: {gardenStats.longestStreak} dagen
-                </Text>
-                <Text style={statsStyles.streakSub}>
-                  {gardenStats.totalTasksCompleted} taken afgerond
-                </Text>
-              </View>
-              {earnedBadgesList.length > 0 ? (
-                <View style={statsStyles.badgesWrap}>
-                  {earnedBadgesList.map((b) => (
-                    <View key={b.id} style={statsStyles.badgeChip}>
-                      <Text style={statsStyles.badgeChipEmoji}>{b.emoji}</Text>
-                      <Text style={statsStyles.badgeChipName}>{b.name}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={statsStyles.emptyHint}>Nog geen badges — rond je eerste taken af!</Text>
-              )}
-            </View>
-
-            {/* Section 3: Oogstranking */}
-            {harvestRanking.length > 0 && (
-              <View style={statsStyles.section}>
-                <Text style={statsStyles.sectionTitle}>🏆 Oogstranking</Text>
-                {harvestRanking.map((item, idx) => (
-                  <View key={item.id} style={statsStyles.rankRow}>
-                    <Text style={statsStyles.rankNum}>#{idx + 1}</Text>
-                    <Text style={statsStyles.rankEmoji}>{item.emoji}</Text>
-                    <Text style={statsStyles.rankName}>{item.name}</Text>
-                    <Text style={statsStyles.rankGrams}>{item.totalGrams}g</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Section 4: Taken per type */}
-            {taskTypeEntries.length > 0 && (
-              <View style={statsStyles.section}>
-                <Text style={statsStyles.sectionTitle}>📊 Taken per type (afgerond)</Text>
-                {taskTypeEntries.map(([type, count]) => {
-                  const info = taskTypeIconLabel[type] ?? { icon: '🔧', label: type };
-                  const pct = count / maxTaskCount;
-                  return (
-                    <View key={type} style={statsStyles.barRow}>
-                      <Text style={statsStyles.barIcon}>{info.icon}</Text>
-                      <Text style={statsStyles.barLabel}>{info.label}</Text>
-                      <View style={statsStyles.barTrack}>
-                        <View style={[statsStyles.barFill, { flex: pct }]} />
-                        <View style={{ flex: 1 - pct }} />
-                      </View>
-                      <Text style={statsStyles.barCount}>{count}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </ScrollView>
-        );
-      })()}
 
       {/* ── Geschiedenis tab ── */}
       {activeTab === 'geschiedenis' && (
@@ -1108,63 +947,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22, shadowRadius: 4, elevation: 6,
   },
   toastText: { color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center' },
-});
-
-const statsStyles = StyleSheet.create({
-  section: {
-    backgroundColor: '#f8f9fa', borderRadius: 14, borderWidth: 1, borderColor: '#e9ecef',
-    padding: 14, marginBottom: 12, gap: 8,
-  },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1b4332', marginBottom: 4 },
-  statRow: { flexDirection: 'row', gap: 8 },
-  statCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1,
-    borderColor: '#e9ecef', padding: 12, alignItems: 'center', gap: 4,
-  },
-  statValue: { fontSize: 24, fontWeight: '700', color: '#2d6a4f' },
-  statLabel: { fontSize: 11, color: '#6b705c', fontWeight: '600', textAlign: 'center' },
-  harvestRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#fff9e6', borderRadius: 10, padding: 12,
-    borderWidth: 1, borderColor: '#ffe08a',
-  },
-  harvestLabel: { fontSize: 14, fontWeight: '600', color: '#7c5a00' },
-  harvestValue: { fontSize: 14, fontWeight: '700', color: '#7c5a00' },
-  streakCard: {
-    backgroundColor: '#d8f3dc', borderRadius: 10, padding: 12, gap: 4,
-  },
-  streakMain: { fontSize: 18, fontWeight: '700', color: '#1b4332' },
-  streakSub: { fontSize: 13, color: '#2d6a4f' },
-  badgesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  badgeChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#b7e4c7',
-    paddingHorizontal: 10, paddingVertical: 5,
-  },
-  badgeChipEmoji: { fontSize: 16 },
-  badgeChipName: { fontSize: 12, fontWeight: '700', color: '#1b4332' },
-  emptyHint: { fontSize: 13, color: '#aaa', fontStyle: 'italic' },
-  rankRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#fff', borderRadius: 10, padding: 10,
-    borderWidth: 1, borderColor: '#e9ecef',
-  },
-  rankNum: { fontSize: 13, fontWeight: '700', color: '#aaa', width: 24 },
-  rankEmoji: { fontSize: 20 },
-  rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1b4332' },
-  rankGrams: { fontSize: 14, fontWeight: '700', color: '#2d6a4f' },
-  barRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 4,
-  },
-  barIcon: { fontSize: 16, width: 22, textAlign: 'center' },
-  barLabel: { fontSize: 12, fontWeight: '600', color: '#6b705c', width: 72 },
-  barTrack: {
-    flex: 1, height: 10, borderRadius: 5,
-    backgroundColor: '#e9ecef', flexDirection: 'row', overflow: 'hidden',
-  },
-  barFill: { backgroundColor: '#2d6a4f', borderRadius: 5 },
-  barCount: { fontSize: 13, fontWeight: '700', color: '#1b4332', width: 28, textAlign: 'right' },
 });
 
 export default MaintenanceScreen;

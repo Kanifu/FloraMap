@@ -1,10 +1,7 @@
 import { Garden, MaintenanceTask } from '@/models';
 
-export const scheduleNotificationsForGarden = (garden: Garden): void => {
-  // TODO: Use @notifee/react-native or react-native-push-notification to schedule
-  // local notifications for each upcoming maintenance task.
-  // Call notifee.createTriggerNotification() with a TimestampTrigger for each task's dueDate.
-  void garden;
+export const scheduleNotificationsForGarden = (_garden: Garden): void => {
+  // TODO: schedule local notifications for each upcoming maintenance task
 };
 
 export const getOverdueTasks = (garden: Garden): MaintenanceTask[] => {

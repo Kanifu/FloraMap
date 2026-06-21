@@ -16,7 +16,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { FREE_PLANT_LIMIT, FEATURE_CONFIGS } from '@/hooks/useFeatureFlag';
-import type { Tier } from '@/constants/tiers';
+
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -73,7 +73,7 @@ const AboutScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
   const userTier = useGardenStore((s) => s.userTier);
-  const setUserTier = useGardenStore((s) => s.setUserTier);
+
   const [importing, setImporting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -160,6 +160,7 @@ const AboutScreen = (): React.JSX.Element => {
       lineHeight: 18,
       paddingHorizontal: 8,
     },
+    flexFill: { flex: 1 },
     // Achievements
     statsRow: { flexDirection: 'row', gap: 10 },
     statCard: {
@@ -204,14 +205,6 @@ const AboutScreen = (): React.JSX.Element => {
       paddingVertical: 12, alignItems: 'center',
     },
     tierUpgradeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-    tierDebugRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
-    tierDebugBtn: {
-      flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center',
-      borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card,
-    },
-    tierDebugBtnActive: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
-    tierDebugBtnText: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
-    tierDebugBtnTextActive: { color: theme.primary },
   });
 
   // ── Backup export ─────────────────────────────────────────────────────────
@@ -246,7 +239,7 @@ const AboutScreen = (): React.JSX.Element => {
         type: 'application/json',
         copyToCacheDirectory: true,
       });
-      if (result.canceled) return;
+      if (result.canceled) { return; }
       const asset = result.assets[0];
       const raw = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
       const parsed = JSON.parse(raw);
@@ -322,7 +315,7 @@ const AboutScreen = (): React.JSX.Element => {
               ]}>
                 {userTier === 'premium' ? '💎 Premium' : userTier === 'plus' ? '⭐ Plus' : '🆓 Gratis'}
               </Text>
-              <View style={{ flex: 1 }}>
+              <View style={styles.flexFill}>
                 <Text style={styles.tierLabel}>
                   {userTier === 'free' ? 'Gratis tier' : userTier === 'plus' ? 'Plus-abonnement' : 'Premium-abonnement'}
                 </Text>
@@ -336,7 +329,7 @@ const AboutScreen = (): React.JSX.Element => {
                 <View style={styles.tierProgress}>
                   <View style={[
                     styles.tierProgressFill,
-                    { width: `${Math.min(100, ((garden?.plants.length ?? 0) / FREE_PLANT_LIMIT) * 100)}%` as any },
+                    { width: `${Math.min(100, Math.round(((garden?.plants.length ?? 0) / FREE_PLANT_LIMIT) * 100))}%` as `${number}%` },
                   ]} />
                 </View>
                 <TouchableOpacity
@@ -346,20 +339,6 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
         </View>
 
@@ -396,7 +375,7 @@ const AboutScreen = (): React.JSX.Element => {
           style={styles.feedbackBtn}
           onPress={() => navigation.navigate('VirtualGarden')}>
           <Text style={styles.feedbackBtnIcon}>🌱</Text>
-          <View style={{ flex: 1 }}>
+          <View style={styles.flexFill}>
             <Text style={styles.feedbackBtnTitle}>Virtuele tuin</Text>
             <Text style={styles.feedbackBtnSub}>Bekijk hoe je plant groeit met je activiteit</Text>
           </View>
@@ -458,7 +437,7 @@ const AboutScreen = (): React.JSX.Element => {
         {/* Feedback button */}
         <TouchableOpacity style={styles.feedbackBtn} onPress={() => setShowFeedback(true)}>
           <Text style={styles.feedbackBtnIcon}>📣</Text>
-          <View style={{ flex: 1 }}>
+          <View style={styles.flexFill}>
             <Text style={styles.feedbackBtnTitle}>Feedback of bug melden</Text>
             <Text style={styles.feedbackBtnSub}>Helpt ons FloraMap te verbeteren</Text>
           </View>

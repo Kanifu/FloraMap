@@ -99,14 +99,14 @@ export const getMoonInfo = (d: Date = new Date()): MoonInfo => {
 
   let phase: MoonPhase;
   const pct = age / SYNODIC;
-  if (pct < 0.02 || pct >= 0.98) phase = 'new';
-  else if (pct < 0.23) phase = 'waxing_crescent';
-  else if (pct < 0.27) phase = 'first_quarter';
-  else if (pct < 0.48) phase = 'waxing_gibbous';
-  else if (pct < 0.52) phase = 'full';
-  else if (pct < 0.73) phase = 'waning_gibbous';
-  else if (pct < 0.77) phase = 'last_quarter';
-  else phase = 'waning_crescent';
+  if (pct < 0.02 || pct >= 0.98) {phase = 'new';}
+  else if (pct < 0.23) {phase = 'waxing_crescent';}
+  else if (pct < 0.27) {phase = 'first_quarter';}
+  else if (pct < 0.48) {phase = 'waxing_gibbous';}
+  else if (pct < 0.52) {phase = 'full';}
+  else if (pct < 0.73) {phase = 'waning_gibbous';}
+  else if (pct < 0.77) {phase = 'last_quarter';}
+  else {phase = 'waning_crescent';}
 
   // Element: rotate through 4 elements each ~7 days
   const elements: MoonElement[] = ['fire', 'water', 'earth', 'air'];

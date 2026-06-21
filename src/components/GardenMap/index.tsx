@@ -44,7 +44,7 @@ const EMOJI_MAP: [string[], string][] = [
 const getPlantEmoji = (name: string, species: string): string => {
   const hay = `${name} ${species}`.toLowerCase();
   for (const [keys, emoji] of EMOJI_MAP) {
-    if (keys.some((k) => hay.includes(k))) return emoji;
+    if (keys.some((k) => hay.includes(k))) {return emoji;}
   }
   return '🌱';
 };
@@ -100,7 +100,6 @@ interface GardenMapProps {
   showCompanionOverlay?: boolean;
   thirstyPlantIds?: string[];
   plantStatuses?: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'>;
-  plantStatusMap?: unknown;
   boundaries?: GardenBoundary[];
   showNames?: boolean;
   renderScale?: number;
@@ -157,13 +156,13 @@ const GardenMapBase = ({
   };
   const handlePlantTap = (plant: Plant) => {
     cancelLP();
-    if (!lpFired.current && !isInteractive) onPlantPress(plant);
+    if (!lpFired.current && !isInteractive) {onPlantPress(plant);}
     lpFired.current = false;
   };
 
   // ── Background tap (place/move mode) ────────────────────────────────────────
   const handleBgTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
-    if (!onMapPress) return;
+    if (!onMapPress) {return;}
     // Divide by renderScale to convert screen pixels → logical SVG pixels
     const gridX = Math.max(1, Math.min(Math.round(e.nativeEvent.locationX / (SCALE * renderScale)), effCols));
     const gridY = Math.max(1, Math.min(Math.round(e.nativeEvent.locationY / (SCALE * renderScale)), effRows));
@@ -314,7 +313,7 @@ const GardenMapBase = ({
         {showCompanionOverlay && companionPairs.map((pair, idx) => {
           const pA = garden.plants.find((p) => p.id === pair.plantIdA);
           const pB = garden.plants.find((p) => p.id === pair.plantIdB);
-          if (!pA || !pB) return null;
+          if (!pA || !pB) {return null;}
           const x1 = plantCx(pA); const y1 = plantCy(pA);
           const x2 = plantCx(pB); const y2 = plantCy(pB);
           const col = pair.relation === 'good' ? '#2d6a4f' : '#e63946';

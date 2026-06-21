@@ -8,6 +8,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { plantDatabase } from '@/data/plantDatabase';
 import { createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { TASK_ICONS } from '@/constants/tasks';
 
 interface Props {
   plant: Plant | null;
@@ -17,9 +18,6 @@ interface Props {
   weatherRainExpected?: boolean;
 }
 
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧', prune: '✂️', fertilize: '🌱', repot: '🪴', treat: '🩹',
-};
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Water geven', prune: 'Snoeien', fertilize: 'Bemesten',
   repot: 'Verpotten', treat: 'Behandelen',
@@ -34,19 +32,19 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   const [editSpecies,   setEditSpecies]   = useState('');
 
   const handleComplete = useCallback((taskId: string) => {
-    if (!plant) return;
+    if (!plant) {return;}
     completeMaintenanceTask(plant.id, taskId);
   }, [plant, completeMaintenanceTask]);
 
   const handleStartEdit = useCallback(() => {
-    if (!plant) return;
+    if (!plant) {return;}
     setEditName(plant.commonName);
     setEditSpecies(plant.species ?? '');
     setIsEditingName(true);
   }, [plant]);
 
   const handleSaveEdit = useCallback(() => {
-    if (!plant) return;
+    if (!plant) {return;}
     const newName = editName.trim() || plant.commonName;
     const newSpecies = editSpecies.trim() || plant.species;
 
@@ -90,7 +88,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
     setIsEditingName(false);
   }, []);
 
-  if (!plant) return null;
+  if (!plant) {return null;}
 
   const now = new Date().toISOString();
   const activeTasks = plant.maintenanceTasks

@@ -6,6 +6,7 @@ import {
 import { Garden, MaintenanceTaskType, Plant, MaintenanceTask } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
+import { TASK_ICONS } from '@/constants/tasks';
 
 interface Props {
   visible: boolean;
@@ -16,9 +17,6 @@ interface Props {
   onOpenMaintenance: () => void;
 }
 
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧', prune: '✂️', fertilize: '🌱', repot: '🪴', treat: '🩹',
-};
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Water geven', prune: 'Snoeien', fertilize: 'Bemesten',
   repot: 'Verpotten', treat: 'Behandelen',
@@ -36,7 +34,7 @@ export const TodaySheet = ({
   const completeMaintenanceTask = useGardenStore((s) => s.completeMaintenanceTask);
 
   const tasks = useMemo((): TaskItem[] => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     const now = new Date().toISOString();
     const items: TaskItem[] = [];
     for (const plant of garden.plants) {
@@ -48,7 +46,7 @@ export const TodaySheet = ({
     }
     // Overdue first, then by dueDate ascending
     items.sort((a, b) => {
-      if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+      if (a.isOverdue !== b.isOverdue) {return a.isOverdue ? -1 : 1;}
       return a.task.dueDate.localeCompare(b.task.dueDate);
     });
     return items;

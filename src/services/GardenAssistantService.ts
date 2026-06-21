@@ -14,7 +14,7 @@ const fetchWithRetry = async (url: string, init: RequestInit, retries = 3, timeo
     try {
       const res = await fetch(url, { ...init, signal: controller.signal });
       clearTimeout(timer);
-      if (res.status !== 503 || attempt === retries) return res;
+      if (res.status !== 503 || attempt === retries) {return res;}
       await sleep(1000 * Math.pow(2, attempt));
     } catch (err: unknown) {
       clearTimeout(timer);
@@ -44,18 +44,10 @@ export interface AssistantTask {
   plantName?: string;
 }
 
-export interface SuggestedPlacement {
-  commonName: string;
-  species?: string;
-  x: number;
-  y: number;
-}
-
 export interface AssistantResponse {
   text: string;
   identifiedPlants?: IdentifiedPlant[];
   detectedTasks?: AssistantTask[];
-  suggestedPlacements?: SuggestedPlacement[];
 }
 
 export interface ChatTurn {
@@ -84,8 +76,8 @@ export const createInitialTasksForPlant = (
     });
   };
 
-  if (identified.waterIntervalDays) addTask('water', identified.waterIntervalDays);
-  if (identified.fertilizeIntervalDays) addTask('fertilize', identified.fertilizeIntervalDays);
+  if (identified.waterIntervalDays) {addTask('water', identified.waterIntervalDays);}
+  if (identified.fertilizeIntervalDays) {addTask('fertilize', identified.fertilizeIntervalDays);}
 
   return tasks;
 };
@@ -123,10 +115,6 @@ Als je in een foto ook onderhoudsproblemen ziet (onkruid, zieke bladeren, droogs
 TASKS:[{"description":"wat er gedaan moet worden","urgency":"high","plantName":"plantnaam of leeg"}]
 urgency: "high" = vandaag, "medium" = binnen 3 dagen, "low" = binnen een week.
 
-Als de gebruiker vraagt waar nieuwe planten het beste passen, of aangeeft welke planten hij wil toevoegen ("ik wil tomaat en basilicum planten", "waar zet ik mais"), analyseer de tuin en stel optimale gridposities voor. Kies vrije cellen, houd rekening met companion planting en zonlicht. Voeg toe (één regel, geen markdown):
-PLAATSING:[{"commonName":"Tomaat","species":"Solanum lycopersicum","x":3,"y":4},{"commonName":"Basilicum","x":4,"y":4}]
-x, y zijn 1-gebaseerde rastercoördinaten. Kies posities verspreid over de beschikbare ruimte.
-
 Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die niet van toepassing is.`;
   }
 
@@ -163,13 +151,13 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
     }
 
     const currentParts: object[] = [];
-    if (userText) currentParts.push({ text: userText });
+    if (userText) {currentParts.push({ text: userText });}
     if (imageUri) {
       const base64 = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } });
-      if (!userText) currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });
+      if (!userText) {currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });}
     }
     contents.push({ role: 'user', parts: currentParts });
 
@@ -195,8 +183,8 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
 
     if (!response.ok) {
       const status = response.status;
-      if (status === 503) throw new Error('Gemini is momenteel overbelast. Probeer het opnieuw.');
-      if (status === 429) throw new Error('Te veel verzoeken. Even wachten en opnieuw proberen.');
+      if (status === 503) {throw new Error('Gemini is momenteel overbelast. Probeer het opnieuw.');}
+      if (status === 429) {throw new Error('Te veel verzoeken. Even wachten en opnieuw proberen.');}
       throw new Error(`Gemini API fout: ${status}`);
     }
 
@@ -215,7 +203,6 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
     // Scan all lines for structured markers, then strip them from display text
     let identifiedPlants: IdentifiedPlant[] | undefined;
     let detectedTasks: AssistantTask[] | undefined;
-    let suggestedPlacements: SuggestedPlacement[] | undefined;
 
     const displayLines = fullText.split('\n').filter((line) => {
       const trimmed = line.trim();
@@ -237,15 +224,6 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
         }
         return false;
       }
-      if (trimmed.startsWith('PLAATSING:')) {
-        try {
-          const parsed = JSON.parse(trimmed.slice(10));
-          suggestedPlacements = Array.isArray(parsed) ? parsed : [parsed];
-        } catch (err) {
-          console.warn('[GardenAssistant] PLAATSING parse error:', err, '| raw:', trimmed.slice(10, 80));
-        }
-        return false;
-      }
       return true;
     });
 
@@ -253,7 +231,6 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
       text: displayLines.join('\n').trim(),
       identifiedPlants,
       detectedTasks,
-      suggestedPlacements,
     };
   }
 }
