@@ -9,29 +9,14 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
 import { MapStackParamList } from '@/navigation/AppNavigator';
-import { MaintenanceTaskType, PhotoLogEntry, HarvestEntry } from '@/models';
+import { PhotoLogEntry, HarvestEntry } from '@/models';
 import { relativeDueLabel, fullDateTime } from '@/utils/dateUtils';
 import { gardenAssistantService, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { useTheme } from '@/hooks/useTheme';
+import { TASK_LABELS, TASK_ICONS } from '@/constants/tasks';
 
 type PlantCardRouteProp = RouteProp<MapStackParamList, 'PlantCard'>;
 type PlantCardNavProp  = StackNavigationProp<MapStackParamList, 'PlantCard'>;
-
-const TASK_LABELS: Record<MaintenanceTaskType, string> = {
-  water: 'Begieten',
-  prune: 'Snoeien',
-  fertilize: 'Bemesten',
-  repot: 'Verpotten',
-  treat: 'Behandelen',
-};
-
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧',
-  prune: '✂️',
-  fertilize: '🌱',
-  repot: '🪴',
-  treat: '🩹',
-};
 
 const LIGHT_LABELS: Record<string, string> = {
   full_sun: '☀️ Vol zon',

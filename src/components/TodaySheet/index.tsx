@@ -6,6 +6,7 @@ import {
 import { Garden, MaintenanceTaskType, Plant, MaintenanceTask } from '@/models';
 import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
+import { TASK_ICONS } from '@/constants/tasks';
 
 interface Props {
   visible: boolean;
@@ -16,9 +17,6 @@ interface Props {
   onOpenMaintenance: () => void;
 }
 
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧', prune: '✂️', fertilize: '🌱', repot: '🪴', treat: '🩹',
-};
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Water geven', prune: 'Snoeien', fertilize: 'Bemesten',
   repot: 'Verpotten', treat: 'Behandelen',

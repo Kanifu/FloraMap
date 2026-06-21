@@ -1,12 +1,5 @@
-import { Garden, Plant, MaintenanceTask, MaintenanceTaskType } from '@/models';
-
-const TASK_LABELS: Record<MaintenanceTaskType, string> = {
-  water: 'Begieten', prune: 'Snoeien', fertilize: 'Bemesten', repot: 'Verpotten', treat: 'Behandelen',
-};
-
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧', prune: '✂️', fertilize: '🌱', repot: '🪴', treat: '🩹',
-};
+import { Garden, Plant, MaintenanceTask } from '@/models';
+import { TASK_LABELS, TASK_ICONS } from '@/constants/tasks';
 
 const formatDate = (iso?: string): string => {
   if (!iso) {return '—';}

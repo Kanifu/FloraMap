@@ -8,6 +8,7 @@ import { useGardenStore } from '@/store/gardenStore';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { plantDatabase } from '@/data/plantDatabase';
 import { createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { TASK_ICONS } from '@/constants/tasks';
 
 interface Props {
   plant: Plant | null;
@@ -17,9 +18,6 @@ interface Props {
   weatherRainExpected?: boolean;
 }
 
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧', prune: '✂️', fertilize: '🌱', repot: '🪴', treat: '🩹',
-};
 const TASK_LABELS: Record<MaintenanceTaskType, string> = {
   water: 'Water geven', prune: 'Snoeien', fertilize: 'Bemesten',
   repot: 'Verpotten', treat: 'Behandelen',

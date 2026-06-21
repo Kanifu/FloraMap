@@ -9,7 +9,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useGardenStore } from '@/store/gardenStore';
-import { MaintenanceTask, MaintenanceTaskType, Plant, GardenTask } from '@/models';
+import { MaintenanceTask, Plant, GardenTask } from '@/models';
 import { MaintenanceStackParamList } from '@/navigation/AppNavigator';
 import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
@@ -17,25 +17,10 @@ import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } f
 import { plantDatabase } from '@/data/plantDatabase';
 import { useWeather } from '@/hooks/useWeather';
 import { FeedbackModal } from '@/components/FeedbackModal';
+import { TASK_LABELS, TASK_ICONS } from '@/constants/tasks';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
 type Tab = 'taken' | 'planning' | 'zaai' | 'geschiedenis';
-
-const TASK_LABELS: Record<MaintenanceTaskType, string> = {
-  water: 'Begieten',
-  prune: 'Snoeien',
-  fertilize: 'Bemesten',
-  repot: 'Verpotten',
-  treat: 'Behandelen',
-};
-
-const TASK_ICONS: Record<MaintenanceTaskType, string> = {
-  water: '💧',
-  prune: '✂️',
-  fertilize: '🌱',
-  repot: '🪴',
-  treat: '🩹',
-};
 
 const MONTH_NAMES = [
   'januari', 'februari', 'maart', 'april', 'mei', 'juni',
