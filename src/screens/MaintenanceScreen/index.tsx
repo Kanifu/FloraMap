@@ -15,7 +15,7 @@ import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
 import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } from '@/services/NotificationService';
 import { plantDatabase } from '@/data/plantDatabase';
-import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/useWeather';
+import { useWeather } from '@/hooks/useWeather';
 import { FeedbackModal } from '@/components/FeedbackModal';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
@@ -58,8 +58,6 @@ const SEASONAL_TIPS: Record<number, string> = {
   10: '🍁 November: Snoei klimplanten en struiken. Mulch kwetsbare wortels voor de winter.',
   11: '❄️ December: Rust voor de tuin. Maak gereedschap schoon en plan volgend jaar.',
 };
-
-// WeatherData types and fetching are in @/hooks/useWeather
 
 interface FlatTask {
   task: MaintenanceTask;
