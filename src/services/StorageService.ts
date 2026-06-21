@@ -11,7 +11,7 @@ export class StorageService {
   async loadGarden(): Promise<Garden | null> {
     try {
       const raw = await AsyncStorage.getItem(GARDEN_KEY);
-      if (!raw) return null;
+      if (!raw) {return null;}
       return JSON.parse(raw) as Garden;
     } catch {
       return null;

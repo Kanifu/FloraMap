@@ -82,22 +82,22 @@ const groupTasks = (flatTasks: FlatTask[], now: Date): Section[] => {
   for (const ft of flatTasks) {
     const dueDateStr = startOfDay(ft.task.dueDate);
     // Droogtetaken worden al in de "vandaag"-bucket geplaatst, ook als ze later gepland staan
-    if (dueDateStr <= todayStr || ft.isBroughtForward) today.push(ft);
-    else if (dueDateStr <= weekEndStr) thisWeek.push(ft);
-    else later.push(ft);
+    if (dueDateStr <= todayStr || ft.isBroughtForward) {today.push(ft);}
+    else if (dueDateStr <= weekEndStr) {thisWeek.push(ft);}
+    else {later.push(ft);}
   }
   const sections: Section[] = [];
-  if (today.length > 0) sections.push({ title: 'Vandaag & achterstallig', data: today });
-  if (thisWeek.length > 0) sections.push({ title: 'Deze week', data: thisWeek });
-  if (later.length > 0) sections.push({ title: 'Later', data: later });
+  if (today.length > 0) {sections.push({ title: 'Vandaag & achterstallig', data: today });}
+  if (thisWeek.length > 0) {sections.push({ title: 'Deze week', data: thisWeek });}
+  if (later.length > 0) {sections.push({ title: 'Later', data: later });}
   return sections;
 };
 
 const formatDateLabel = (dateKey: string, todayStr: string): string => {
-  if (dateKey === todayStr) return 'Vandaag';
+  if (dateKey === todayStr) {return 'Vandaag';}
   const tomorrowDate = new Date(todayStr);
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  if (dateKey === tomorrowDate.toISOString().slice(0, 10)) return 'Morgen';
+  if (dateKey === tomorrowDate.toISOString().slice(0, 10)) {return 'Morgen';}
   const d = new Date(dateKey);
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
 };
@@ -234,7 +234,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   // Schedule notifications when weather loads
   useEffect(() => {
-    if (!weather.loaded) return;
+    if (!weather.loaded) {return;}
     scheduleDailyMaintenanceNotification(garden, {
       rainExpected: weather.rainExpected,
       droughtDays: weather.droughtDays,
@@ -257,13 +257,13 @@ const MaintenanceScreen = (): React.JSX.Element => {
   }, [gardenStats.badges]);
 
   const harvestAlerts = useMemo(() => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     return garden.plants.filter((p) => p.harvestMonths?.includes(currentMonth));
   }, [garden, currentMonth]);
 
   // ── Taken tab data ────────────────────────────────────────────────────────
   const sections = useMemo((): Section[] => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     const now = new Date();
     const nowStr = now.toISOString();
     const in3Days = new Date(now);
@@ -275,7 +275,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const flatTasks: FlatTask[] = [];
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (task.completedDate) continue;
+        if (task.completedDate) {continue;}
         const isOverdue = task.dueDate < nowStr;
         const isRecurring = !!task.intervalDays;
         const isBroughtForward =
@@ -287,8 +287,8 @@ const MaintenanceScreen = (): React.JSX.Element => {
       }
     }
     flatTasks.sort((a, b) => {
-      if (a.isBroughtForward && !b.isBroughtForward) return -1;
-      if (!a.isBroughtForward && b.isBroughtForward) return 1;
+      if (a.isBroughtForward && !b.isBroughtForward) {return -1;}
+      if (!a.isBroughtForward && b.isBroughtForward) {return 1;}
       return a.task.dueDate.localeCompare(b.task.dueDate);
     });
     return groupTasks(flatTasks, now);
@@ -296,7 +296,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   // ── Planning tab data ─────────────────────────────────────────────────────
   const planningGroups = useMemo(() => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     const nowStr = now.toISOString();
@@ -307,9 +307,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
     const map = new Map<string, FlatTask[]>();
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (task.completedDate) continue;
+        if (task.completedDate) {continue;}
         const dateKey = task.dueDate.slice(0, 10);
-        if (dateKey > limitStr) continue;
+        if (dateKey > limitStr) {continue;}
         const entry: FlatTask = { task, plant, isOverdue: task.dueDate < nowStr, isRecurring: !!task.intervalDays, isBroughtForward: false };
         const existing = map.get(dateKey) ?? [];
         existing.push(entry);
@@ -324,11 +324,11 @@ const MaintenanceScreen = (): React.JSX.Element => {
   // ── Geschiedenis tab data ─────────────────────────────────────────────────
   interface CompletedEntry { task: MaintenanceTask; plant: Plant; }
   const historyGroups = useMemo(() => {
-    if (!garden) return [];
+    if (!garden) {return [];}
     const completed: CompletedEntry[] = [];
     for (const plant of garden.plants) {
       for (const task of plant.maintenanceTasks) {
-        if (task.completedDate) completed.push({ task, plant });
+        if (task.completedDate) {completed.push({ task, plant });}
       }
     }
     completed.sort((a, b) => (b.task.completedDate ?? '').localeCompare(a.task.completedDate ?? ''));
@@ -368,7 +368,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
 
   // ── ICS export ────────────────────────────────────────────────────────────
   const handleExportICS = useCallback(async () => {
-    if (!garden) return;
+    if (!garden) {return;}
     const isAvailable = await Sharing.isAvailableAsync();
     if (!isAvailable) {
       Alert.alert('Delen niet beschikbaar', 'Delen wordt niet ondersteund op dit apparaat.');
@@ -459,7 +459,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
   );
 
   const gardenHarvestMonths = useMemo(() => {
-    if (!garden) return [] as { name: string; months: number[] }[];
+    if (!garden) {return [] as { name: string; months: number[] }[];}
     return garden.plants
       .filter((p) => p.harvestMonths && p.harvestMonths.length > 0)
       .map((p) => ({ name: p.commonName, months: p.harvestMonths! }));

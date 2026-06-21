@@ -9,7 +9,7 @@ export const checkCropRotation = (
   existingPlants: Plant[],
   rotationHistory: RotationRecord[],
 ): string | null => {
-  if (!plant.plantFamily) return null;
+  if (!plant.plantFamily) {return null;}
   const family = plant.plantFamily;
   const twoYearsAgo = new Date();
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
@@ -17,7 +17,7 @@ export const checkCropRotation = (
     Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
 
   for (const p of existingPlants) {
-    if (plant.id && p.id === plant.id) continue;
+    if (plant.id && p.id === plant.id) {continue;}
     if (p.plantFamily === family && distance(plant.x, plant.y, p.x, p.y) <= 3) {
       return `⚠️ ${family}-gewas staat al op ${Math.round(distance(plant.x, plant.y, p.x, p.y))} cellen afstand — roteer voor betere bodemgezondheid.`;
     }

@@ -171,7 +171,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
       clearGarden: () => {
         const state = get();
-        if (!state.garden) return;
+        if (!state.garden) {return;}
         const cleared = { ...state.garden, plants: [], polygons: [], tasks: [] };
         set({ garden: cleared, gardens: state.gardens.map((g) => g.id === cleared.id ? cleared : g) });
       },
@@ -179,7 +179,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       updatePlant: (plant) => {
         const state = get();
         const { garden } = state;
-        if (!garden) return;
+        if (!garden) {return;}
         const existingPlant = garden.plants.find((p) => p.id === plant.id);
         const updated = { ...garden, plants: garden.plants.map((p) => (p.id === plant.id ? plant : p)) };
         const toUnlock: string[] = [];
@@ -187,9 +187,9 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const newPhotoCount = plant.photoLog?.length ?? 0;
         if (newPhotoCount > oldPhotoCount) {
           const totalPhotos = countPhotos(updated);
-          if (totalPhotos >= 1) toUnlock.push('first_photo');
-          if (totalPhotos >= 10) toUnlock.push('ten_photos');
-          if (totalPhotos >= 25) toUnlock.push('twenty_five_photos');
+          if (totalPhotos >= 1) {toUnlock.push('first_photo');}
+          if (totalPhotos >= 10) {toUnlock.push('ten_photos');}
+          if (totalPhotos >= 25) {toUnlock.push('twenty_five_photos');}
         }
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
         set({
@@ -202,23 +202,23 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       addPlant: (plant) => {
         const state = get();
         const { garden } = state;
-        if (!garden) return;
-        if (TIER_RANK[state.userTier] < TIER_RANK['plus'] && garden.plants.length >= FREE_PLANT_LIMIT) return;
+        if (!garden) {return;}
+        if (TIER_RANK[state.userTier] < TIER_RANK.plus && garden.plants.length >= FREE_PLANT_LIMIT) {return;}
         const updated = { ...garden, plants: [...garden.plants, plant] };
         const count = updated.plants.length;
         const toUnlock: string[] = [];
-        if (count === 1) toUnlock.push('first_plant');
-        if (count >= 5) toUnlock.push('five_plants');
-        if (count >= 10) toUnlock.push('ten_plants');
-        if (count >= 25) toUnlock.push('twenty_five_plants');
-        if (count >= 50) toUnlock.push('fifty_plants');
+        if (count === 1) {toUnlock.push('first_plant');}
+        if (count >= 5) {toUnlock.push('five_plants');}
+        if (count >= 10) {toUnlock.push('ten_plants');}
+        if (count >= 25) {toUnlock.push('twenty_five_plants');}
+        if (count >= 50) {toUnlock.push('fifty_plants');}
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
         set({ ...syncActive(state, updated), unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
       },
 
       removePlant: (plantId) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const removedPlant = garden.plants.find((p) => p.id === plantId);
         const updated = { ...garden, plants: garden.plants.filter((p) => p.id !== plantId) };
         if (removedPlant?.plantFamily) {
@@ -237,9 +237,9 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       completeMaintenanceTask: (plantId, taskId) => {
         const state = get();
         const { garden } = state;
-        if (!garden) return;
+        if (!garden) {return;}
         const plant = garden.plants.find((p) => p.id === plantId);
-        if (!plant) return;
+        if (!plant) {return;}
 
         const now = new Date();
         const completedTask = plant.maintenanceTasks.find((t) => t.id === taskId);
@@ -276,33 +276,33 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         yest.setDate(yest.getDate() - 1);
         const yesterdayStr = yest.toISOString().slice(0, 10);
         let newStreak = state.currentStreak;
-        if (state.lastTaskDate === yesterdayStr) newStreak = state.currentStreak + 1;
-        else if (state.lastTaskDate !== todayStr) newStreak = 1;
+        if (state.lastTaskDate === yesterdayStr) {newStreak = state.currentStreak + 1;}
+        else if (state.lastTaskDate !== todayStr) {newStreak = 1;}
         const newLongest = Math.max(state.longestStreak, newStreak);
 
         const newTotal = state.totalTasksCompleted + 1;
 
         const toUnlock: string[] = [];
-        if (newTotal === 1) toUnlock.push('first_task');
-        if (newTotal >= 10) toUnlock.push('ten_tasks');
-        if (newTotal >= 50) toUnlock.push('fifty_tasks');
-        if (newTotal >= 100) toUnlock.push('hundred_tasks');
-        if (newStreak >= 3) toUnlock.push('streak_3');
-        if (newStreak >= 7) toUnlock.push('streak_7');
-        if (newStreak >= 30) toUnlock.push('streak_30');
+        if (newTotal === 1) {toUnlock.push('first_task');}
+        if (newTotal >= 10) {toUnlock.push('ten_tasks');}
+        if (newTotal >= 50) {toUnlock.push('fifty_tasks');}
+        if (newTotal >= 100) {toUnlock.push('hundred_tasks');}
+        if (newStreak >= 3) {toUnlock.push('streak_3');}
+        if (newStreak >= 7) {toUnlock.push('streak_7');}
+        if (newStreak >= 30) {toUnlock.push('streak_30');}
         if (completedTask?.type === 'water') {
           const waterCount = countCompletedTasksByType(updated, 'water');
-          if (waterCount >= 1) toUnlock.push('first_water');
-          if (waterCount >= 20) toUnlock.push('twenty_water');
+          if (waterCount >= 1) {toUnlock.push('first_water');}
+          if (waterCount >= 20) {toUnlock.push('twenty_water');}
         }
         if (completedTask?.type === 'fertilize') {
           const fertilizeCount = countCompletedTasksByType(updated, 'fertilize');
-          if (fertilizeCount >= 1) toUnlock.push('first_fertilize');
-          if (fertilizeCount >= 10) toUnlock.push('ten_fertilize');
+          if (fertilizeCount >= 1) {toUnlock.push('first_fertilize');}
+          if (fertilizeCount >= 10) {toUnlock.push('ten_fertilize');}
         }
         if (completedTask?.type === 'prune') {
           const pruneCount = countCompletedTasksByType(updated, 'prune');
-          if (pruneCount >= 1) toUnlock.push('first_prune');
+          if (pruneCount >= 1) {toUnlock.push('first_prune');}
         }
 
         // Also check badge definitions from main's system
@@ -321,7 +321,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
           first_prune: countCompletedTasksByType(updated, 'prune') >= 1,
         };
         for (const def of BADGE_DEFINITIONS) {
-          if (badgeCriteria[def.id]) toUnlock.push(def.id);
+          if (badgeCriteria[def.id]) {toUnlock.push(def.id);}
         }
 
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
@@ -340,14 +340,14 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
       addGardenTask: (task) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = { ...garden, tasks: [...(garden.tasks ?? []), task] };
         set(syncActive(get(), updated));
       },
 
       completeGardenTask: (taskId) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = {
           ...garden,
           tasks: (garden.tasks ?? []).map((t) =>
@@ -360,12 +360,12 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       acceptDiffProposal: (proposalId) => {
         const { pendingDiffProposals, garden } = get();
         const proposal = pendingDiffProposals.find((p) => p.id === proposalId);
-        if (!proposal || !garden) return;
+        if (!proposal || !garden) {return;}
 
         let updatedPlants = [...garden.plants];
-        if (proposal.type === 'add') updatedPlants = [...updatedPlants, proposal.plant];
-        else if (proposal.type === 'remove') updatedPlants = updatedPlants.filter((p) => p.id !== proposal.plant.id);
-        else if (proposal.type === 'update') updatedPlants = updatedPlants.map((p) => p.id === proposal.plant.id ? proposal.plant : p);
+        if (proposal.type === 'add') {updatedPlants = [...updatedPlants, proposal.plant];}
+        else if (proposal.type === 'remove') {updatedPlants = updatedPlants.filter((p) => p.id !== proposal.plant.id);}
+        else if (proposal.type === 'update') {updatedPlants = updatedPlants.map((p) => p.id === proposal.plant.id ? proposal.plant : p);}
 
         const updated = { ...garden, plants: updatedPlants };
         set({ ...syncActive(get(), updated), pendingDiffProposals: pendingDiffProposals.filter((p) => p.id !== proposalId) });
@@ -382,9 +382,9 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         if (!isScanning && state.isScanning) {
           const newTotal = state.totalScans + 1;
           const toUnlock: string[] = [];
-          if (newTotal === 1) toUnlock.push('first_scan');
-          if (newTotal >= 5) toUnlock.push('five_scans');
-          if (newTotal >= 20) toUnlock.push('twenty_scans');
+          if (newTotal === 1) {toUnlock.push('first_scan');}
+          if (newTotal >= 5) {toUnlock.push('five_scans');}
+          if (newTotal >= 20) {toUnlock.push('twenty_scans');}
           const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
           set({ isScanning: false, totalScans: newTotal, unlockedAchievements: unlocked, ...(recentUnlockId ? { recentUnlockId } : {}) });
         } else {
@@ -395,7 +395,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       recordHarvest: (plantId, entry) => {
         const state = get();
         const { garden } = state;
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = {
           ...garden,
           plants: garden.plants.map((p) =>
@@ -405,9 +405,9 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const harvestCount = countHarvests(updated);
         const harvestGrams = countHarvestGrams(updated);
         const toUnlock: string[] = [];
-        if (harvestCount >= 1) toUnlock.push('first_harvest');
-        if (harvestCount >= 10) toUnlock.push('ten_harvests');
-        if (harvestGrams >= 1000) toUnlock.push('kilo_harvest');
+        if (harvestCount >= 1) {toUnlock.push('first_harvest');}
+        if (harvestCount >= 10) {toUnlock.push('ten_harvests');}
+        if (harvestGrams >= 1000) {toUnlock.push('kilo_harvest');}
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
         set({
           ...syncActive(state, updated),
@@ -418,7 +418,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
       deleteHarvestEntry: (plantId, entryId) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = {
           ...garden,
           plants: garden.plants.map((p) =>
@@ -431,7 +431,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       setSoilProfile: (profile) => {
         const state = get();
         const { garden } = state;
-        if (!garden) return;
+        if (!garden) {return;}
         const profiles = garden.soilProfiles ?? [];
         const isNew = !profiles.some((p) => p.id === profile.id);
         const updated = {
@@ -445,7 +445,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
       addSoilAmendment: (profileId, amendment) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = {
           ...garden,
           soilProfiles: (garden.soilProfiles ?? []).map((p) =>
@@ -457,28 +457,28 @@ export const useGardenStore = create<GardenState & GardenActions>()(
 
       deleteSoilProfile: (profileId) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = { ...garden, soilProfiles: (garden.soilProfiles ?? []).filter((p) => p.id !== profileId) };
         set(syncActive(get(), updated));
       },
 
       addBoundary: (boundary) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = { ...garden, boundaries: [...(garden.boundaries ?? []), boundary] };
         set(syncActive(get(), updated));
       },
 
       removeBoundary: (id) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = { ...garden, boundaries: (garden.boundaries ?? []).filter((b) => b.id !== id) };
         set(syncActive(get(), updated));
       },
 
       updateBoundary: (boundary) => {
         const { garden } = get();
-        if (!garden) return;
+        if (!garden) {return;}
         const updated = { ...garden, boundaries: (garden.boundaries ?? []).map((b) => b.id === boundary.id ? boundary : b) };
         set(syncActive(get(), updated));
       },
@@ -509,7 +509,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
       switchGarden: (id) => {
         const { gardens } = get();
         const target = gardens.find((g) => g.id === id);
-        if (target) set({ garden: target, activeGardenId: id });
+        if (target) {set({ garden: target, activeGardenId: id });}
       },
 
       renameGarden: (id, name) => {
@@ -538,7 +538,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const now = new Date();
         const todayStr = now.toISOString().slice(0, 10);
-        if (state.lastTaskDate === todayStr) return; // already counted today
+        if (state.lastTaskDate === todayStr) {return;} // already counted today
         const yest = new Date(now);
         yest.setDate(yest.getDate() - 1);
         const yesterdayStr = yest.toISOString().slice(0, 10);
@@ -546,13 +546,13 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const newLongest = Math.max(state.longestStreak, newStreak);
         const newTotal = state.totalTasksCompleted + 1;
         const toUnlock: string[] = [];
-        if (newTotal === 1) toUnlock.push('first_task');
-        if (newTotal >= 10) toUnlock.push('ten_tasks');
-        if (newTotal >= 50) toUnlock.push('fifty_tasks');
-        if (newTotal >= 100) toUnlock.push('hundred_tasks');
-        if (newStreak >= 3) toUnlock.push('streak_3');
-        if (newStreak >= 7) toUnlock.push('streak_7');
-        if (newStreak >= 30) toUnlock.push('streak_30');
+        if (newTotal === 1) {toUnlock.push('first_task');}
+        if (newTotal >= 10) {toUnlock.push('ten_tasks');}
+        if (newTotal >= 50) {toUnlock.push('fifty_tasks');}
+        if (newTotal >= 100) {toUnlock.push('hundred_tasks');}
+        if (newStreak >= 3) {toUnlock.push('streak_3');}
+        if (newStreak >= 7) {toUnlock.push('streak_7');}
+        if (newStreak >= 30) {toUnlock.push('streak_30');}
         const { unlocked, recentUnlockId } = tryUnlockMany(state.unlockedAchievements, toUnlock);
         set({
           totalTasksCompleted: newTotal,

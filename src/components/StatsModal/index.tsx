@@ -18,7 +18,7 @@ const PLANT_EMOJI_HINTS: Record<string, string> = {
 const getPlantEmoji = (name: string): string => {
   const lower = name.toLowerCase();
   for (const [key, emoji] of Object.entries(PLANT_EMOJI_HINTS)) {
-    if (lower.includes(key)) return emoji;
+    if (lower.includes(key)) {return emoji;}
   }
   return '🌿';
 };
@@ -62,7 +62,7 @@ export function StatsModal({ visible, onClose }: Props): React.JSX.Element {
   const taskTypeCounts: Record<string, number> = {};
   for (const p of plants) {
     for (const t of p.maintenanceTasks) {
-      if (t.completedDate) taskTypeCounts[t.type] = (taskTypeCounts[t.type] ?? 0) + 1;
+      if (t.completedDate) {taskTypeCounts[t.type] = (taskTypeCounts[t.type] ?? 0) + 1;}
     }
   }
   const taskTypeEntries = Object.entries(taskTypeCounts).sort((a, b) => b[1] - a[1]);

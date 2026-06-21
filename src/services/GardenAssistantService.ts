@@ -14,7 +14,7 @@ const fetchWithRetry = async (url: string, init: RequestInit, retries = 3, timeo
     try {
       const res = await fetch(url, { ...init, signal: controller.signal });
       clearTimeout(timer);
-      if (res.status !== 503 || attempt === retries) return res;
+      if (res.status !== 503 || attempt === retries) {return res;}
       await sleep(1000 * Math.pow(2, attempt));
     } catch (err: unknown) {
       clearTimeout(timer);
@@ -76,8 +76,8 @@ export const createInitialTasksForPlant = (
     });
   };
 
-  if (identified.waterIntervalDays) addTask('water', identified.waterIntervalDays);
-  if (identified.fertilizeIntervalDays) addTask('fertilize', identified.fertilizeIntervalDays);
+  if (identified.waterIntervalDays) {addTask('water', identified.waterIntervalDays);}
+  if (identified.fertilizeIntervalDays) {addTask('fertilize', identified.fertilizeIntervalDays);}
 
   return tasks;
 };
@@ -151,13 +151,13 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
     }
 
     const currentParts: object[] = [];
-    if (userText) currentParts.push({ text: userText });
+    if (userText) {currentParts.push({ text: userText });}
     if (imageUri) {
       const base64 = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } });
-      if (!userText) currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });
+      if (!userText) {currentParts.unshift({ text: 'Identificeer alle planten en eventuele onderhoudsproblemen in deze foto.' });}
     }
     contents.push({ role: 'user', parts: currentParts });
 
@@ -183,8 +183,8 @@ Alle markerregels mogen tegelijk aanwezig zijn. Laat een markerlijn weg als die 
 
     if (!response.ok) {
       const status = response.status;
-      if (status === 503) throw new Error('Gemini is momenteel overbelast. Probeer het opnieuw.');
-      if (status === 429) throw new Error('Te veel verzoeken. Even wachten en opnieuw proberen.');
+      if (status === 503) {throw new Error('Gemini is momenteel overbelast. Probeer het opnieuw.');}
+      if (status === 429) {throw new Error('Te veel verzoeken. Even wachten en opnieuw proberen.');}
       throw new Error(`Gemini API fout: ${status}`);
     }
 

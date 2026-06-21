@@ -15,7 +15,7 @@ export function generateICS(plants: Plant[]): string {
 
   for (const plant of plants) {
     for (const task of plant.maintenanceTasks) {
-      if (task.completedDate) continue;
+      if (task.completedDate) {continue;}
       const dateStr = toICSDate(task.dueDate);
       events.push(
         [

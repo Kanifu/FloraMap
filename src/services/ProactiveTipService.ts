@@ -12,7 +12,7 @@ interface TipCache {
 }
 
 export const getDailyTip = async (garden: Garden | null): Promise<string | null> => {
-  if (!garden || garden.plants.length === 0) return null;
+  if (!garden || garden.plants.length === 0) {return null;}
 
   // Check cache: if tip was generated < TIP_INTERVAL_HOURS ago, return cached
   try {
@@ -20,7 +20,7 @@ export const getDailyTip = async (garden: Garden | null): Promise<string | null>
     if (cached) {
       const tipCache: TipCache = JSON.parse(cached);
       const ageHours = (Date.now() - new Date(tipCache.generatedAt).getTime()) / 3_600_000;
-      if (ageHours < TIP_INTERVAL_HOURS) return tipCache.text;
+      if (ageHours < TIP_INTERVAL_HOURS) {return tipCache.text;}
     }
   } catch { /* ignore */ }
 
@@ -32,7 +32,7 @@ export const getDailyTip = async (garden: Garden | null): Promise<string | null>
   try {
     const response = await gardenAssistantService.chat(prompt, null, [], []);
     const tip = response.text.trim();
-    if (!tip) return null;
+    if (!tip) {return null;}
 
     await AsyncStorage.setItem(TIP_CACHE_KEY, JSON.stringify({ text: tip, generatedAt: new Date().toISOString() }));
     return tip;
@@ -44,7 +44,7 @@ export const getDailyTip = async (garden: Garden | null): Promise<string | null>
 export const scheduleDailyTipNotification = async (tip: string): Promise<void> => {
   try {
     const { status } = await Notifications.getPermissionsAsync();
-    if (status !== 'granted') return;
+    if (status !== 'granted') {return;}
 
     await Notifications.scheduleNotificationAsync({
       identifier: 'daily-tip',

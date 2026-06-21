@@ -139,7 +139,7 @@ const PlantMenu = ({ plant, onClose, onMove, onResize, onDelete, onChangeColor, 
     setNoteText(plant?.notes ?? '');
   };
 
-  if (!plant) return null;
+  if (!plant) {return null;}
   const isZone = (plant.width ?? 1) > 1 || (plant.height ?? 1) > 1;
 
   return (
@@ -277,7 +277,7 @@ const MapScreen = (): React.JSX.Element => {
   const didCenter = useRef(false);
 
   useEffect(() => {
-    if (didCenter.current || viewport.w === 0 || viewport.h === 0) return;
+    if (didCenter.current || viewport.w === 0 || viewport.h === 0) {return;}
     const cx = Math.max(0, (MAP_WIDTH  - viewport.w) / 2);
     const cy = Math.max(0, (MAP_HEIGHT - viewport.h) / 2);
     requestAnimationFrame(() => {
@@ -330,7 +330,7 @@ const MapScreen = (): React.JSX.Element => {
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((val) => {
-      if (!val) setShowOnboarding(true);
+      if (!val) {setShowOnboarding(true);}
     });
   }, []);
 
@@ -339,7 +339,7 @@ const MapScreen = (): React.JSX.Element => {
   }, []);
 
   useEffect(() => {
-    if (!selectedBoundaryId) return;
+    if (!selectedBoundaryId) {return;}
     const boundary = garden?.boundaries?.find((b) => b.id === selectedBoundaryId);
     if (!boundary) { setSelectedBoundaryId(null); return; }
     const cfg = BOUNDARY_TYPES.find((t) => t.type === boundary.type);
@@ -368,7 +368,7 @@ const MapScreen = (): React.JSX.Element => {
   const [modalNotes,      setModalNotes]      = useState('');
   const [modalColor,      setModalColor]      = useState(ZONE_COLORS[0]);
   const [modalPlantType,  setModalPlantType]  = useState<PlantType>('plant');
-  const [modalPlantedDate,setModalPlantedDate]= useState('');   // YYYY-MM-DD, empty = today
+  const [modalPlantedDate,setModalPlantedDate] = useState('');   // YYYY-MM-DD, empty = today
   const [pendingBounds,   setPendingBounds]   = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // ── scan state ────────────────────────────────────────────────────────────
@@ -402,7 +402,7 @@ const MapScreen = (): React.JSX.Element => {
 
   const ensureGarden = useCallback((): Garden => {
     const current = useGardenStore.getState().garden;
-    if (current) return current;
+    if (current) {return current;}
     const g: Garden = { id: `garden-${Date.now()}`, userId: 'local', name: 'Mijn tuin', polygons: [], plants: [], tasks: [] };
     setGarden(g);
     return g;
@@ -419,7 +419,7 @@ const MapScreen = (): React.JSX.Element => {
   const isEmpty = !garden || garden.plants.length === 0;
 
   const pendingTaskCount = useMemo(() => {
-    if (!garden) return 0;
+    if (!garden) {return 0;}
     const now = new Date().toISOString();
     return garden.plants.reduce((acc, p) =>
       acc + p.maintenanceTasks.filter((t) => !t.completedDate && t.dueDate < now).length, 0);
@@ -427,7 +427,7 @@ const MapScreen = (): React.JSX.Element => {
 
   const plantStatuses = useMemo((): Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'> => {
     const result: Record<string, 'overdue' | 'soon' | 'water' | 'done_today' | 'ok'> = {};
-    if (!garden) return result;
+    if (!garden) {return result;}
     const now = new Date();
     const nowStr = now.toISOString();
     const todayStr = nowStr.slice(0, 10);
@@ -441,27 +441,27 @@ const MapScreen = (): React.JSX.Element => {
 
       for (const task of plant.maintenanceTasks) {
         if (task.completedDate) {
-          if (task.completedDate.slice(0, 10) === todayStr) completedToday = true;
+          if (task.completedDate.slice(0, 10) === todayStr) {completedToday = true;}
           continue;
         }
         const dateStr = task.dueDate.slice(0, 10);
         if (dateStr < todayStr) {
           // Overdue — water gets special 'water' status, others get 'overdue'
-          if (task.type === 'water' && status !== 'overdue') status = 'water';
-          else status = 'overdue';
+          if (task.type === 'water' && status !== 'overdue') {status = 'water';}
+          else {status = 'overdue';}
         } else if (dateStr <= in3DaysStr && status === 'ok') {
           status = 'soon';
         }
       }
 
-      if (completedToday && status === 'ok') status = 'done_today';
+      if (completedToday && status === 'ok') {status = 'done_today';}
       result[plant.id] = status;
     }
     return result;
   }, [garden]);
 
   const companionPairs = useMemo<CompanionPair[]>(() => {
-    if (!garden || !showCompanionOverlay) return [];
+    if (!garden || !showCompanionOverlay) {return [];}
     return findCompanionPairs(garden.plants);
   }, [garden, showCompanionOverlay]);
 
@@ -501,13 +501,13 @@ const MapScreen = (): React.JSX.Element => {
         onSkip: () => setPlantsToPlace((q) => q.slice(1)),
       };
     }
-    if (movingPlant) return { text: `Tik om ${movingPlant.commonName} te verplaatsen`, onCancel: () => setMovingPlant(null) };
-    if (drawStep === 'first' && !drawTarget) return { text: 'Tik op het startpunt van de nieuwe plant of zone', onCancel: cancelDraw };
-    if (drawStep === 'first' && drawTarget) return { text: `Tik op startpunt voor ${drawTarget.commonName}`, onCancel: cancelDraw };
-    if (drawStep === 'second') return { text: 'Tik op het eindpunt (tegenovergestelde hoek)', onCancel: cancelDraw };
+    if (movingPlant) {return { text: `Tik om ${movingPlant.commonName} te verplaatsen`, onCancel: () => setMovingPlant(null) };}
+    if (drawStep === 'first' && !drawTarget) {return { text: 'Tik op het startpunt van de nieuwe plant of zone', onCancel: cancelDraw };}
+    if (drawStep === 'first' && drawTarget) {return { text: `Tik op startpunt voor ${drawTarget.commonName}`, onCancel: cancelDraw };}
+    if (drawStep === 'second') {return { text: 'Tik op het eindpunt (tegenovergestelde hoek)', onCancel: cancelDraw };}
     const cancelBoundary = () => { setBoundaryDrawStep(null); setBoundaryFirstPoint(null); setPendingBoundaryType(null); setBoundaryEditId(null); };
-    if (boundaryDrawStep === 'first') return { text: boundaryEditId ? 'Tik op het nieuwe startpunt van de grens' : 'Tik op het startpunt van de grens', onCancel: cancelBoundary };
-    if (boundaryDrawStep === 'second') return { text: boundaryEditId ? 'Tik op het nieuwe eindpunt van de grens' : 'Tik op het eindpunt van de grens', onCancel: cancelBoundary };
+    if (boundaryDrawStep === 'first') {return { text: boundaryEditId ? 'Tik op het nieuwe startpunt van de grens' : 'Tik op het startpunt van de grens', onCancel: cancelBoundary };}
+    if (boundaryDrawStep === 'second') {return { text: boundaryEditId ? 'Tik op het nieuwe eindpunt van de grens' : 'Tik op het eindpunt van de grens', onCancel: cancelBoundary };}
     return null;
   }, [plantsToPlace, movingPlant, drawStep, drawTarget, cancelDraw, boundaryDrawStep, boundaryEditId]);
 
@@ -531,8 +531,8 @@ const MapScreen = (): React.JSX.Element => {
             height: Math.abs(y - boundaryFirstPoint.y) + 1,
           };
       ensureGarden();
-      if (boundaryEditId) updateBoundary(boundary);
-      else addBoundary(boundary);
+      if (boundaryEditId) {updateBoundary(boundary);}
+      else {addBoundary(boundary);}
       setBoundaryDrawStep(null);
       setBoundaryFirstPoint(null);
       setPendingBoundaryType(null);
@@ -607,7 +607,7 @@ const MapScreen = (): React.JSX.Element => {
   }, [newGardenName, newGardenCols, newGardenRows, createGarden, setGarden]);
 
   const handleDeleteActiveGarden = useCallback(() => {
-    if (!garden) return;
+    if (!garden) {return;}
     Alert.alert(
       'Tuin verwijderen',
       `Wil je "${garden.name}" definitief verwijderen? Dit kan niet ongedaan worden gemaakt.`,
@@ -638,7 +638,7 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── confirm new plant/zone modal ──────────────────────────────────────────
   const handleConfirmModal = () => {
-    if (!pendingBounds || !modalName.trim()) return;
+    if (!pendingBounds || !modalName.trim()) {return;}
     const g = ensureGarden();
     const id = newId();
     const isZone = pendingBounds.width > 1 || pendingBounds.height > 1;
@@ -659,7 +659,7 @@ const MapScreen = (): React.JSX.Element => {
       identificationConfidence: 1,
     });
     setShowModal(false); setModalName(''); setModalNotes(''); setModalPlantedDate(''); setPendingBounds(null);
-    
+
   };
 
   // ── scan ──────────────────────────────────────────────────────────────────
@@ -667,7 +667,7 @@ const MapScreen = (): React.JSX.Element => {
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
-    if (result.canceled) return;
+    if (result.canceled) {return;}
     setScanning(true);
     setStoreScanning(true);
     try {
@@ -694,7 +694,7 @@ const MapScreen = (): React.JSX.Element => {
 
   const handleSendAiPrompt = async () => {
     const prompt = aiInput.trim();
-    if (!prompt) return;
+    if (!prompt) {return;}
     setAiLoading(true);
     setAiAnswer('');
     setAiPlants([]);
@@ -732,7 +732,7 @@ const MapScreen = (): React.JSX.Element => {
 
   const filteredPlants = useMemo<PlantProfile[]>(() => {
     const q = plantSearchQuery.toLowerCase().trim();
-    if (!q) return plantDatabase;
+    if (!q) {return plantDatabase;}
     return plantDatabase.filter(
       (p) =>
         p.commonName.toLowerCase().includes(q) ||
@@ -754,7 +754,7 @@ const MapScreen = (): React.JSX.Element => {
     setPlantsToPlace([ip]);
     setShowPlantSearch(false);
     ensureGarden();
-    
+
   }, [ensureGarden]);
 
   // ── disease scan ──────────────────────────────────────────────────────────
@@ -765,7 +765,7 @@ const MapScreen = (): React.JSX.Element => {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.85 });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets[0]) {return;}
     setDiseaseScanning(true);
     try {
       const response = await gardenAssistantService.chat(
@@ -789,7 +789,7 @@ const MapScreen = (): React.JSX.Element => {
     setPendingBoundaryType(bt.type);
     setPendingBoundaryIsLine(bt.isLine);
     ensureGarden();
-    
+
     setBoundaryDrawStep('first');
   }, [ensureGarden]);
 
@@ -1047,7 +1047,7 @@ const MapScreen = (): React.JSX.Element => {
         weatherRainExpected={weather.rainExpected}
         onOpenPlant={(plantId) => {
           const plant = garden?.plants.find((p) => p.id === plantId);
-          if (plant) setQuickSheetPlant(plant);
+          if (plant) {setQuickSheetPlant(plant);}
         }}
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
       />
@@ -1081,7 +1081,7 @@ const MapScreen = (): React.JSX.Element => {
                         );
                       })
                       .slice(0, 3);
-                    if (alts.length === 0) return null;
+                    if (alts.length === 0) {return null;}
                     return (
                       <View style={corrStyles.altSection}>
                         <Text style={corrStyles.altLabel}>Of misschien:</Text>

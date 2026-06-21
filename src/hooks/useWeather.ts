@@ -31,29 +31,29 @@ let cachedData: WeatherData | null = null;
 let cachedAt = 0;
 
 export const weatherCodeToEmoji = (code: number): string => {
-  if (code === 0) return '☀️';
-  if (code <= 3)  return '⛅';
-  if (code <= 48) return '🌫️';
-  if (code <= 67) return '🌧️';
-  if (code <= 77) return '❄️';
-  if (code <= 82) return '🌦️';
-  if (code <= 86) return '🌨️';
+  if (code === 0) {return '☀️';}
+  if (code <= 3)  {return '⛅';}
+  if (code <= 48) {return '🌫️';}
+  if (code <= 67) {return '🌧️';}
+  if (code <= 77) {return '❄️';}
+  if (code <= 82) {return '🌦️';}
+  if (code <= 86) {return '🌨️';}
   return '⛈️';
 };
 
 export const fetchWeatherData = async (): Promise<WeatherData> => {
   // Return cached data if fresh
-  if (cachedData && Date.now() - cachedAt < CACHE_MS) return cachedData;
+  if (cachedData && Date.now() - cachedAt < CACHE_MS) {return cachedData;}
 
   try {
     const loc = await getCachedLocation();
     const url =
-      `https://api.open-meteo.com/v1/forecast` +
+      'https://api.open-meteo.com/v1/forecast' +
       `?latitude=${loc.latitude}&longitude=${loc.longitude}` +
-      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode` +
-      `&hourly=precipitation&forecast_days=7&timezone=auto`;
+      '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode' +
+      '&hourly=precipitation&forecast_days=7&timezone=auto';
     const res = await fetch(url);
-    if (!res.ok) return { ...EMPTY_WEATHER, loaded: true };
+    if (!res.ok) {return { ...EMPTY_WEATHER, loaded: true };}
     const data = await res.json();
 
     const hourlyPrecip: number[] = data.hourly?.precipitation ?? [];
@@ -90,8 +90,8 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
       let count = 0;
       for (let i = 1; i < rainSums.length; i++) {
         const hasMeaningfulRain = (rainSums[i] ?? 0) >= 1 || (wCodes[i] ?? 0) >= 51;
-        if (!hasMeaningfulRain) count++;
-        else break;
+        if (!hasMeaningfulRain) {count++;}
+        else {break;}
       }
       return count;
     })();
@@ -124,7 +124,7 @@ export const useWeather = (): WeatherData => {
   const fetched = useRef(false);
 
   useEffect(() => {
-    if (fetched.current) return;
+    if (fetched.current) {return;}
     fetched.current = true;
     fetchWeatherData().then(setWeather);
   }, []);

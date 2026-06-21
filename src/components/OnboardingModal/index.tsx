@@ -299,12 +299,12 @@ export function OnboardingModal({ visible, onDone }: Props): React.JSX.Element |
   };
 
   const getNextLabel = (): string => {
-    if (step === 1) return locationGranted ? 'Volgende' : 'Overslaan';
-    if (isLast) return '🌿 Beginnen';
+    if (step === 1) {return locationGranted ? 'Volgende' : 'Overslaan';}
+    if (isLast) {return '🌿 Beginnen';}
     return 'Volgende';
   };
 
-  if (!restored) return null;
+  if (!restored) {return null;}
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>

@@ -10,11 +10,11 @@ export const relativeDueLabel = (dueDateStr: string): string => {
   const todayStr = new Date().toISOString().slice(0, 10);
   const dueStr = dueDateStr.slice(0, 10);
   const diff = Math.round((new Date(dueStr + 'T00:00:00Z').getTime() - new Date(todayStr + 'T00:00:00Z').getTime()) / 86_400_000);
-  if (diff === 0) return 'Vandaag';
-  if (diff === 1) return 'Morgen';
-  if (diff === 2) return 'Overmorgen';
-  if (diff > 0) return `Over ${diff} dagen`;
-  if (diff === -1) return 'Gisteren';
+  if (diff === 0) {return 'Vandaag';}
+  if (diff === 1) {return 'Morgen';}
+  if (diff === 2) {return 'Overmorgen';}
+  if (diff > 0) {return `Over ${diff} dagen`;}
+  if (diff === -1) {return 'Gisteren';}
   return `${Math.abs(diff)} dagen geleden`;
 };
 

@@ -34,19 +34,19 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
   const [editSpecies,   setEditSpecies]   = useState('');
 
   const handleComplete = useCallback((taskId: string) => {
-    if (!plant) return;
+    if (!plant) {return;}
     completeMaintenanceTask(plant.id, taskId);
   }, [plant, completeMaintenanceTask]);
 
   const handleStartEdit = useCallback(() => {
-    if (!plant) return;
+    if (!plant) {return;}
     setEditName(plant.commonName);
     setEditSpecies(plant.species ?? '');
     setIsEditingName(true);
   }, [plant]);
 
   const handleSaveEdit = useCallback(() => {
-    if (!plant) return;
+    if (!plant) {return;}
     const newName = editName.trim() || plant.commonName;
     const newSpecies = editSpecies.trim() || plant.species;
 
@@ -90,7 +90,7 @@ export const PlantQuickSheet = ({ plant, visible, onClose, onDetails, weatherRai
     setIsEditingName(false);
   }, []);
 
-  if (!plant) return null;
+  if (!plant) {return null;}
 
   const now = new Date().toISOString();
   const activeTasks = plant.maintenanceTasks

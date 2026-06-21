@@ -38,8 +38,8 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   const sortedPackets = useMemo(() => {
     return [...seedPackets].sort((a, b) => {
       // non-usedUp first
-      if (!a.isUsedUp && b.isUsedUp) return -1;
-      if (a.isUsedUp && !b.isUsedUp) return 1;
+      if (!a.isUsedUp && b.isUsedUp) {return -1;}
+      if (a.isUsedUp && !b.isUsedUp) {return 1;}
       // then by expiry year ascending (undefined goes last)
       const aYear = a.expiryYear ?? 9999;
       const bYear = b.expiryYear ?? 9999;
@@ -57,7 +57,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
   };
 
   const handleAdd = () => {
-    if (!modalCommonName.trim()) return;
+    if (!modalCommonName.trim()) {return;}
     const packet: SeedPacket = {
       id: newId(),
       commonName: modalCommonName.trim(),
