@@ -137,7 +137,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
         </View>
         <TouchableOpacity
           style={[styles.usedUpBtn, item.isUsedUp && styles.usedUpBtnActive]}
-          onPress={() => toggleUsedUp(item)}>
+          onPress={() => toggleUsedUp(item)}
+          accessibilityLabel={item.isUsedUp ? `${item.commonName} terugzetten als beschikbaar` : `${item.commonName} markeren als op`}
+          accessibilityRole="button">
           <Text style={styles.usedUpBtnText}>{item.isUsedUp ? '↩️' : '✓ Op'}</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -148,7 +150,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}
+          accessibilityLabel="Terug"
+          accessibilityRole="button">
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌱 Zaadvoorraad</Text>

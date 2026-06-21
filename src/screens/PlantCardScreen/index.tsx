@@ -586,7 +586,9 @@ const PlantCardScreen = (): React.JSX.Element => {
                     key={entry.id}
                     style={s.photoEntry}
                     onLongPress={() => handleDeletePhoto(entry.id)}
-                    activeOpacity={0.85}>
+                    activeOpacity={0.85}
+                    accessibilityLabel={`Foto van ${new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} — lang indrukken om te verwijderen`}
+                    accessibilityRole="button">
                     <Image source={{ uri: entry.uri }} style={s.photoThumb} />
                     <Text style={s.photoDate}>
                       {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
@@ -670,7 +672,9 @@ const PlantCardScreen = (): React.JSX.Element => {
                       key={entry.id}
                       style={s.harvestEntryRow}
                       onLongPress={() => handleDeleteHarvest(entry.id)}
-                      activeOpacity={0.7}>
+                      activeOpacity={0.7}
+                      accessibilityLabel={`Oogst van ${new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })} — lang indrukken om te verwijderen`}
+                      accessibilityRole="button">
                       <Text style={s.harvestEntryDate}>
                         🌾 {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </Text>
