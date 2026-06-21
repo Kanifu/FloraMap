@@ -813,7 +813,9 @@ const MapScreen = (): React.JSX.Element => {
             </TouchableOpacity>
           )}
           {scanning && <ActivityIndicator size="small" color="#2d6a4f" style={{ marginRight: 4 }} />}
-          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)}
+            accessibilityLabel="Menu openen"
+            accessibilityRole="button">
             <Text style={styles.menuBtnText}>☰</Text>
           </TouchableOpacity>
         </View>
@@ -828,7 +830,11 @@ const MapScreen = (): React.JSX.Element => {
           </View>
           <View style={styles.bannerActions}>
             {bannerInfo.onSkip && <TouchableOpacity onPress={bannerInfo.onSkip}><Text style={styles.bannerSkip}>Sla over</Text></TouchableOpacity>}
-            <TouchableOpacity onPress={bannerInfo.onCancel}><Text style={styles.bannerCancel}>✕</Text></TouchableOpacity>
+            <TouchableOpacity onPress={bannerInfo.onCancel}
+              accessibilityLabel="Annuleren"
+              accessibilityRole="button">
+              <Text style={styles.bannerCancel}>✕</Text>
+            </TouchableOpacity>
           </View>
         </View>
       ) : isInteractive ? (
@@ -939,24 +945,32 @@ const MapScreen = (): React.JSX.Element => {
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.max(0.5, mapScale - 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75}
+            accessibilityLabel="Uitzoomen"
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>−</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.zoomBtn, styles.zoomBtnMid]} onPress={() => {
             lastMapScale.current = 1.0; setMapScale(1.0); animPinchScale.setValue(1);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75}
+            accessibilityLabel="Zoom herstellen"
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>{Math.round(mapScale * 100)}%</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.zoomBtn} onPress={() => {
             const next = Math.min(3.0, mapScale + 0.25);
             lastMapScale.current = next; setMapScale(next);
-          }} activeOpacity={0.75}>
+          }} activeOpacity={0.75}
+            accessibilityLabel="Inzoomen"
+            accessibilityRole="button">
             <Text style={styles.zoomBtnText}>＋</Text>
           </TouchableOpacity>
         </View>
 
         {!isInteractive && (
-          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.fab} onPress={() => setFabMode((m) => m === 'menu' ? 'idle' : 'menu')} activeOpacity={0.85}
+            accessibilityLabel={fabMode === 'menu' ? 'Menu sluiten' : 'Toevoegen'}
+            accessibilityRole="button">
             <Text style={styles.fabText}>{fabMode === 'menu' ? '✕' : '＋'}</Text>
           </TouchableOpacity>
         )}
@@ -1231,7 +1245,9 @@ const MapScreen = (): React.JSX.Element => {
                 <Text style={styles.modalTitle}>✨ AI toevoegen</Text>
                 <Text style={styles.modalSubtitle}>Vraag advies, scan een plant of voeg direct iets toe.</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowAiSheet(false)} style={styles.aiCloseBtn}>
+              <TouchableOpacity onPress={() => setShowAiSheet(false)} style={styles.aiCloseBtn}
+                accessibilityLabel="Sluiten"
+                accessibilityRole="button">
                 <Text style={styles.aiCloseText}>×</Text>
               </TouchableOpacity>
             </View>
@@ -1269,7 +1285,9 @@ const MapScreen = (): React.JSX.Element => {
               <TouchableOpacity
                 style={[styles.aiSendBtn, (!aiInput.trim() || aiLoading) && styles.aiSendBtnDisabled]}
                 onPress={handleSendAiPrompt}
-                disabled={!aiInput.trim() || aiLoading}>
+                disabled={!aiInput.trim() || aiLoading}
+                accessibilityLabel="Vraag versturen"
+                accessibilityRole="button">
                 {aiLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.aiSendText}>→</Text>}
               </TouchableOpacity>
             </View>
