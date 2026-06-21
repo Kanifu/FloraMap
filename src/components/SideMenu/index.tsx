@@ -26,13 +26,11 @@ interface SideMenuProps {
   showNames: boolean;
   onToggleCompanion: () => void;
   onToggleNames: () => void;
-  onOpenAssistant: () => void;
   onOpenMaintenance: () => void;
   onOpenSeedInventory: () => void;
   onOpenAbout: () => void;
   onOpenStats: () => void;
   onOpenVirtualGarden: () => void;
-  onOpenTierComparison: () => void;
   onReportBug: () => void;
   onClearGarden: () => void;
   onDeleteGarden: () => void;
@@ -40,18 +38,14 @@ interface SideMenuProps {
   onOpenGardenPicker: () => void;
   unlockedBadgeCount: number;
   recentBadgeEmojis: string[];
-  // kept for backward compat — badge chip now opens stats
-  onOpenAchievements: () => void;
-  // kept for backward compat — scan moved to FAB
-  onScan?: () => void;
 }
 
 export function SideMenu(props: SideMenuProps): React.JSX.Element {
   const {
     visible, onClose, plantCount, showCompanion, showNames,
     onToggleCompanion, onToggleNames,
-    onOpenAssistant, onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
-    onOpenStats, onOpenTierComparison, onOpenVirtualGarden,
+    onOpenMaintenance, onOpenAbout, onOpenSeedInventory,
+    onOpenStats, onOpenVirtualGarden,
     onReportBug, onClearGarden, onDeleteGarden,
     onCreateGarden, onOpenGardenPicker,
     unlockedBadgeCount, recentBadgeEmojis,

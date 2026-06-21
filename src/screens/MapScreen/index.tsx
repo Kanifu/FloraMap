@@ -1512,13 +1512,9 @@ const MapScreen = (): React.JSX.Element => {
         showNames={showNames}
         onToggleCompanion={() => setShowCompanionOverlay((v) => !v)}
         onToggleNames={() => setShowNames((v) => !v)}
-        onScan={handleOpenAiSheet}
-        onOpenAssistant={handleOpenAiSheet}
         onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenSeedInventory={() => navigation.navigate('SeedInventory')}
         onOpenAbout={() => navigation.navigate('About')}
-        onOpenAchievements={() => setShowStatsModal(true)}
-        onOpenTierComparison={() => setShowTierModal(true)}
         onOpenStats={() => setShowStatsModal(true)}
         onOpenVirtualGarden={() => navigation.navigate('VirtualGarden')}
         onReportBug={() => setShowFeedback(true)}

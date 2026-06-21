@@ -40,7 +40,6 @@ const makeDefaultGarden = (): Garden => ({
   name: 'Mijn tuin',
   polygons: [],
   plants: [],
-  zones: [],
   tasks: [],
   lastScannedAt: new Date().toISOString(),
 });
@@ -360,7 +359,7 @@ const AssistantScreen = (): React.JSX.Element => {
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
@@ -403,7 +402,7 @@ const AssistantScreen = (): React.JSX.Element => {
         <View style={styles.pendingImageRow}>
           <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
           <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
+          <TouchableOpacity onPress={() => setPendingImage(null)} accessibilityLabel="Foto verwijderen" accessibilityRole="button">
             <Text style={styles.removePending}>✕</Text>
           </TouchableOpacity>
         </View>

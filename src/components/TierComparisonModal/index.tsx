@@ -30,7 +30,6 @@ const FEATURE_ORDER: FeatureKey[] = [
 
 const TIER_LABELS = ['Gratis', 'Plus ⭐', 'Premium 💎'];
 const TIER_KEYS   = ['free', 'plus', 'premium'] as const;
-const TIER_COLORS = ['#6b705c', '#2d6a4f', '#1b4332'];
 const TIER_BG     = ['#f8f9fa', '#d8f3dc', '#1b4332'];
 const TIER_TEXT   = ['#1b4332', '#1b4332', '#fff'];
 
@@ -92,7 +91,7 @@ export function TierComparisonModal({ visible, onClose }: Props): React.JSX.Elem
               return (
                 <View key={key} style={s.row}>
                   <Text style={s.featureText}>{cfg.label}</Text>
-                  {TIER_KEYS.map((tier, i) => {
+                  {TIER_KEYS.map((tier) => {
                     const included = TIER_RANK[tier] >= TIER_RANK[cfg.requiredTier];
                     return (
                       <View key={tier} style={s.tierCell}>
@@ -109,7 +108,7 @@ export function TierComparisonModal({ visible, onClose }: Props): React.JSX.Elem
 
           <View style={s.footer}>
             <Text style={s.footerNote}>
-              Upgrades zijn beschikbaar via de instellingen. Neem contact op voor meer informatie.
+              Upgrades zijn binnenkort beschikbaar via de Play Store.
             </Text>
             <TouchableOpacity style={s.closeBtn} onPress={onClose} activeOpacity={0.85}>
               <Text style={s.closeBtnText}>Sluiten</Text>

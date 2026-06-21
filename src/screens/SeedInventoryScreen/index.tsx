@@ -63,8 +63,8 @@ const SeedInventoryScreen = (): React.JSX.Element => {
       commonName: modalCommonName.trim(),
       species: modalSpecies.trim() || undefined,
       emoji: modalEmoji.trim() || undefined,
-      expiryYear: modalExpiryYear ? parseInt(modalExpiryYear, 10) : undefined,
-      amountGrams: modalAmountGrams ? parseFloat(modalAmountGrams) : undefined,
+      expiryYear: modalExpiryYear && !isNaN(parseInt(modalExpiryYear, 10)) ? parseInt(modalExpiryYear, 10) : undefined,
+      amountGrams: modalAmountGrams && !isNaN(parseFloat(modalAmountGrams)) ? parseFloat(modalAmountGrams) : undefined,
       notes: modalNotes.trim() || undefined,
     };
     addSeedPacket(packet);
@@ -89,7 +89,8 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const renderItem = ({ item }: { item: SeedPacket }) => {
     const isExpired = item.expiryYear !== undefined && item.expiryYear < CURRENT_YEAR;
-    const isExpiringSoon = item.expiryYear !== undefined && item.expiryYear === CURRENT_YEAR;
+    const currentMonth = new Date().getMonth();
+    const isExpiringSoon = item.expiryYear !== undefined && (item.expiryYear === CURRENT_YEAR || (item.expiryYear === CURRENT_YEAR + 1 && currentMonth >= 9));
 
     return (
       <TouchableOpacity

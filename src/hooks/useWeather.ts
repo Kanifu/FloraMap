@@ -57,10 +57,6 @@ export const fetchWeatherData = async (): Promise<WeatherData> => {
     const data = await res.json();
 
     const hourlyPrecip: number[] = data.hourly?.precipitation ?? [];
-    const totalMm = Math.round(
-      hourlyPrecip.slice(0, 48).reduce((s: number, v: number) => s + v, 0) * 10,
-    ) / 10;
-
     const dates: string[]    = data.daily?.time ?? [];
     const maxTemps: number[] = data.daily?.temperature_2m_max ?? [];
     const minTemps: number[] = data.daily?.temperature_2m_min ?? [];
