@@ -329,7 +329,7 @@ const AboutScreen = (): React.JSX.Element => {
                 <View style={styles.tierProgress}>
                   <View style={[
                     styles.tierProgressFill,
-                    { width: `${Math.min(100, ((garden?.plants.length ?? 0) / FREE_PLANT_LIMIT) * 100)}%` as any },
+                    { width: `${Math.min(100, Math.round(((garden?.plants.length ?? 0) / FREE_PLANT_LIMIT) * 100))}%` as `${number}%` },
                   ]} />
                 </View>
                 <TouchableOpacity
