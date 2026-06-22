@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 
 const TIP_CACHE_KEY = 'floramap_tip_cache';
 const TIP_INTERVAL_HOURS = 24;
+let pendingTip: Promise<string | null> | null = null;
 
 interface TipCache {
   text: string;
@@ -13,7 +14,12 @@ interface TipCache {
 
 export const getDailyTip = async (garden: Garden | null): Promise<string | null> => {
   if (!garden || garden.plants.length === 0) return null;
+  if (pendingTip) return pendingTip;
+  pendingTip = getDailyTipInner(garden).finally(() => { pendingTip = null; });
+  return pendingTip;
+};
 
+const getDailyTipInner = async (garden: Garden): Promise<string | null> => {
   // Check cache: if tip was generated < TIP_INTERVAL_HOURS ago, return cached
   try {
     const cached = await AsyncStorage.getItem(TIP_CACHE_KEY);

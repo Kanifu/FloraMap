@@ -381,7 +381,7 @@ const PlantCardScreen = (): React.JSX.Element => {
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backRow} accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={s.backText}>‹ Terug</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle} numberOfLines={1}>{plant.commonName}</Text>
@@ -603,7 +603,7 @@ const PlantCardScreen = (): React.JSX.Element => {
           {/* ── Harvest log ── */}
           {plant.harvestMonths && plant.harvestMonths.length > 0 && (() => {
             const log = [...(plant.harvestLog ?? [])].sort((a, b) => b.date.localeCompare(a.date));
-            const totalG = log.reduce((s, e) => s + (e.weightG ?? 0), 0);
+            const totalG = log.reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0);
             const totalCount = log.reduce((s, e) => s + (e.count ?? 0), 0);
             return (
               <View style={s.section}>
@@ -675,7 +675,7 @@ const PlantCardScreen = (): React.JSX.Element => {
                         🌾 {new Date(entry.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </Text>
                       <Text style={s.harvestEntryAmount}>
-                        {[entry.weightG ? `${entry.weightG}g` : '', entry.count ? `${entry.count}x` : ''].filter(Boolean).join(' · ')}
+                        {[(entry.weightG ?? entry.amountGrams) ? `${entry.weightG ?? entry.amountGrams}g` : '', entry.count ? `${entry.count}x` : ''].filter(Boolean).join(' · ')}
                       </Text>
                     </TouchableOpacity>
                   ))

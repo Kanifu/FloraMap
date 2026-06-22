@@ -15,7 +15,7 @@ import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
 import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } from '@/services/NotificationService';
 import { plantDatabase } from '@/data/plantDatabase';
-import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/useWeather';
+import { useWeather } from '@/hooks/useWeather';
 import { FeedbackModal } from '@/components/FeedbackModal';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
@@ -58,8 +58,6 @@ const SEASONAL_TIPS: Record<number, string> = {
   10: '🍁 November: Snoei klimplanten en struiken. Mulch kwetsbare wortels voor de winter.',
   11: '❄️ December: Rust voor de tuin. Maak gereedschap schoon en plan volgend jaar.',
 };
-
-// WeatherData types and fetching are in @/hooks/useWeather
 
 interface FlatTask {
   task: MaintenanceTask;
@@ -126,7 +124,7 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
   };
 
   const renderRightActions = () => (
-    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85} accessibilityLabel="Taak afronden" accessibilityRole="button">
       <Text style={styles.swipeCompleteText}>✓{'\n'}Klaar</Text>
     </TouchableOpacity>
   );
@@ -176,7 +174,9 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
             isWateringInDrought && styles.klaarButtonDrought,
           ]}
           onPress={handleComplete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Taak afronden"
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -201,7 +201,9 @@ const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.El
       </View>
       {!task.completedDate && (
         <TouchableOpacity style={styles.klaarButton} onPress={() => onComplete(task.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Taak afronden"
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       )}
@@ -471,7 +473,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn} accessibilityLabel="Terug naar tuin" accessibilityRole="button">
             <Text style={styles.backBtnText}>← Tuin</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Onderhoud</Text>
@@ -480,13 +482,14 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityLabel="Exporteer naar agenda" accessibilityRole="button">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn} accessibilityLabel="Over FloraMap" accessibilityRole="button">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>
@@ -572,7 +575,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
                   {hiddenCount > 0 && (
                     <TouchableOpacity
                       style={styles.showMoreBtn}
-                      onPress={() => setShowAllTasks(true)}>
+                      onPress={() => setShowAllTasks(true)}
+                      accessibilityLabel={`Toon ${hiddenCount} meer ${hiddenCount === 1 ? 'taak' : 'taken'} deze week`}
+                      accessibilityRole="button">
                       <Text style={styles.showMoreText}>
                         Toon {hiddenCount} meer {hiddenCount === 1 ? 'taak' : 'taken'} deze week →
                       </Text>
@@ -581,7 +586,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
                   {showAllTasks && sections.length > 1 && (
                     <TouchableOpacity
                       style={styles.showMoreBtn}
-                      onPress={() => setShowAllTasks(false)}>
+                      onPress={() => setShowAllTasks(false)}
+                      accessibilityLabel="Toon alleen vandaag"
+                      accessibilityRole="button">
                       <Text style={styles.showMoreText}>Toon alleen vandaag ↑</Text>
                     </TouchableOpacity>
                   )}
@@ -642,7 +649,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
                     <TouchableOpacity
                       style={styles.klaarButton}
                       onPress={() => handleComplete(ft.plant.id, ft.task.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel="Taak afronden"
+                      accessibilityRole="button">
                       <Text style={styles.klaarButtonText}>✓</Text>
                     </TouchableOpacity>
                   </View>

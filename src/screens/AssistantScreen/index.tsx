@@ -40,7 +40,6 @@ const makeDefaultGarden = (): Garden => ({
   name: 'Mijn tuin',
   polygons: [],
   plants: [],
-  zones: [],
   tasks: [],
   lastScannedAt: new Date().toISOString(),
 });
@@ -298,7 +297,9 @@ const AssistantScreen = (): React.JSX.Element => {
                   <TouchableOpacity
                     style={[styles.addButton, added && styles.addButtonDone]}
                     onPress={() => handleAddToGarden(plant, item.id)}
-                    disabled={added}>
+                    disabled={added}
+                    accessibilityLabel={added ? `${plant.commonName} toegevoegd` : `${plant.commonName} toevoegen aan tuin`}
+                    accessibilityRole="button">
                     <Text style={[styles.addButtonText, added && styles.addButtonTextDone]}>
                       {added ? '✓' : '+'}
                     </Text>
@@ -307,7 +308,7 @@ const AssistantScreen = (): React.JSX.Element => {
               );
             })}
             {item.identifiedPlants.length > 1 && (
-              <TouchableOpacity style={styles.addAllButton} onPress={() => handleAddAll(item.identifiedPlants!, item.id)}>
+              <TouchableOpacity style={styles.addAllButton} onPress={() => handleAddAll(item.identifiedPlants!, item.id)} accessibilityLabel="Alle planten toevoegen aan tuin" accessibilityRole="button">
                 <Text style={styles.addAllButtonText}>Alle {item.identifiedPlants.length} toevoegen aan tuin</Text>
               </TouchableOpacity>
             )}
@@ -334,7 +335,9 @@ const AssistantScreen = (): React.JSX.Element => {
                   <TouchableOpacity
                     style={[styles.addButton, added && styles.addButtonDone]}
                     onPress={() => handleAddTask(task, item.id, idx)}
-                    disabled={added}>
+                    disabled={added}
+                    accessibilityLabel={added ? 'Taak toegevoegd' : 'Taak toevoegen aan onderhoud'}
+                    accessibilityRole="button">
                     <Text style={[styles.addButtonText, added && styles.addButtonTextDone]}>
                       {added ? '✓' : '+'}
                     </Text>
@@ -343,7 +346,7 @@ const AssistantScreen = (): React.JSX.Element => {
               );
             })}
             {item.detectedTasks.length > 1 && (
-              <TouchableOpacity style={[styles.addAllButton, styles.addAllTaskButton]} onPress={() => handleAddAllTasks(item.detectedTasks!, item.id)}>
+              <TouchableOpacity style={[styles.addAllButton, styles.addAllTaskButton]} onPress={() => handleAddAllTasks(item.detectedTasks!, item.id)} accessibilityLabel="Alle taken toevoegen aan onderhoud" accessibilityRole="button">
                 <Text style={styles.addAllButtonText}>Alle taken toevoegen aan Onderhoud</Text>
               </TouchableOpacity>
             )}
@@ -356,11 +359,11 @@ const AssistantScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn} accessibilityLabel="Terug naar tuin" accessibilityRole="button">
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
@@ -403,7 +406,7 @@ const AssistantScreen = (): React.JSX.Element => {
         <View style={styles.pendingImageRow}>
           <Image source={{ uri: pendingImage }} style={styles.pendingImageThumb} />
           <Text style={styles.pendingImageLabel}>Foto klaar om te sturen</Text>
-          <TouchableOpacity onPress={() => setPendingImage(null)}>
+          <TouchableOpacity onPress={() => setPendingImage(null)} accessibilityLabel="Foto verwijderen" accessibilityRole="button">
             <Text style={styles.removePending}>✕</Text>
           </TouchableOpacity>
         </View>
@@ -411,10 +414,10 @@ const AssistantScreen = (): React.JSX.Element => {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage} accessibilityLabel="Foto maken" accessibilityRole="button">
             <Text style={styles.iconButtonText}>📷</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery} accessibilityLabel="Foto kiezen uit galerij" accessibilityRole="button">
             <Text style={styles.iconButtonText}>🖼️</Text>
           </TouchableOpacity>
           <TextInput
