@@ -140,7 +140,9 @@ const SeedInventoryScreen = (): React.JSX.Element => {
         </View>
         <TouchableOpacity
           style={[styles.usedUpBtn, item.isUsedUp && styles.usedUpBtnActive]}
-          onPress={() => toggleUsedUp(item)}>
+          onPress={() => toggleUsedUp(item)}
+          accessibilityLabel={item.isUsedUp ? 'Markeer als beschikbaar' : 'Markeer als op'}
+          accessibilityRole="button">
           <Text style={styles.usedUpBtnText}>{item.isUsedUp ? '↩️' : '✓ Op'}</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -155,7 +157,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌱 Zaadvoorraad</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
+        <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)} accessibilityLabel="Zaadpakket toevoegen" accessibilityRole="button">
           <Text style={styles.addBtnText}>＋ Toevoegen</Text>
         </TouchableOpacity>
       </View>
