@@ -471,7 +471,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn} accessibilityLabel="Terug naar tuin" accessibilityRole="button">
             <Text style={styles.backBtnText}>← Tuin</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Onderhoud</Text>
@@ -480,13 +480,14 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityLabel="Exporteer naar agenda" accessibilityRole="button">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn} accessibilityLabel="Over FloraMap" accessibilityRole="button">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>

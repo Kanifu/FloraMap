@@ -19,6 +19,7 @@ import { SeedPacket } from '@/models';
 
 const newId = () => `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_MONTH = new Date().getMonth(); // 0-indexed
 
 const SeedInventoryScreen = (): React.JSX.Element => {
   const navigation = useNavigation();
@@ -89,7 +90,10 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const renderItem = ({ item }: { item: SeedPacket }) => {
     const isExpired = item.expiryYear !== undefined && item.expiryYear < CURRENT_YEAR;
-    const isExpiringSoon = item.expiryYear !== undefined && item.expiryYear === CURRENT_YEAR;
+    const isExpiringSoon = item.expiryYear !== undefined && (
+      item.expiryYear === CURRENT_YEAR ||
+      (item.expiryYear === CURRENT_YEAR + 1 && CURRENT_MONTH >= 9)
+    );
 
     return (
       <TouchableOpacity
@@ -147,7 +151,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌱 Zaadvoorraad</Text>
