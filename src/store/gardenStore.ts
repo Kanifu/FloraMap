@@ -523,7 +523,7 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         const state = get();
         const remaining = state.gardens.filter((g) => g.id !== id);
         if (state.activeGardenId === id) {
-          const next = remaining[remaining.length - 1] ?? null;
+          const next = remaining[0] ?? null;
           set({ gardens: remaining, garden: next, activeGardenId: next?.id ?? null });
         } else {
           set({ gardens: remaining });
