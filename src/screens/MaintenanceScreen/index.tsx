@@ -15,7 +15,7 @@ import { relativeDueLabel } from '@/utils/dateUtils';
 import { generateICS } from '@/utils/icsExport';
 import { checkAndScheduleWeatherAlerts, scheduleDailyMaintenanceNotification } from '@/services/NotificationService';
 import { plantDatabase } from '@/data/plantDatabase';
-import { useWeather, WeatherData, DailyForecast, EMPTY_WEATHER } from '@/hooks/useWeather';
+import { useWeather } from '@/hooks/useWeather';
 import { FeedbackModal } from '@/components/FeedbackModal';
 
 type MaintenanceNavProp = StackNavigationProp<MaintenanceStackParamList, 'Maintenance'>;
