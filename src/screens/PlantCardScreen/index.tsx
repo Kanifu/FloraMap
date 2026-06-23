@@ -47,7 +47,7 @@ const PlantCardScreen = (): React.JSX.Element => {
   const navigation = useNavigation<PlantCardNavProp>();
   const { plantId } = route.params;
 
-  const s = StyleSheet.create({
+  const s = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     header: {
@@ -185,7 +185,7 @@ const PlantCardScreen = (): React.JSX.Element => {
       marginTop: 4,
     },
     enrichBtnText: { fontSize: 14, color: theme.primary, fontWeight: '700' },
-  });
+  }), [theme]);
 
   const garden                  = useGardenStore((s) => s.garden);
   const updatePlant             = useGardenStore((s) => s.updatePlant);

@@ -214,6 +214,11 @@ const AboutScreen = (): React.JSX.Element => {
     tierDebugBtnTextActive: { color: theme.primary },
   });
 
+  const gardens = useGardenStore((s) => s.gardens);
+  const seedPackets = useGardenStore((s) => s.seedPackets);
+  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
+  const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
+
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
     if (!garden) {
@@ -226,7 +231,15 @@ const AboutScreen = (): React.JSX.Element => {
       return;
     }
     try {
-      const json = JSON.stringify({ version: VERSION, exportedAt: new Date().toISOString(), garden }, null, 2);
+      const json = JSON.stringify({
+        version: VERSION,
+        exportedAt: new Date().toISOString(),
+        garden,
+        gardens,
+        seedPackets,
+        unlockedAchievements,
+        totalTasksCompleted,
+      }, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}floramap-backup.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(fileUri, {
@@ -346,20 +359,23 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {__DEV__ && (
+              <>
+                <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
+                <View style={styles.tierDebugRow}>
+                  {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
+                      onPress={() => setUserTier(t)}>
+                      <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         </View>
 

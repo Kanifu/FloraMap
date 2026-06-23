@@ -583,11 +583,18 @@ export const useGardenStore = create<GardenState & GardenActions>()(
         seedPackets: state.seedPackets,
       }),
       onRehydrateStorage: () => (state) => {
-        // Migrate old format: single garden → gardens array
-        if (state && state.garden && state.gardens.length === 0) {
+        if (!state) return;
+        if (state.garden && state.gardens.length === 0) {
           state.gardens = [state.garden];
           state.activeGardenId = state.garden.id;
         }
+        state.gardenStats = buildGardenStats(
+          state.currentStreak,
+          state.longestStreak,
+          state.totalTasksCompleted,
+          state.lastTaskDate,
+          state.unlockedAchievements,
+        );
       },
     },
   ),

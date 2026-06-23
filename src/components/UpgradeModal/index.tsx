@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
@@ -47,7 +47,7 @@ export const UpgradeModal: React.FC<Props> = ({
   const theme = useTheme();
   const isPremium = requiredTier === 'premium';
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     overlay: {
       flex: 1,
       backgroundColor: theme.overlay,
@@ -140,7 +140,7 @@ export const UpgradeModal: React.FC<Props> = ({
       fontSize: 14,
       color: theme.textSecondary,
     },
-  });
+  }), [theme, isPremium]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
