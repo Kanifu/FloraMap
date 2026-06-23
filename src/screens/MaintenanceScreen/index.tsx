@@ -126,7 +126,7 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
   };
 
   const renderRightActions = () => (
-    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.swipeComplete} onPress={handleComplete} activeOpacity={0.85} accessibilityLabel="Voltooien" accessibilityRole="button">
       <Text style={styles.swipeCompleteText}>✓{'\n'}Klaar</Text>
     </TouchableOpacity>
   );
@@ -176,7 +176,9 @@ const TaskItem = ({ flatTask, onComplete, onNavigate, rainExpected, droughtDays 
             isWateringInDrought && styles.klaarButtonDrought,
           ]}
           onPress={handleComplete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Voltooien"
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -201,7 +203,9 @@ const GardenTaskItem = ({ task, onComplete }: GardenTaskItemProps): React.JSX.El
       </View>
       {!task.completedDate && (
         <TouchableOpacity style={styles.klaarButton} onPress={() => onComplete(task.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Voltooien"
+          accessibilityRole="button">
           <Text style={styles.klaarButtonText}>✓</Text>
         </TouchableOpacity>
       )}
@@ -481,13 +485,15 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityLabel="Exporteren naar kalender"
+            accessibilityRole="button">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn} accessibilityLabel="Over FloraMap" accessibilityRole="button">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>
@@ -643,7 +649,9 @@ const MaintenanceScreen = (): React.JSX.Element => {
                     <TouchableOpacity
                       style={styles.klaarButton}
                       onPress={() => handleComplete(ft.plant.id, ft.task.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel="Voltooien"
+                      accessibilityRole="button">
                       <Text style={styles.klaarButtonText}>✓</Text>
                     </TouchableOpacity>
                   </View>

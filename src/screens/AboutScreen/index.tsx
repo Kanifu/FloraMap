@@ -214,6 +214,11 @@ const AboutScreen = (): React.JSX.Element => {
     tierDebugBtnTextActive: { color: theme.primary },
   });
 
+  const gardens = useGardenStore((s) => s.gardens);
+  const seedPackets = useGardenStore((s) => s.seedPackets);
+  const unlockedAchievements = useGardenStore((s) => s.unlockedAchievements);
+  const totalTasksCompleted = useGardenStore((s) => s.totalTasksCompleted);
+
   // ── Backup export ─────────────────────────────────────────────────────────
   const handleExport = async () => {
     if (!garden) {
@@ -226,7 +231,15 @@ const AboutScreen = (): React.JSX.Element => {
       return;
     }
     try {
-      const json = JSON.stringify({ version: VERSION, exportedAt: new Date().toISOString(), garden }, null, 2);
+      const json = JSON.stringify({
+        version: VERSION,
+        exportedAt: new Date().toISOString(),
+        garden,
+        gardens,
+        seedPackets,
+        unlockedAchievements,
+        totalTasksCompleted,
+      }, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}floramap-backup.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(fileUri, {
