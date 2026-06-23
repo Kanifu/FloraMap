@@ -89,7 +89,11 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const renderItem = ({ item }: { item: SeedPacket }) => {
     const isExpired = item.expiryYear !== undefined && item.expiryYear < CURRENT_YEAR;
-    const isExpiringSoon = item.expiryYear !== undefined && item.expiryYear === CURRENT_YEAR;
+    const currentMonth = new Date().getMonth();
+    const isExpiringSoon = item.expiryYear !== undefined && (
+      item.expiryYear === CURRENT_YEAR ||
+      (item.expiryYear === CURRENT_YEAR + 1 && currentMonth >= 9)
+    );
 
     return (
       <TouchableOpacity

@@ -71,25 +71,27 @@ const makeGardenTaskFromAssistant = (task: AssistantTask): GardenTask => ({
   dueDate: new Date(Date.now() + (urgencyDays[task.urgency] ?? 3) * 86_400_000).toISOString(),
 });
 
+const taskId = () => `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 const makeTasksForType = (plantId: string, type: PlantType): MaintenanceTask[] => {
   switch (type) {
     case 'seed':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water',    dueDate: addDays(1),  intervalDays: 2 },
-        { id: `${Date.now()}-r`, plantId, type: 'repot',    dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
+        { id: taskId(), plantId, type: 'water',    dueDate: addDays(1),  intervalDays: 2 },
+        { id: taskId(), plantId, type: 'repot',    dueDate: addDays(42), notes: 'Verspeen / verplant zaailing' },
       ];
     case 'seedling':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(2), intervalDays: 3 },
-        { id: `${Date.now()}-r`, plantId, type: 'repot', dueDate: addDays(21), notes: 'Verplant naar buiten' },
+        { id: taskId(), plantId, type: 'water', dueDate: addDays(2), intervalDays: 3 },
+        { id: taskId(), plantId, type: 'repot', dueDate: addDays(21), notes: 'Verplant naar buiten' },
       ];
     case 'cutting':
       return [
-        { id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(1),  intervalDays: 2 },
-        { id: `${Date.now()}-t`, plantId, type: 'treat', dueDate: addDays(14), notes: 'Controleer beworteling' },
+        { id: taskId(), plantId, type: 'water', dueDate: addDays(1),  intervalDays: 2 },
+        { id: taskId(), plantId, type: 'treat', dueDate: addDays(14), notes: 'Controleer beworteling' },
       ];
     default:
-      return [{ id: `${Date.now()}-w`, plantId, type: 'water', dueDate: addDays(7), intervalDays: 7 }];
+      return [{ id: taskId(), plantId, type: 'water', dueDate: addDays(7), intervalDays: 7 }];
   }
 };
 
@@ -688,6 +690,13 @@ const MapScreen = (): React.JSX.Element => {
 
   // ── scan ──────────────────────────────────────────────────────────────────
   const handleScan = async (fromGallery = false) => {
+    if (!fromGallery) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Toestemming nodig', 'Geef toegang tot de camera om planten te scannen.');
+        return;
+      }
+    }
     const result = fromGallery
       ? await ImagePicker.launchImageLibraryAsync({ quality: 0.85 })
       : await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -1341,7 +1350,7 @@ const MapScreen = (): React.JSX.Element => {
       </Modal>
 
       {/* New plant/zone modal */}
-      <Modal visible={showModal} transparent animationType="slide">
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => { setShowModal(false); setPendingBounds(null); }}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>
