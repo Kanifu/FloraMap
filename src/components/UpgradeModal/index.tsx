@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-  Modal, View, Text, TouchableOpacity, StyleSheet,
+  Modal, View, Text, TouchableOpacity, StyleSheet, Pressable,
 } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Tier } from '@/hooks/useFeatureFlag';
@@ -47,7 +47,7 @@ export const UpgradeModal: React.FC<Props> = ({
   const theme = useTheme();
   const isPremium = requiredTier === 'premium';
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     overlay: {
       flex: 1,
       backgroundColor: theme.overlay,
@@ -140,12 +140,12 @@ export const UpgradeModal: React.FC<Props> = ({
       fontSize: 14,
       color: theme.textSecondary,
     },
-  });
+  }), [theme, isPremium]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.handle} />
           <Text style={styles.tierBadge}>{TIER_LABELS[requiredTier]}-feature</Text>
           <Text style={styles.title}>{featureLabel}</Text>
@@ -171,8 +171,8 @@ export const UpgradeModal: React.FC<Props> = ({
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
             <Text style={styles.cancelBtnText}>Sluiten</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 };

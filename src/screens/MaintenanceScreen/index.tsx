@@ -480,13 +480,15 @@ const MaintenanceScreen = (): React.JSX.Element => {
           <TouchableOpacity
             onPress={handleExportICS}
             style={styles.headerIconBtn}
-            disabled={exporting || !garden}>
+            disabled={exporting || !garden}
+            accessibilityLabel="Exporteer kalender"
+            accessibilityRole="button">
             <Text style={styles.headerIconText}>{exporting ? '⏳' : '📅'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.headerIconBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
             <Text style={styles.headerIconText}>🐛</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('About')} style={styles.headerIconBtn} accessibilityLabel="Over FloraMap" accessibilityRole="button">
             <Text style={styles.headerIconText}>ℹ️</Text>
           </TouchableOpacity>
         </View>
@@ -742,7 +744,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
           0,
         );
         const totalHarvestGrams = plants.reduce((sum, p) => {
-          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0);
+          return sum + (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0);
         }, 0);
 
         // Top 5 harvest plants
@@ -751,7 +753,7 @@ const MaintenanceScreen = (): React.JSX.Element => {
             id: p.id,
             name: p.commonName,
             emoji: getPlantEmoji(p.commonName),
-            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.amountGrams ?? 0), 0),
+            totalGrams: (p.harvestLog ?? []).reduce((s, e) => s + (e.weightG ?? e.amountGrams ?? 0), 0),
           }))
           .filter((p) => p.totalGrams > 0)
           .sort((a, b) => b.totalGrams - a.totalGrams)

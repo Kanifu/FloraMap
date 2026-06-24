@@ -5,7 +5,7 @@ import { Plant, RotationRecord } from '@/models';
  * Returns null if rotation looks fine.
  */
 export const checkCropRotation = (
-  plant: { x: number; y: number; plantFamily?: string },
+  plant: { id?: string; x: number; y: number; plantFamily?: string },
   existingPlants: Plant[],
   rotationHistory: RotationRecord[],
 ): string | null => {
@@ -16,8 +16,9 @@ export const checkCropRotation = (
   const distance = (ax: number, ay: number, bx: number, by: number) =>
     Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
 
-  // Check existing living plants
+  // Check existing living plants (exclude self to avoid false collision during moves)
   for (const p of existingPlants) {
+    if (plant.id && p.id === plant.id) continue;
     if (p.plantFamily === family && distance(plant.x, plant.y, p.x, p.y) <= 3) {
       return `⚠️ ${family}-gewas staat al op ${Math.round(distance(plant.x, plant.y, p.x, p.y))} cellen afstand — roteer voor betere bodemgezondheid.`;
     }
