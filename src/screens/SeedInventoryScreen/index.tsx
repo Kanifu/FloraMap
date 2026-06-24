@@ -89,7 +89,11 @@ const SeedInventoryScreen = (): React.JSX.Element => {
 
   const renderItem = ({ item }: { item: SeedPacket }) => {
     const isExpired = item.expiryYear !== undefined && item.expiryYear < CURRENT_YEAR;
-    const isExpiringSoon = item.expiryYear !== undefined && item.expiryYear === CURRENT_YEAR;
+    const currentMonth = new Date().getMonth();
+    const isExpiringSoon = item.expiryYear !== undefined && (
+      item.expiryYear === CURRENT_YEAR ||
+      (item.expiryYear === CURRENT_YEAR + 1 && currentMonth >= 9)
+    );
 
     return (
       <TouchableOpacity
@@ -147,7 +151,7 @@ const SeedInventoryScreen = (): React.JSX.Element => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Terug" accessibilityRole="button">
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌱 Zaadvoorraad</Text>

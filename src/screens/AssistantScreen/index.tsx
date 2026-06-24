@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useGardenStore } from '@/store/gardenStore';
-import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, createInitialTasksForPlant } from '@/services/GardenAssistantService';
+import { gardenAssistantService, ChatTurn, IdentifiedPlant, AssistantTask, SuggestedPlacement, createInitialTasksForPlant } from '@/services/GardenAssistantService';
 import { Plant, Garden, GardenTask } from '@/models';
 import { getDailyTip } from '@/services/ProactiveTipService';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -29,6 +29,7 @@ interface Message {
   imageUri?: string;
   identifiedPlants?: IdentifiedPlant[];
   detectedTasks?: AssistantTask[];
+  suggestedPlacements?: SuggestedPlacement[];
   loading?: boolean;
 }
 
@@ -166,6 +167,7 @@ const AssistantScreen = (): React.JSX.Element => {
           text: response.text,
           identifiedPlants: response.identifiedPlants,
           detectedTasks: response.detectedTasks,
+          suggestedPlacements: response.suggestedPlacements,
         };
 
         setMessages((prev) => [...prev.filter((m) => !m.loading), assistantMsg]);
@@ -349,6 +351,24 @@ const AssistantScreen = (): React.JSX.Element => {
             )}
           </View>
         )}
+
+        {/* Suggested placements card */}
+        {item.suggestedPlacements && item.suggestedPlacements.length > 0 && (
+          <View style={[styles.card, styles.placementCard]}>
+            <Text style={styles.cardTitle}>📍 Voorgestelde posities</Text>
+            {item.suggestedPlacements.map((placement, idx) => (
+              <View key={idx} style={styles.placementRow}>
+                <View style={styles.plantInfo}>
+                  <Text style={styles.plantCommonName}>{placement.commonName}</Text>
+                  {placement.species ? (
+                    <Text style={styles.plantSpecies}>{placement.species}</Text>
+                  ) : null}
+                  <Text style={styles.placementPos}>Positie: rij {placement.y}, kolom {placement.x}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     );
   };
@@ -356,11 +376,11 @@ const AssistantScreen = (): React.JSX.Element => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.backBtn} accessibilityLabel="Terug naar tuin" accessibilityRole="button">
           <Text style={styles.backBtnText}>← Tuin</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🌿 Assistent</Text>
-        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn}>
+        <TouchableOpacity onPress={() => setShowFeedback(true)} style={styles.feedbackBtn} accessibilityLabel="Bug melden" accessibilityRole="button">
           <Text style={styles.feedbackBtnText}>🐛</Text>
         </TouchableOpacity>
       </View>
@@ -411,10 +431,10 @@ const AssistantScreen = (): React.JSX.Element => {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickImage} accessibilityLabel="Foto maken" accessibilityRole="button">
             <Text style={styles.iconButtonText}>📷</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery}>
+          <TouchableOpacity style={styles.iconButton} onPress={handlePickFromGallery} accessibilityLabel="Foto uit galerij" accessibilityRole="button">
             <Text style={styles.iconButtonText}>🖼️</Text>
           </TouchableOpacity>
           <TextInput
@@ -430,7 +450,9 @@ const AssistantScreen = (): React.JSX.Element => {
           <TouchableOpacity
             style={[styles.sendButton, (!inputText.trim() && !pendingImage) && styles.sendButtonDisabled]}
             onPress={handleSend}
-            disabled={isLoading || (!inputText.trim() && !pendingImage)}>
+            disabled={isLoading || (!inputText.trim() && !pendingImage)}
+            accessibilityLabel="Versturen"
+            accessibilityRole="button">
             <Text style={styles.sendButtonText}>↑</Text>
           </TouchableOpacity>
         </View>
@@ -485,6 +507,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff9f0',
     borderColor: '#ffb703',
   },
+  placementCard: {
+    backgroundColor: '#f0f4ff',
+    borderColor: '#4a90d9',
+  },
+  placementRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10 },
+  placementPos: { fontSize: 12, color: '#4a90d9', fontWeight: '600', marginTop: 2 },
   cardTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', marginBottom: 2 },
   plantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10 },
   plantInfo: { flex: 1, gap: 2 },

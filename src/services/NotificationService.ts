@@ -21,7 +21,12 @@ export const scheduleDailyMaintenanceNotification = async (
   garden: Garden | null,
   weatherData?: { rainExpected: boolean; droughtDays: number; tempMax: number },
 ): Promise<void> => {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of scheduled) {
+    if (n.identifier.startsWith('daily-maintenance')) {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    }
+  }
   if (!garden) return;
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -100,12 +105,14 @@ export const scheduleDailyMaintenanceNotification = async (
 };
 
 export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
+  try {
   // 1. Request permission
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return;
 
   // 2. Get location
   const loc = await getCachedLocation();
+  if (!loc?.latitude || !loc?.longitude) return;
 
   // 3. Fetch Open-Meteo: daily for 3 days + hourly for frost detection
   const url =
@@ -194,6 +201,9 @@ export const checkAndScheduleWeatherAlerts = async (): Promise<void> => {
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: inOneHour },
     });
+  }
+  } catch (err) {
+    console.warn('[NotificationService] Weather alerts failed:', err);
   }
 };
 

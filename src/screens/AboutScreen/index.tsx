@@ -16,7 +16,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { FREE_PLANT_LIMIT, FEATURE_CONFIGS } from '@/hooks/useFeatureFlag';
-import type { Tier } from '@/constants/tiers';
 
 // Single source of truth: all values come from app.json → expo.extra
 const extra      = Constants.expoConfig?.extra ?? {};
@@ -73,7 +72,6 @@ const AboutScreen = (): React.JSX.Element => {
   const garden = useGardenStore((s) => s.garden);
   const setGarden = useGardenStore((s) => s.setGarden);
   const userTier = useGardenStore((s) => s.userTier);
-  const setUserTier = useGardenStore((s) => s.setUserTier);
   const [importing, setImporting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -204,14 +202,6 @@ const AboutScreen = (): React.JSX.Element => {
       paddingVertical: 12, alignItems: 'center',
     },
     tierUpgradeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-    tierDebugRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
-    tierDebugBtn: {
-      flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center',
-      borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card,
-    },
-    tierDebugBtnActive: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
-    tierDebugBtnText: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
-    tierDebugBtnTextActive: { color: theme.primary },
   });
 
   // ── Backup export ─────────────────────────────────────────────────────────
@@ -346,20 +336,6 @@ const AboutScreen = (): React.JSX.Element => {
                 </TouchableOpacity>
               </>
             )}
-            {/* Dev-only tier switcher — remove before production */}
-            <Text style={[styles.tierSub, { marginTop: 4 }]}>Tier wisselen (testmodus):</Text>
-            <View style={styles.tierDebugRow}>
-              {(['free', 'plus', 'premium'] as Tier[]).map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tierDebugBtn, userTier === t && styles.tierDebugBtnActive]}
-                  onPress={() => setUserTier(t)}>
-                  <Text style={[styles.tierDebugBtnText, userTier === t && styles.tierDebugBtnTextActive]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
         </View>
 
